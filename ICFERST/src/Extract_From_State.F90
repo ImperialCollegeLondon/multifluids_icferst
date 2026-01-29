@@ -3804,9 +3804,9 @@ end subroutine get_DarcyVelocity
 
         if (outfluxes%calculate_flux)  then
           do iofluxes = 1, size(outfluxes%outlet_id)!here below we just need a saturation
-            outfluxes%area_outlet(:, iofluxes) = outfluxes%area_outlet(:, iofluxes) + suf_area
             if (integrate_over_surface_element(tracer, sele, (/outfluxes%outlet_id(iofluxes)/))) then
               do iphase = start_phase, end_phase
+                outfluxes%area_outlet(iphase, iofluxes) = outfluxes%area_outlet(iphase, iofluxes) + suf_area
                 bcs_outfluxes(iphase, CV_NODI, iofluxes) =  bcs_outfluxes(iphase, CV_NODI, iofluxes) + &
                 Vol_flux(iphase)
                 bcs_outfluxes_mass(iphase, CV_NODI, iofluxes) =  bcs_outfluxes_mass(iphase, CV_NODI, iofluxes) + &
