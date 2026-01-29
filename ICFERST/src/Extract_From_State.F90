@@ -64,7 +64,7 @@ module Copy_Outof_State
         pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
         have_option_for_any_phase, Get_Ele_Type_new,write_state_units,&
-        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_volume, prepare_absorptions, &
+        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, getTotalsAndDumpOutflux, calculate_internal_volume, prepare_absorptions, &
         EnterForceBalanceEquation, update_outfluxes, Impose_connected_BCs, getOutputConverter,convertToOutUnits
 
 
@@ -3629,9 +3629,9 @@ end subroutine get_DarcyVelocity
     !>@param current_time actual time
     !>@param itime time-level in integer format
     !>@param outfluxes multi_outfluxes field containing the data required to create the output csv file
-    subroutine dump_outflux(current_time, itime, outfluxes)
+    subroutine getTotalsAndDumpOutflux(current_time, dt, itime, outfluxes)
 
-        real,intent(in) :: current_time
+        real,intent(in) :: current_time, dt
         integer, intent(in) :: itime
         type (multi_outfluxes), intent(inout) :: outfluxes
         !Local variables
@@ -3672,15 +3672,22 @@ end subroutine get_DarcyVelocity
                 open(unit=89, file=trim(simulation_name)//"_outfluxes.csv", action="write", position="append")
             end if
 
+            ! Clear NaNs of fields that are not present
+            do iphase = 1, size(outfluxes%intflux,1)
+              do ioutlet =1, size(outfluxes%intflux,2)
+                if (isnan(outfluxes%totout   (iphase,ioutlet))) outfluxes%totout   (iphase,ioutlet) = 0d0
+                if (isnan(outfluxes%vol_flux (iphase,ioutlet))) outfluxes%vol_flux (iphase,ioutlet) = 0d0
+                if (isnan(outfluxes%mass_flux(iphase,ioutlet))) outfluxes%mass_flux(iphase,ioutlet) = 0d0
+                do ifields = 1, size(outfluxes%field_names,2)
+                  if (isnan(outfluxes%avgout(ifields,iphase,ioutlet))) outfluxes%avgout(ifields,iphase,ioutlet) = 0d0
+                end do
+              end do
+            end do
 
-            ! If calculating boundary fluxes, add up contributions to \int{totout} at each time step
-            where (outfluxes%totout /= outfluxes%totout)
-                outfluxes%totout = 0.!If nan then make it zero
-            end where
-            outfluxes%intflux = outfluxes%intflux + outfluxes%totout(:, :)*dt
-            outfluxes%vol_flux = outfluxes%vol_flux + outfluxes%totout_vol(:, :)*dt
+            ! Now proceed to update cumulatives
+            outfluxes%intflux   = outfluxes%intflux   + outfluxes%totout     (:, :)*dt
+            outfluxes%vol_flux  = outfluxes%vol_flux  + outfluxes%totout_vol (:, :)*dt
             outfluxes%mass_flux = outfluxes%mass_flux + outfluxes%totout_mass(:, :)*dt
-
 
             ! Write column headings to file
             counter = 0
@@ -3745,7 +3752,7 @@ end subroutine get_DarcyVelocity
             write(89,*), trim(whole_line)
             close (89)
         end if
-    end subroutine dump_outflux
+    end subroutine getTotalsAndDumpOutflux
 
     !>@brief: Updates the outfluxes information based on NDOTQNEW, shape functions and transported fields for a given GI point in a certain element
     !>This subroutine should only be called if SELE is on the BOUNDARY
@@ -3797,9 +3804,9 @@ end subroutine get_DarcyVelocity
 
         if (outfluxes%calculate_flux)  then
           do iofluxes = 1, size(outfluxes%outlet_id)!here below we just need a saturation
+            outfluxes%area_outlet(:, iofluxes) = outfluxes%area_outlet(:, iofluxes) + suf_area
             if (integrate_over_surface_element(tracer, sele, (/outfluxes%outlet_id(iofluxes)/))) then
               do iphase = start_phase, end_phase
-                outfluxes%area_outlet(iphase, iofluxes) = outfluxes%area_outlet(iphase, iofluxes) + suf_area
                 bcs_outfluxes(iphase, CV_NODI, iofluxes) =  bcs_outfluxes(iphase, CV_NODI, iofluxes) + &
                 Vol_flux(iphase)
                 bcs_outfluxes_mass(iphase, CV_NODI, iofluxes) =  bcs_outfluxes_mass(iphase, CV_NODI, iofluxes) + &

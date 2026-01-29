@@ -36,9 +36,9 @@ module multi_pipes
     use multi_data_types
     use write_state_module, only: write_state
     use boundary_conditions
-#include "petsc/finclude/petsc.h"   
+#include "petsc/finclude/petsc.h"
     use petsc
-    
+
     implicit none
     private
 
@@ -938,7 +938,7 @@ contains
                   ! over the element of the pressure like source term.
                   ! Put into matrix
                   ! Prepare aid variable NMX_ALL to improve the speed of the calculations
-                  suf_area = PI * ( (0.5*PIPE_DIAM_END)**2 ) * ELE_ANGLE / ( 2.0 * PI )
+                  suf_area = 0.25*PI*(PIPE_DIAM_END*PIPE_DIAM_END) * ELE_ANGLE / ( 2.0 * PI )
                   IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqations plus RHS on the boundary...
                       DO IDIM = 1, Mdims%ndim
                           CT_CON(IDIM,:) = LIMDT * suf_area * DIRECTION_NORM(IDIM) * INV_SIGMA_GI / DEN_ALL%val(1,:,JCV_NOD)

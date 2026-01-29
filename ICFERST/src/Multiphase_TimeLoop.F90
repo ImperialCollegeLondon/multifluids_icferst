@@ -101,8 +101,8 @@ module multiphase_time_loop
 #include "petsc_legacy.h"
 
     private
-    !public :: MultiFluids_SolveTimeLoop, rheology, dump_outflux
-    public :: MultiFluids_SolveTimeLoop, dump_outflux
+    !public :: MultiFluids_SolveTimeLoop, rheology, getTotalsAndDumpOutflux
+    public :: MultiFluids_SolveTimeLoop, getTotalsAndDumpOutflux
     !type(rheology_type), dimension(:), allocatable :: rheology
 
 
@@ -952,7 +952,7 @@ contains
             ! If calculating boundary fluxes, dump them to outfluxes.csv
             if(outfluxes%calculate_flux .and..not.Repeat_time_step) then
                 call get_option( '/timestepping/current_time', acctim )
-                call dump_outflux(acctim,itime,outfluxes)
+                call getTotalsAndDumpOutflux(acctim,acctim-old_acctim,itime,outfluxes)  ! We calculate dt as acctim-old_acctim just in case dt has changed
             endif
 
             current_time = acctim
