@@ -2091,7 +2091,7 @@ contains
 
           IF ( GETCT ) THEN
             W_SUM_ONE1 = 0.0 !If == 1.0 applies constraint to T
-            if (Solve_all_phases) W_SUM_ONE1 = 1.0
+            if (Solve_all_phases .and. final_phase > 1) W_SUM_ONE1 = 1.0
             W_SUM_ONE2 = 0.0 !If == 1.0 applies constraint to TOLD !sprint_to_do Unnecessary, should be removed
             DIAG_SCALE_PRES = 0.0
             DO CV_NODI = 1, Mdims%cv_nonods
@@ -2114,8 +2114,8 @@ contains
                 ct_rhs_phase(iphase)=ct_rhs_phase(iphase) &
                     - R_PRES(1) * ( &
                     + (1.0-W_SUM_ONE1) * LOC_T_I(iphase) - (1.0-W_SUM_ONE2) * LOC_TOLD_I(iphase) &
-                    + (( LOC_TOLD_I(iphase) * ( LOC_DEN_I(iphase) - LOC_DENOLD_I(iphase) ) &
-                    - DERIV( iphase, CV_NODI ) * CV_P( 1, 1, CV_NODI ) ) * T_ALL( iphase, CV_NODI ) ) / LOC_DEN_I(iphase) )
+                    + (( LOC_TOLD_I(iphase) * ( LOC_DEN_I(iphase) - LOC_DENOLD_I(iphase) ) ) * T_ALL( iphase, CV_NODI ) ) / LOC_DEN_I(iphase) )
+
                 DIAG_SCALE_PRES_phase( iphase ) = DIAG_SCALE_PRES_phase( iphase ) &
                     + MEAN_PORE_CV( 1, CV_NODI ) * LOC_T_I( iphase ) * DERIV( iphase, CV_NODI ) / ( DT * LOC_DEN_I(iphase) )
 

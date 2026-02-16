@@ -999,13 +999,15 @@ start =
                     )
                 }?,
 
-               ## Specify scalar field compressibility of the porous media
-               ## ( in Pa-1 den = den_surface*exp(Coef*(P_res-P_surface))
-               ## with P_surf = 10^5 Pa )
+               ## Specify scalar field rock compressibility coefficient c_r = (1/phi)(dphi/dP) in Pa^-1.
+               ## Typical values: 1e-10 (stiff rock) to 1e-8 (soft/unconsolidated).
                ##
-               ## Here the term <b>Coef</b> is specified.
+               ## This enters the total compressibility derivative as:
+               ##   1/phi * d(rho*phi)/dP = drho/dP + c_r * rho
                ##
-               ## Temporarily P_surface can be defined from /numerical_methods/Surface_pressure
+               ## Note: porosity itself is not dynamically updated during
+               ## the simulation. The effect of pore volume change on pressure
+               ## is captured implicitly through the compressibility diagonal.
                element scalar_field {
                   attribute name { "porous_compressibility" },
                   (
@@ -1775,7 +1777,21 @@ start =
                }?,
            ## Surface pressure for the porous compressibility equation
             element Surface_pressure {
-               real
+               (
+                  element constant {
+                  real
+               }|
+               ## Python function prescribing real input. Functions should be of the form:
+               ##
+               ##  def val(X, t):
+               ##     # Function code
+               ##     return # Return value
+               ##
+               ##
+               element python {
+                  python_code
+               }
+               )
             }?,
             ## For porous media only the Darcy velocity is outputed as the normal velocity is actually the force density
             ## activate this to also output the force_density

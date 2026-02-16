@@ -186,7 +186,11 @@ contains
                     if (has_boussinesq_aprox) then !disable time-derivative terms
                       PackedDRhoDPressure%val( 1, iphase, : ) = 0.
                     else
-                      PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho +drhodp_porous
+                      if (iphase <= Mdims%n_in_pres) then 
+                        PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho + drhodp_porous * Rho
+                      else
+                        PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho
+                      end if
                     end if
                     Density_Component( sc : ec ) = Rho
 
@@ -202,7 +206,11 @@ contains
                     if (has_boussinesq_aprox) then!disable time-derivative terms
                       PackedDRhoDPressure%val( 1, iphase, : ) = 0.
                     else
-                      PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho + drhodp_porous
+                      if (iphase <= Mdims%n_in_pres) then 
+                        PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho + drhodp_porous * Rho
+                      else
+                        PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho
+                      end if
                     end if
                     Density_Component( sc : ec ) = Rho
 
@@ -224,7 +232,11 @@ contains
                 if (has_boussinesq_aprox) then !disable time-derivative terms
                   PackedDRhoDPressure%val( 1, iphase, : ) = 0.
                 else
-                 PackedDRhoDPressure%val( 1, iphase, : ) = dRhodP + drhodp_porous
+                  if (iphase <= Mdims%n_in_pres) then 
+                    PackedDRhoDPressure%val( 1, iphase, : ) = dRhodP + drhodp_porous * Rho
+                  else
+                    PackedDRhoDPressure%val( 1, iphase, : ) = dRhodP
+                  end if
                 end if
                  Cp_s => extract_scalar_field( state( iphase ), 'TemperatureHeatCapacity', stat )
                  !Cp_s => extract_scalar_field( state( iphase ), 'ConcentrationHeatCapacity', stat )
@@ -807,65 +819,55 @@ contains
         real, dimension( : ), intent(inout) :: drhodp_porous
         !Local variables
         type( tensor_field ), pointer :: pressure
-        type( scalar_field ), pointer :: density_porous, density_porous_initial, density_porous_old, porous_coef
-        real, dimension( : ), allocatable :: RhoPlus, RhoMinus
+        type( scalar_field ), pointer :: porous_coef
         real, dimension(Mdims%totele) :: cv_counter
         integer :: stat
-        real, dimension( : ), allocatable :: rho_porous, rho_porous_old
-        real, parameter :: perturb = 1e-5
         real :: ref_pressure
+        real, dimension ( : ), allocatable :: ref_pressure_field
+        !Variables for python function for surface pressure
+        type (scalar_field) :: sfield
+        type (scalar_field), pointer :: pnt_sfield
+        type (vector_field), pointer :: position
 
-        integer :: ele, cv_inod, iloc, i, k, multiplier, multiplier2
+        integer :: ele, cv_inod, iloc, i, multiplier
 
-        !!$ Den = Den_surface*exp(C0 * ( P_res-P_surf) )
+        !!$ phi = phi_initial*exp(C0 * ( P_res-P_surf) )
         pressure => extract_tensor_field( packed_state, 'PackedCVPressure', stat )  ! <= for inertia only
         if (stat/=0) pressure => extract_tensor_field( packed_state, "PackedFEPressure", stat )
 
-        density_porous => extract_scalar_field( state(1), "porous_density" )
-        density_porous_initial  => extract_scalar_field( state(1), "porous_density_initial" )
-        density_porous_old => extract_scalar_field(state(1), "porous_density_old")
         porous_coef => extract_scalar_field(state(1), "porous_compressibility")
-        call get_option("/numerical_methods/Surface_pressure", ref_pressure, default = 1e5)
 
+        allocate( ref_pressure_field( Mdims%cv_nonods ) ) ; ref_pressure_field = 0.
 
-        allocate( RhoPlus( Mdims%cv_nonods ) ) ; RhoPlus = 0.
-        allocate( RhoMinus( Mdims%cv_nonods ) ) ; RhoMinus = 0.
-        allocate( rho_porous( size(density_porous%val) ) )
-        allocate( rho_porous_old(size(density_porous%val)  ) )
-        rho_porous=0.
+        if (have_option("/numerical_methods/Surface_pressure/python")) then
+          !By default the pressure mesh (position 1)
+          pnt_sfield => extract_scalar_field(state(1),1)
+          position => get_external_coordinate_field(packed_state, pnt_sfield%mesh)
+          call allocate (sfield, pnt_sfield%mesh, "Temporary_surface_pressure")
+          call initialise_field(sfield, "/numerical_methods/Surface_pressure" , position)
+          ref_pressure_field = sfield%val
+        else 
+          call get_option("/numerical_methods/Surface_pressure/constant", ref_pressure, default = 1e5)
+          ref_pressure_field(:) = ref_pressure
+        end if
+
         cv_counter = 0
-        rho_porous_old = density_porous%val
 
         !To loop over the porous_compressibility coefficient
         multiplier = 1; if (size(porous_coef%val) == 1)  multiplier = 0
-        multiplier2 = 1; if (size(density_porous%val) == 1)  multiplier2 = 0
 
         do ele = 1, Mdims%totele
           i = ele * multiplier + (1 - multiplier)
-          k = ele * multiplier2 + (1 - multiplier2)
             do iloc = 1,Mdims%cv_nloc
                 cv_inod = cv_ndgln((ele-1)*Mdims%cv_nloc+iloc)
                 cv_counter( ele ) = cv_counter( ele ) + 1.0
-                rho_porous(k) = rho_porous(k)+ density_porous_initial%val(k )&
-                  *exp(porous_coef%val( i ) * (pressure % val(1,1,cv_inod) -ref_pressure))
-                RhoPlus(cv_inod) =  density_porous_initial%val(k )*exp(porous_coef%val( i ) * (pressure % val(1,1,cv_inod)*(1.+ perturb) - ref_pressure))
-                RhoMinus(cv_inod) = density_porous_initial%val(k )*exp(porous_coef%val( i ) * (pressure % val(1,1,cv_inod)*(1.- perturb) - ref_pressure))
-                !Obtain derivative
-                drhodp_porous(cv_inod) = 0.5 * ( RhoPlus(cv_inod) - RhoMinus(cv_inod))  / pressure % val(1,1,cv_inod)*perturb
+                ! 1/phi * d(rho*phi)/dt = ( drho/dp + rho * 1/phi * dphi/dp ) * dp/dt, here we store 1/phi * dphi/dp (= c_r, compressibility coefficient, given by user) in drhodp_porous (it will be used in Calculate_All_Rhos):
+                drhodp_porous(cv_inod) = porous_coef%val(i)
             end do
         end do
 
-        !make average
-        rho_porous = rho_porous/cv_counter
-        !Avoid instabilities
-        rho_porous = min(rho_porous,density_porous_initial%val*10. )
-        rho_porous = max(rho_porous,density_porous_initial%val/10. )
-        if (maxval(drhodp_porous)>100.0) drhodp_porous = 1.e-5
-        density_porous%val = rho_porous
-        density_porous_old%val = rho_porous_old
-        deallocate( RhoPlus, RhoMinus, rho_porous, rho_porous_old )
-
-
+        deallocate( ref_pressure_field )
+        if (have_option("/numerical_methods/Surface_pressure/python")) call deallocate(sfield)
 
     end subroutine Calculate_porous_Rho_dRhoP
 

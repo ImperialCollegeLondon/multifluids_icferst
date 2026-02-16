@@ -1191,13 +1191,15 @@ Select this option only to use Wiener method.</a:documentation>
               </optional>
               <optional>
                 <element name="scalar_field">
-                  <a:documentation>Specify scalar field compressibility of the porous media
-( in Pa-1 den = den_surface*exp(Coef*(P_res-P_surface))
-with P_surf = 10^5 Pa )
+                  <a:documentation>Specify scalar field rock compressibility coefficient c_r = (1/phi)(dphi/dP) in Pa^-1.
+Typical values: 1e-10 (stiff rock) to 1e-8 (soft/unconsolidated).
 
-Here the term &lt;b&gt;Coef&lt;/b&gt; is specified.
+This enters the total compressibility derivative as:
+  1/phi * d(rho*phi)/dP = drho/dP + c_r * rho
 
-Temporarily P_surface can be defined from /numerical_methods/Surface_pressure</a:documentation>
+Note: porosity itself is not dynamically updated during
+the simulation. The effect of pore volume change on pressure
+is captured implicitly through the compressibility diagonal.</a:documentation>
                   <attribute name="name">
                     <value>porous_compressibility</value>
                   </attribute>
@@ -2149,7 +2151,21 @@ By default this number is 1. STILL TESTING THIS PARAMETER</a:documentation>
           <optional>
             <element name="Surface_pressure">
               <a:documentation>Surface pressure for the porous compressibility equation</a:documentation>
-              <ref name="real"/>
+              <choice>
+                <element name="constant">
+                  <ref name="real"/>
+                </element>
+                <element name="python">
+                  <a:documentation>Python function prescribing real input. Functions should be of the form:
+
+ def val(X, t):
+    # Function code
+    return # Return value
+
+</a:documentation>
+                  <ref name="python_code"/>
+                </element>
+              </choice>
             </element>
           </optional>
           <optional>

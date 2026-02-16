@@ -1677,9 +1677,9 @@ contains
       IF ( GETCT ) THEN
 
           W_SUM_ONE1 = 0.0 !If == 1.0 applies constraint to T
-          if (Solve_all_phases) W_SUM_ONE1 = 1.0
+          if (Solve_all_phases .and. final_phase > 1) W_SUM_ONE1 = 1.0
           W_SUM_ONE2 = 0.0 !If == 1.0 applies constraint to TOLD !sprint_to_do Unnecessary, should be removed
-          DIAG_SCALE_PRES = 0.0
+          DIAG_SCALE_PRES(Mdims%npres, :) = 0.0
           DIAG_SCALE_PRES_COUP=0.0
           DO CV_NODI = 1, Mdims%cv_nonods
             !Only go through the nodes that have a well
@@ -1698,8 +1698,8 @@ contains
                 ct_rhs_phase(iphase) = ct_rhs_phase(iphase) &
                     - R_PHASE(iphase) * ( &
                     + (1.0-W_SUM_ONE1) * T_ALL( iphase, CV_NODI ) - (1.0-W_SUM_ONE2) * TOLD_ALL( iphase, CV_NODI ) &
-                    + (( TOLD_ALL( iphase, CV_NODI ) * ( DEN_ALL( iphase, CV_NODI ) - DENOLD_ALL( iphase, CV_NODI ) ) &
-                    - DERIV( iphase, CV_NODI ) * CV_P(1, Mdims%npres, cv_nodi )) * T_ALL( iphase, CV_NODI ))  / DEN_ALL(iphase, CV_NODI ))
+                    + (( TOLD_ALL( iphase, CV_NODI ) * ( DEN_ALL( iphase, CV_NODI ) - DENOLD_ALL( iphase, CV_NODI ) ) ) * T_ALL( iphase, CV_NODI ))  / DEN_ALL(iphase, CV_NODI ))
+
                 DIAG_SCALE_PRES_phase( iphase ) = DIAG_SCALE_PRES_phase( iphase ) &
                     +  MEAN_PORE_CV_PHASE(iphase) * T_ALL( iphase, CV_NODI ) * DERIV( iphase, CV_NODI ) &
                     / ( DT * DEN_ALL(iphase, CV_NODI) )
