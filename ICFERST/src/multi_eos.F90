@@ -4046,4 +4046,114 @@ contains
 
     end subroutine copy_metal_field
 
+    !> @author Meissam Bahlali
+    !>@brief: subroutine to calculate the saturation total mass (in kg).
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  ndgln Global to local variables
+    subroutine total_mass_sat(state, packed_state, Mdims, ndgln, CV_funs, total_mass)
+      implicit none
+      type(state_type), dimension(:), intent (inout) :: state
+      type(state_type), intent (inout) :: packed_state
+      type(multi_dimensions), intent (in) :: Mdims
+      type(multi_ndgln), intent (in) :: ndgln
+      type (multi_shape_funs) :: CV_funs
+      !Local variables
+      type(multi_dev_shape_funs) :: DevFuns
+      type(tensor_field), pointer :: density, sat_field
+      type(vector_field), pointer :: porosity_field
+      integer :: cv_nod, stat, ele, cv_iloc
+      real :: correction_factor, ref_rho
+      real, intent(out), dimension(Mdims%n_in_pres) :: total_mass
+      real, dimension (:), pointer :: mass_ele
+      type(vector_field), pointer :: vfield
+      type( vector_field ), pointer :: x
+      integer, dimension( : ), pointer ::  x_ndgln
+      integer :: iphase
+
+      porosity_field=>extract_vector_field(packed_state,"Porosity")
+      density => extract_tensor_field(packed_state,"PackedDensity")
+      x => extract_vector_field( packed_state, "PressureCoordinate" )
+      x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
+      vfield => extract_vector_field(packed_state,"MASS_ELE")
+      mass_ele => vfield%val(1,:)
+
+      ! here we run multi_dev_shape_funs just to calculate element volumes
+      call allocate_multi_dev_shape_funs(CV_funs, DevFuns)
+      
+      sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+
+      total_mass = 0.0
+      do iphase = 1, Mdims%n_in_pres
+        if (has_boussinesq_aprox) then
+          ref_rho=retrieve_reference_density(state, packed_state, iphase, 0, Mdims%nphase)
+        end if
+        do ele = 1, Mdims%totele
+          call DETNLXR(ele, X%val, x_ndgln, CV_funs%cvweight, CV_funs%CVFEN, CV_funs%CVFENLX_ALL, DevFuns)
+          Mass_ELE(ele) = DevFuns%volume
+          do cv_iloc = 1, Mdims%cv_nloc
+            cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
+            if (node_owned(sat_field, cv_nod)) then
+              if (has_boussinesq_aprox) then
+                total_mass(iphase) = total_mass(iphase) + (porosity_field%val(1, ele) * ref_rho * sat_field%val(1,iphase,cv_nod) ) * (Mass_ELE(ele) / Mdims%cv_nloc)
+              else
+                total_mass(iphase) = total_mass(iphase) + (porosity_field%val(1, ele) * density%val(1,iphase,cv_nod) * sat_field%val(1,iphase,cv_nod)) * (Mass_ELE(ele) / Mdims%cv_nloc)
+              end if
+            end if
+          end do
+        end do
+      end do
+
+      call allsum(total_mass)
+
+    end subroutine total_mass_sat
+
+    !> @author Meissam Bahlali
+    !>@brief: subroutine to apply a correction factor to the saturation in order to conserve mass if needed.
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  ndgln Global to local variables
+    subroutine correction_mass_sat(state, packed_state, Mdims, ndgln, total_mass_before, total_mass_after)
+      implicit none
+      type(state_type), dimension(:), intent (inout) :: state
+      type(state_type), intent (inout) :: packed_state
+      type(multi_dimensions), intent (in) :: Mdims
+      type(multi_ndgln), intent (in) :: ndgln
+      !Local variables
+      type(tensor_field), pointer :: sat_field
+      integer :: cv_nod, stat
+      real, intent(in), dimension(Mdims%n_in_pres) :: total_mass_before, total_mass_after
+      real, dimension(Mdims%n_in_pres) :: correction_factor, error
+      integer :: iphase
+
+      sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+
+      do iphase = 1, Mdims%n_in_pres
+        if ( total_mass_after(iphase) > 0 ) then 
+
+          correction_factor(iphase) = total_mass_before(iphase) / total_mass_after(iphase)
+          error(iphase) = 1.0 / correction_factor(iphase) - 1.0
+
+          ! Uncomment below, if you want to debug the mass/adaptivity
+          ! if ( abs(error(iphase)) >= 0.01 ) then
+          !   if ( getprocno() == 1 ) then
+          !     print *, "------------------------------------------------------------"
+          !     print *, "Mass conservation issue after adaptivity step"
+          !     print *, "Phase                :", iphase
+          !     print *, "Relative error (%)   :", error(iphase) * 100.0
+          !     print *, "Too much mass has to be redistributed across the domain."
+          !     print *, "It is strongly advised to stop the simulation."
+          !     print *, "------------------------------------------------------------"
+          !   end if
+          ! end if
+
+          sat_field%val(1,iphase,:) = sat_field%val(1,iphase,:) * correction_factor(iphase)
+
+        end if
+      end do
+
+    end subroutine correction_mass_sat
+
 end module multiphase_EOS

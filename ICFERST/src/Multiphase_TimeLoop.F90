@@ -253,6 +253,7 @@ contains
         integer :: phreeqc_id
         double precision, ALLOCATABLE, dimension(:,:) :: concetration_phreeqc
         real :: total_mass_metal_before_adapt, total_mass_metal_after_adapt, total_mass_metal_after_correction, total_mass_metal_after_bound
+        real, allocatable, dimension(:) :: total_mass_sat_before_adapt, total_mass_sat_after_adapt
         logical :: viscosity_EOS
         character(len=PYTHON_FUNC_LEN) :: pyfunc
         
@@ -999,6 +1000,12 @@ contains
               call total_mass_metal(state, packed_state, Mdims, ndgln, CV_funs, total_mass_metal_before_adapt)
             end if
 
+            ! Call to calculate the saturation total mass before adapting
+            allocate(total_mass_sat_before_adapt(Mdims%nphase))
+            allocate(total_mass_sat_after_adapt(Mdims%nphase))
+
+            call total_mass_sat(state, packed_state, Mdims, ndgln, CV_funs, total_mass_sat_before_adapt)
+
             ! Call to adapt the mesh if required! If adapting within the FPI then the adaption is controlled elsewhere
             if(acctim >= t_adapt_threshold .and. .not. have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
               call adapt_mesh_mp()
@@ -1013,6 +1020,14 @@ contains
               ! Apply correction factor if needed to conserve mass
               call correction_mass_metal(state, packed_state, Mdims, ndgln, total_mass_metal_before_adapt, total_mass_metal_after_bound)
             end if
+
+            ! Call to calculate the saturation total mass after adapting
+            call total_mass_sat(state, packed_state, Mdims, ndgln, CV_funs, total_mass_sat_after_adapt)
+            
+            ! Apply correction factor if needed to conserve mass
+            call correction_mass_sat(state, packed_state, Mdims, ndgln, total_mass_sat_before_adapt, total_mass_sat_after_adapt)
+
+            deallocate(total_mass_sat_before_adapt,total_mass_sat_after_adapt)
 
             ! ####Packing this section inside a internal subroutine breaks the code for non-debugging####
             !!$ Simple adaptive time stepping algorithm
