@@ -472,6 +472,15 @@ contains
             end if
         end do
 
+        ! Read freeze_pressure_in_density option
+        freeze_pressure_in_density = have_option_for_any_phase( &
+            '/phase_properties/Density/compressible/freeze_pressure_in_density', Mdims%nphase)
+        if (freeze_pressure_in_density) then
+            if (allocated(DEN_PFROZEN)) deallocate(DEN_PFROZEN)
+            allocate(DEN_PFROZEN(Mdims%nphase, Mdims%cv_nonods))
+            DEN_PFROZEN = 0.0
+        end if
+
         call compute_viscosity_EOS( state, Mdims )
 
         if( have_option( '/material_phase[0]/multiphase_properties/type_Formula/capillary_pressure' ) .or. have_option( '/material_phase[0]/multiphase_properties/type_Tabulated/capillary_pressure' ) ) &
@@ -659,6 +668,14 @@ contains
                 !Store the field we want to compare with to check how are the computations going
                 call Adaptive_NonLinear(Mdims, packed_state, reference_field, its,itime,&
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 2)
+
+                ! Compute frozen density first, then normal density
+                if (freeze_pressure_in_density) then
+                    call Calculate_All_Rhos( state, packed_state, Mdims, &
+                        get_RhoCp=.false., use_old_pressure=.true. )
+                    density_field => extract_tensor_field(packed_state, "PackedDensity")
+                    DEN_PFROZEN(:,:) = density_field%val(1, :, :)
+                end if
                 call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp=.true. )
 
                 if ( is_porous_media ) then
@@ -1647,6 +1664,12 @@ contains
                 end if
 
                 call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp=.true. )
+                ! Reallocate DEN_PFROZEN after mesh adapt
+                if (freeze_pressure_in_density) then
+                    if (allocated(DEN_PFROZEN)) deallocate(DEN_PFROZEN)
+                    allocate(DEN_PFROZEN(Mdims%nphase, Mdims%cv_nonods))
+                    DEN_PFROZEN = 0.0
+                end if
             end if Conditional_ReallocatingFields
         end subroutine adapt_mesh_mp
 

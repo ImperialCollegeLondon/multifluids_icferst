@@ -1695,20 +1695,46 @@ contains
               R_PHASE(1+(ipres-1)*final_phase:ipres*final_phase)=R_PRES(IPRES)!SPRINT_TO_DO WHY COPIYING MEMORY HERE???
               MEAN_PORE_CV_PHASE(1+(ipres-1)*final_phase:ipres*final_phase) = MEAN_PORE_CV( IPRES, CV_NODI )!SPRINT_TO_DO WHY COPIYING MEMORY HERE???
               do iphase = wells_first_phase, final_phase*2
-                ct_rhs_phase(iphase) = ct_rhs_phase(iphase) &
-                    - R_PHASE(iphase) * ( &
-                    + (1.0-W_SUM_ONE1) * T_ALL( iphase, CV_NODI ) - (1.0-W_SUM_ONE2) * TOLD_ALL( iphase, CV_NODI ) &
-                    + (( TOLD_ALL( iphase, CV_NODI ) * ( DEN_ALL( iphase, CV_NODI ) - DENOLD_ALL( iphase, CV_NODI ) ) ) * T_ALL( iphase, CV_NODI ))  / DEN_ALL(iphase, CV_NODI ))
 
-                DIAG_SCALE_PRES_phase( iphase ) = DIAG_SCALE_PRES_phase( iphase ) &
-                    +  MEAN_PORE_CV_PHASE(iphase) * T_ALL( iphase, CV_NODI ) * DERIV( iphase, CV_NODI ) &
-                    / ( DT * DEN_ALL(iphase, CV_NODI) )
-                ct_rhs_phase(iphase)=ct_rhs_phase(iphase) &
-                    + Mass_CV(CV_NODI ) * SOURCT_ALL( iphase, CV_NODI ) / DEN_ALL(iphase, CV_NODI)
+                if (freeze_pressure_in_density) then
+                    ct_rhs_phase(iphase) = ct_rhs_phase(iphase) &
+                        - R_PHASE(iphase) * ( &
+                        + (1.0-W_SUM_ONE1) * T_ALL( iphase, CV_NODI ) - (1.0-W_SUM_ONE2) * TOLD_ALL( iphase, CV_NODI ) &
+                        + (( TOLD_ALL( iphase, CV_NODI ) * ( DEN_PFROZEN( iphase, CV_NODI ) - DENOLD_ALL( iphase, CV_NODI ) ) ) * T_ALL( iphase, CV_NODI ))  / DEN_PFROZEN(iphase, CV_NODI ))
+                else
+                    ct_rhs_phase(iphase) = ct_rhs_phase(iphase) &
+                        - R_PHASE(iphase) * ( &
+                        + (1.0-W_SUM_ONE1) * T_ALL( iphase, CV_NODI ) - (1.0-W_SUM_ONE2) * TOLD_ALL( iphase, CV_NODI ) &
+                        + (( TOLD_ALL( iphase, CV_NODI ) * ( DEN_ALL( iphase, CV_NODI ) - DENOLD_ALL( iphase, CV_NODI ) ) ) * T_ALL( iphase, CV_NODI ))  / DEN_ALL(iphase, CV_NODI ))
+                end if
+
+                if (freeze_pressure_in_density) then
+                    DIAG_SCALE_PRES_phase( iphase ) = DIAG_SCALE_PRES_phase( iphase ) &
+                        +  MEAN_PORE_CV_PHASE(iphase) * T_ALL( iphase, CV_NODI ) * DERIV( iphase, CV_NODI ) &
+                        / ( DT * DEN_PFROZEN(iphase, CV_NODI) )
+                else
+                    DIAG_SCALE_PRES_phase( iphase ) = DIAG_SCALE_PRES_phase( iphase ) &
+                        +  MEAN_PORE_CV_PHASE(iphase) * T_ALL( iphase, CV_NODI ) * DERIV( iphase, CV_NODI ) &
+                        / ( DT * DEN_ALL(iphase, CV_NODI) )
+                end if
+
+                if (freeze_pressure_in_density) then
+                    ct_rhs_phase(iphase)=ct_rhs_phase(iphase) &
+                        + Mass_CV(CV_NODI ) * SOURCT_ALL( iphase, CV_NODI ) / DEN_PFROZEN(iphase, CV_NODI)
+                else
+                    ct_rhs_phase(iphase)=ct_rhs_phase(iphase) &
+                        + Mass_CV(CV_NODI ) * SOURCT_ALL( iphase, CV_NODI ) / DEN_ALL(iphase, CV_NODI)
+                end if
+
                 IF ( HAVE_ABSORPTION ) THEN!No absorption in the wells for the time being
                    DO JPHASE = wells_first_phase, final_phase*2
-                      ct_rhs_phase(iphase)=ct_rhs_phase(iphase)  &
-                         - Mass_CV( CV_NODI ) * ABSORBT_ALL( iphase, JPHASE, CV_NODI ) * T_ALL( JPHASE, CV_NODI ) / DEN_ALL(iphase, CV_NODI)
+                      if (freeze_pressure_in_density) then
+                          ct_rhs_phase(iphase)=ct_rhs_phase(iphase)  &
+                             - Mass_CV( CV_NODI ) * ABSORBT_ALL( iphase, JPHASE, CV_NODI ) * T_ALL( JPHASE, CV_NODI ) / DEN_PFROZEN(iphase, CV_NODI)
+                      else
+                          ct_rhs_phase(iphase)=ct_rhs_phase(iphase)  &
+                             - Mass_CV( CV_NODI ) * ABSORBT_ALL( iphase, JPHASE, CV_NODI ) * T_ALL( JPHASE, CV_NODI ) / DEN_ALL(iphase, CV_NODI)
+                      end if
                    END DO
                 END IF
             end do

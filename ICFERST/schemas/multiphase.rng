@@ -5453,6 +5453,17 @@ For porous media only the formulate, including linear pressure, with a reference
               <empty/>
             </element>
           </optional>
+          <optional>
+            <element name="freeze_pressure_in_density">
+              <a:documentation>Use previous timestep pressure when evaluating density
+for the continuity equation: rho(Pold, T, c).
+Temperature and salinity effects are still updated
+within the Picard loop. Only the pressure contribution
+to density is lagged by one timestep. This is to suppress the pressure-density feedback in the Picard loop.
+The compressibility diagonal on the LHS is unaffected.</a:documentation>
+              <empty/>
+            </element>
+          </optional>
         </element>
         <element name="python_state">
           <a:documentation>The "Dummy" diagnotic field on the pressure mesh is required for this option</a:documentation>

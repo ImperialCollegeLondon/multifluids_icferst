@@ -61,7 +61,7 @@ contains
   !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
   !>@param get_RhoCp This flags computes rhoCp instead of rho
   !Ruixiao: An additional flag to force dRhodP to be 0
-    subroutine Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp )
+    subroutine Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp, use_old_pressure )
 
         implicit none
 
@@ -70,6 +70,7 @@ contains
         type(multi_dimensions), intent( in ) :: Mdims
         type(multi_ndgln) :: ndgln
         logical, optional, intent(in) :: get_RhoCp !This flags computes rhoCp instead of rho
+        logical, optional, intent(in) :: use_old_pressure !Evaluate EOS at P_old instead of P
         !Local variables
         integer, dimension( : ), pointer :: cv_ndgln
         integer :: ncomp_in, nphase, ndim, cv_nonods, cv_nloc, totele
@@ -145,7 +146,8 @@ contains
 
               Rho=0. ; dRhodP=0.
               call Calculate_Rho_dRhodP( state, packed_state, iphase, icomp, &
-                   nphase, ncomp_in, eos_option_path( (icomp - 1 ) * nphase + iphase ), Rho, dRhodP )
+                   nphase, ncomp_in, eos_option_path( (icomp - 1 ) * nphase + iphase ), Rho, dRhodP, &
+                   use_old_pressure=use_old_pressure )
               if ( ncomp > 1 ) then
                  field4 => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
                  Component_l = field4 % val ( icomp, iphase, :)
@@ -413,7 +415,7 @@ contains
     !>@param rho density
     !>@param drhodp. Dderivative of density
     subroutine Calculate_Rho_dRhodP( state, packed_state, iphase, icomp, &
-        nphase, ncomp, eos_option_path, rho, drhodp )
+        nphase, ncomp, eos_option_path, rho, drhodp, use_old_pressure )
 
         implicit none
 
@@ -424,6 +426,7 @@ contains
         integer :: JWLn, JWLi
         character( len = option_path_len ), intent( in ) :: eos_option_path
         real, dimension( : ), intent( inout ) :: rho, drhodp
+        logical, optional, intent(in) :: use_old_pressure
         real, dimension( : ), allocatable :: ro0
 
         type( tensor_field ), pointer :: pressure
@@ -445,9 +448,14 @@ contains
         type (scalar_field), pointer :: pnt_sfield
         type (vector_field), pointer :: position
 
+        if (present_and_true(use_old_pressure)) then
+            pressure => extract_tensor_field( packed_state, 'PackedOldCVPressure', stat )  ! <= for inertia only
+            if (stat/=0) pressure => extract_tensor_field( packed_state, "PackedOldFEPressure", stat )
+        else
+            pressure => extract_tensor_field( packed_state, 'PackedCVPressure', stat )  ! <= for inertia only
+            if (stat/=0) pressure => extract_tensor_field( packed_state, "PackedFEPressure", stat )
+        end if
 
-        pressure => extract_tensor_field( packed_state, 'PackedCVPressure', stat )  ! <= for inertia only
-        if (stat/=0) pressure => extract_tensor_field( packed_state, "PackedFEPressure", stat )
         temperature => extract_scalar_field( state( iphase ), 'Temperature', statT )
         Concentration => extract_scalar_field( state( iphase ), 'Concentration', statC )
 

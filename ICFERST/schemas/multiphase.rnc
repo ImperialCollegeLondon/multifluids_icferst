@@ -4505,7 +4505,15 @@ element Density{(
                         }
                       ),      ## Use the boussinesq approximation. Useful for small variations of density.
                       ## For porous media only the formulate, including linear pressure, with a reference density work with this.
-                        element Boussinesq_approximation { empty }?}|
+                        element Boussinesq_approximation { empty }?,
+                        ## Use previous timestep pressure when evaluating density
+                        ## for the continuity equation: rho(Pold, T, c).
+                        ## Temperature and salinity effects are still updated
+                        ## within the Picard loop. Only the pressure contribution
+                        ## to density is lagged by one timestep. This is to suppress the pressure-density feedback in the Picard loop.
+                        ## The compressibility diagonal on the LHS is unaffected.
+                        element freeze_pressure_in_density { empty }?
+                        }|
                      ## The "Dummy" diagnotic field on the pressure mesh is required for this option
                      element python_state{(
                        scalar_python_diagnostic_algorithm_icferst,

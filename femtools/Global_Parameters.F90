@@ -211,6 +211,10 @@ module global_parameters
   integer :: nDMOWarnings = 0
   integer :: nSolverWarnings = 0
 
+  ! Option to use previous timestep pressure when evaluating density for continuity assembly: rho(P_old, T, c). This is to suppress pressure-density feedback in Picard loop
+  logical, save :: freeze_pressure_in_density = .false.
+  real, dimension(:,:), allocatable, save :: DEN_PFROZEN
+
 contains
 
   function get_surface_radius() bind(c)

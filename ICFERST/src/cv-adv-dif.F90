@@ -898,6 +898,9 @@ contains
             else
                 FEMDENOLD_ALL=old_density%val(1,1:final_phase,:)
             end if
+            if (freeze_pressure_in_density) then
+                FEMDEN_ALL = DEN_PFROZEN(1:final_phase, :)
+            end if
 
             IF ( present(saturation) ) then
                 if (.not. is_constant(saturation)) then

@@ -3586,7 +3586,11 @@ end if
            DEN_OR_ONE = 1.
            DENOLD_OR_ONE = 1.
         ELSE
-           DEN_OR_ONE = DEN_ALL
+           if (freeze_pressure_in_density) then
+               DEN_OR_ONE = DEN_PFROZEN
+           else
+               DEN_OR_ONE = DEN_ALL
+           end if
            DENOLD_OR_ONE = DENOLD_ALL
         END IF
         ! no q scheme
