@@ -218,7 +218,7 @@ contains
     !>@param assemble_collapsed_to_one_phase Collapses phases and solves for one single temperature. When there is thermal equilibrium
     SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, final_phase, wells_first_phase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
                   getcv_disc, getct, getNewtonType, getResidual, Mmat, Mspars, DT, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
-                  INV_SIGMA, upwnd, eles_with_pipe, thermal, CV_BETA, bcs_outfluxes, bcs_outfluxes_mass, bcs_outfluxes_vol, outfluxes, assemble_collapsed_to_one_phase )
+                  INV_SIGMA, upwnd, eles_with_pipe, thermal, CV_BETA, bcs_outfluxes, bcs_outfluxes_mass, bcs_outfluxes_vol, outfluxes, assemble_collapsed_to_one_phase, TDIFFUSION )
       type(state_type), intent(inout) :: packed_state
       type(state_type), dimension(:), intent(in) :: state
       type(multi_dimensions), intent(in) :: Mdims
@@ -241,6 +241,7 @@ contains
       real, dimension(:,:, :), allocatable, intent(inout):: bcs_outfluxes_mass!<= if allocated then calculate outfluxes
       real, dimension(:,:, :), allocatable, intent(inout):: bcs_outfluxes_vol!<= if allocated then calculate outfluxes
       type (multi_outfluxes), intent(inout) :: outfluxes
+      real, dimension(:,:,:,:), optional, intent(in) :: TDIFFUSION
       ! Local variables
       INTEGER :: CV_NODI, CV_NODJ, IPHASE, COUNT, CV_SILOC, SELE, cv_iloc, cv_jloc, jphase, assembly_phase
       INTEGER :: cv_ncorner, cv_lnloc, u_lnloc, ele, cv_gi, iloop, ICORNER, NPIPES, i
@@ -288,6 +289,10 @@ contains
       type(vector_field), pointer :: X
       !Logical to check if we using a conservative method or not, to save cpu time
       logical :: conservative_advection
+      logical :: GOT_DIFFUS
+      real :: DIFF_COEF_1D ! effective 1D diffusion coef at a pipe face
+      real :: DIFF_K_GI ! interpolated diffusivity projected onto pipe axis direction at face
+      integer :: diff_phase
       !Parameters of the simulation
       logical, parameter :: UPWIND_PIPES = .true.! Used for testing...
       logical, parameter :: PIPE_MIN_DIAM=.true. ! Use the pipe min diamter along a pipe element edge and min inv_sigma (max. drag reflcting min pipe diameter)
@@ -304,6 +309,14 @@ contains
       PetscInt :: i_indx, j_indx
 
       conservative_advection = abs(cv_beta) > 0.99
+
+      ! Determine whether diffusion is active for the well phase (same pattern as the reservoir in cv-adv-dif)
+      GOT_DIFFUS = .false.
+      if (present(TDIFFUSION)) then
+          GOT_DIFFUS = ( R2NORM( TDIFFUSION, size(TDIFFUSION,1)*size(TDIFFUSION,2) &
+                              *size(TDIFFUSION,3)*size(TDIFFUSION,4) ) /= 0 )
+          call allor(GOT_DIFFUS)
+      end if
 
       !If we are going to calculate the outfluxes (this is done when GETCT=.true.)
       compute_outfluxes = GETCT
@@ -856,6 +869,37 @@ contains
                               if (.not.conservative_advection) LOC_MAT_II(iphase) = LOC_MAT_II(iphase)  - suf_DETWEI( bGI ) * NDOTQ(iphase) * LIMD(iphase)
 
                           end do
+
+                          ! Now assemble diffusion contribution for well phases
+                          ! Because the well assembler is 1D we can't use DIFFUS_CAL_COEFF as in the reservoir (requires 3D mesh gradients and face normals that don't exist here....)
+                          ! Instead we project the diffusivity tensor onto the pipe axis direction to get a scalar effective diff
+                          if (GOT_DIFFUS) then
+                            do iphase = wells_first_phase, final_phase*2
+                                diff_phase = iphase - (Mdims%npres-1)*final_phase
+
+                                ! interpolate diffusivity at the face Gauss point and project onto the pipe axis. For a diagonal diffusivity tensor this is :
+                                  ! k_eff = sum_i ( k_ii * d_i^2 ) where d is the unit pipe direction
+                                DIFF_K_GI = 0.0
+                                do cv_lkloc = 1, cv_lnloc
+                                    mat_knod = MAT_GL_GL(cv_lkloc)
+                                    do idim = 1, Mdims%ndim
+                                        DIFF_K_GI = DIFF_K_GI + CVN_FEM(cv_lkloc, bgi) &
+                                            * TDIFFUSION(mat_knod, idim, idim, diff_phase) &
+                                            * direction(idim)**2
+                                    end do
+                                end do
+
+                                ! Form the 1D diffusion : k_eff * face_area / segment_length
+                                DIFF_COEF_1D = DIFF_K_GI * suf_DETWEI(bgi) / DX
+
+                                ! Assemble into matrix and RHS ... same as for the reservoir (cv-adv-dif):
+                                LOC_MAT_II(iphase) = LOC_MAT_II(iphase) + DIFF_COEF_1D
+                                LOC_MAT_IJ(iphase) = LOC_MAT_IJ(iphase) - DIFF_COEF_1D
+                                LOC_CV_RHS_I(iphase) = LOC_CV_RHS_I(iphase) &
+                                    + DIFF_COEF_1D * ( T_CV_NODJ(iphase) - T_CV_NODI(iphase) )
+                            end do
+                          end if
+
                           do iphase = wells_first_phase, final_phase*2
                             assembly_phase = iphase
                             !For the RHS collapsing to assemble into phase 2 can be done just here
@@ -1164,7 +1208,7 @@ contains
   subroutine ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, tracer, den_all, denold_all, final_phase, Mdims, ndgln, DERIV, CV_P, &
                   SOURCT_ALL, ABSORBT_ALL, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL,&
                   getcv_disc, getct, getNewtonType, getResidual, Mmat, Mspars, upwnd, GOT_T2, DT, pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES, &
-                  mean_pore_cv, MEAN_PORE_CV_TOTAL, eles_with_pipe, thermal, CV_BETA, MASS_CV, INV_B, MASS_ELE, bcs_outfluxes, bcs_outfluxes_mass, bcs_outfluxes_vol, outfluxes, porous_heat_coef, assemble_collapsed_to_one_phase )
+                  mean_pore_cv, MEAN_PORE_CV_TOTAL, eles_with_pipe, thermal, CV_BETA, MASS_CV, INV_B, MASS_ELE, bcs_outfluxes, bcs_outfluxes_mass, bcs_outfluxes_vol, outfluxes, porous_heat_coef, assemble_collapsed_to_one_phase, TDIFFUSION )
       type(tensor_field), intent(inout) :: tracer
       type(state_type), intent(inout) :: packed_state
       type(state_type), dimension(:), intent(in) :: state
@@ -1194,6 +1238,7 @@ contains
       real, dimension(:,:, :), allocatable, intent(inout):: bcs_outfluxes_mass!<= if allocated then calculate outfluxes
       real, dimension(:,:, :), allocatable, intent(inout):: bcs_outfluxes_vol!<= if allocated then calculate outfluxes
       type (multi_outfluxes), intent(inout) :: outfluxes
+      real, dimension(:,:,:,:), optional, intent(in) :: TDIFFUSION
       ! Local variables
       real :: auxR, cc, deltaP, rp, rp_nano, skin, h, h_nano, INV_SIGMA_ND, INV_SIGMA_NANO_N, w_sum_one1, w_sum_one2, one_m_cv_beta, beta, beta_min, beta_max, k_beta, tol
       INTEGER :: u_lnloc, ele, i, jpres, u_iloc, x_iloc, idim, cv_lkloc, u_knod, u_lngi, &
@@ -1307,7 +1352,7 @@ contains
       MASS_PIPE_FOR_COUP = 0.
       CALL MOD_1D_CT_AND_ADV( state, packed_state, final_phase, wells_first_phase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
           getcv_disc, getct, getNewtonType, getResidual, Mmat, Mspars, DT, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_PIPE2CVFEM, pipes_aux%MASS_CVFEM2PIPE_TRUE, pipes_aux%MASS_PIPE, MASS_PIPE_FOR_COUP, &
-          SIGMA_INV_APPROX, upwnd, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, bcs_outfluxes_mass, bcs_outfluxes_vol, outfluxes, assemble_collapsed_to_one_phase)
+          SIGMA_INV_APPROX, upwnd, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, bcs_outfluxes_mass, bcs_outfluxes_vol, outfluxes, assemble_collapsed_to_one_phase, TDIFFUSION=TDIFFUSION)
 
       GAMMA_PRES_ABS2 = 0.0
       !A_GAMMA_PRES_ABS only for compressible flow? sprint_to_do DO WE NEED TO DO THIS FOR Incompressible FLOW??

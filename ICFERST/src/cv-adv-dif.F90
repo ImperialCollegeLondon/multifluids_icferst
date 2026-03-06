@@ -2147,7 +2147,7 @@ contains
                                 SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, getcv_disc, getct, .false., .true., Mmat, Mspars, upwnd, GOT_T2, DT, &
                                 pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES,mean_pore_cv, MEAN_PORE_CV_TOTAL, eles_with_pipe, thermal,&
                                 CV_BETA, MASS_CV, INV_B, MASS_ELE, bcs_outfluxes, bcs_outfluxes_mass, bcs_outfluxes_vol, outfluxes,&
-                                porous_heat_coef, loc_assemble_collapsed_to_one_phase )
+                                porous_heat_coef, loc_assemble_collapsed_to_one_phase, TDIFFUSION=TDIFFUSION )
 
           if ( compute_outfluxes) then
               !Calculate final outfluxes and mass balance in the domain
