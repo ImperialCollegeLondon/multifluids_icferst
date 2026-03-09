@@ -2862,6 +2862,12 @@ contains
                   !Formula is: Immobile = S_flip/(1+C*S_flip). Where S_flip is the saturation
                   !when changing from imbibition to drainage or the other way round
                   call Update_saturation_flipping(saturation_flip%val(cv_nod), Saturation%val(1,iphase,cv_nod), SaturationOld%val(1,iphase,cv_nod))
+
+                  ! Cap sat_flip <= sat: independent interpolation of both fields after adapt can give sat_flip > sat => which inflates Land trapped fraction
+                  saturation_flip%val(cv_nod) = sign( &
+                      min(abs(saturation_flip%val(cv_nod)), Saturation%val(1,iphase,cv_nod)), &
+                      saturation_flip%val(cv_nod))
+
                   auxR = abs(saturation_flip%val(cv_nod))
                   CV_immobile_fraction(iphase, cv_nod) = min(CV_immobile_fraction(iphase, cv_nod), auxR/(1. + targ_Store%val(ele) * auxR))
                 end do
