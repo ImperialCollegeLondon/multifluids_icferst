@@ -1044,6 +1044,13 @@ contains
             ! Apply correction factor if needed to conserve mass
             call correction_mass_sat(state, packed_state, Mdims, ndgln, total_mass_sat_before_adapt, total_mass_sat_after_adapt)
 
+            ! Recompute CV_immobile from corrected sat after correction, only when mesh was adapted and Land trapping is active
+            if (do_reallocate_fields .and. is_porous_media .and. &
+                (have_option_for_any_phase("/multiphase_properties/type_Formula/immobile_fraction/scalar_field::Land_coefficient", Mdims%n_in_pres) .or. &
+                have_option_for_any_phase("/multiphase_properties/type_Tabulated/Land_trapping/scalar_field::Land_coefficient", Mdims%n_in_pres))) then
+                call get_RockFluidProp(state, packed_state, Mdims, ndgln, post_adapt=.true.)
+            end if
+
             deallocate(total_mass_sat_before_adapt,total_mass_sat_after_adapt)
 
             ! ####Packing this section inside a internal subroutine breaks the code for non-debugging####
@@ -1582,7 +1589,7 @@ contains
                 call put_CSR_spars_into_packed_state()
 
                 if (is_porous_media) then
-                    call get_RockFluidProp(state, packed_state, Mdims, ndgln)
+                    call get_RockFluidProp(state, packed_state, Mdims, ndgln, post_adapt=.true.)
                     call deallocate_porous_adv_coefs(upwnd)
                     call allocate_porous_adv_coefs(Mdims, upwnd)
                     !Clean the pipes memory if required

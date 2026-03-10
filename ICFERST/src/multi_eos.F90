@@ -2591,7 +2591,7 @@ contains
     !>@param  ndgln Global to local variables
     !>@param current_time current time in type(real). Only for the first time ever, not for checkpointing, overwrite the saturation flipping value with the initial one
     !>@param update_only If true then only the Immobile fraction is updated (for Land trapping modelling only)
-    subroutine get_RockFluidProp(state, packed_state, Mdims, ndgln, current_time, update_only)
+    subroutine get_RockFluidProp(state, packed_state, Mdims, ndgln, current_time, update_only, post_adapt)
         implicit none
         type( multi_dimensions ), intent( in ) :: Mdims
         type(state_type), dimension(:), intent(inout) :: state
@@ -2599,6 +2599,7 @@ contains
         type( state_type ), intent( inout ) :: packed_state
         real, optional, intent(in) :: current_time
         logical, optional, intent(in) :: update_only
+        logical, optional, intent(in) :: post_adapt
         !Local variables
         type (tensor_field), pointer :: t_field, Saturation, SaturationOld
         type (scalar_field), target :: targ_Store
@@ -2863,10 +2864,12 @@ contains
                   !when changing from imbibition to drainage or the other way round
                   call Update_saturation_flipping(saturation_flip%val(cv_nod), Saturation%val(1,iphase,cv_nod), SaturationOld%val(1,iphase,cv_nod))
 
-                  ! Cap sat_flip <= sat: independent interpolation of both fields after adapt can give sat_flip > sat => which inflates Land trapped fraction
-                  saturation_flip%val(cv_nod) = sign( &
-                      min(abs(saturation_flip%val(cv_nod)), Saturation%val(1,iphase,cv_nod)), &
-                      saturation_flip%val(cv_nod))
+                  if (present_and_true(post_adapt)) then
+                    ! Cap sat_flip <= sat: independent interpolation of both fields after adapt can give sat_flip > sat => which inflates Land trapped fraction
+                    saturation_flip%val(cv_nod) = sign( &
+                        min(abs(saturation_flip%val(cv_nod)), Saturation%val(1,iphase,cv_nod)), &
+                        saturation_flip%val(cv_nod))
+                  end if
 
                   auxR = abs(saturation_flip%val(cv_nod))
                   CV_immobile_fraction(iphase, cv_nod) = min(CV_immobile_fraction(iphase, cv_nod), auxR/(1. + targ_Store%val(ele) * auxR))
