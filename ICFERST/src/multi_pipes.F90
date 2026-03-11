@@ -875,7 +875,9 @@ contains
                           ! Instead we project the diffusivity tensor onto the pipe axis direction to get a scalar effective diff
                           if (GOT_DIFFUS) then
                             do iphase = wells_first_phase, final_phase*2
-                                diff_phase = iphase - (Mdims%npres-1)*final_phase
+                                ! Ruixiao: now conductivity calculation is fixed, we can
+                                !          get the right conductivity using simply iphase
+                                !diff_phase = iphase - (Mdims%npres-1)*final_phase
 
                                 ! interpolate diffusivity at the face Gauss point and project onto the pipe axis. For a diagonal diffusivity tensor this is :
                                   ! k_eff = sum_i ( k_ii * d_i^2 ) where d is the unit pipe direction
@@ -884,7 +886,7 @@ contains
                                     mat_knod = MAT_GL_GL(cv_lkloc)
                                     do idim = 1, Mdims%ndim
                                         DIFF_K_GI = DIFF_K_GI + CVN_FEM(cv_lkloc, bgi) &
-                                            * TDIFFUSION(mat_knod, idim, idim, diff_phase) &
+                                            * TDIFFUSION(mat_knod, idim, idim, iphase) &
                                             * direction(idim)**2
                                     end do
                                 end do
@@ -1538,7 +1540,8 @@ contains
               if (has_conductivity_pipes) then
                   !Apply only where wells are closed, this is a good approximation
                   !Gamma should be the same for at least the well phases, so we check nphase
-                  if (pipes_aux%GAMMA_PRES_ABS( Mdims%nphase, Mdims%nphase, CV_NODI )<1d-8) then
+                  !Now thermal conductivity coupling phase1 and phase2 appears whatever screen is open or close to flow 
+                  !if (pipes_aux%GAMMA_PRES_ABS( Mdims%nphase, Mdims%nphase, CV_NODI )<1d-8) then
                       count = min(size(conductivity_pipes%val),cv_nodi)
                       count2= min(size(well_thickness%val),cv_nodi)
                       !Rp is the internal radius of the well
@@ -1557,7 +1560,7 @@ contains
                           PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) + auxR
                           PIPE_ABS( iphase, jphase, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) - auxR
                       end do
-                  end if
+                  !end if
               end if
           END DO ! DO CV_NODI = 1, Mdims%cv_nonods
       endif ! if(GETCV_DISC) then
