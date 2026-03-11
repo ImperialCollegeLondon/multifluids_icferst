@@ -1040,15 +1040,17 @@ contains
 
             ! Call to calculate the saturation total mass after adapting
             call total_mass_sat(state, packed_state, Mdims, ndgln, CV_funs, total_mass_sat_after_adapt)
-            
-            ! Apply correction factor if needed to conserve mass
-            call correction_mass_sat(state, packed_state, Mdims, ndgln, total_mass_sat_before_adapt, total_mass_sat_after_adapt)
 
-            ! Recompute CV_immobile from corrected sat after correction, only when mesh was adapted and Land trapping is active
-            if (do_reallocate_fields .and. is_porous_media .and. &
-                (have_option_for_any_phase("/multiphase_properties/type_Formula/immobile_fraction/scalar_field::Land_coefficient", Mdims%n_in_pres) .or. &
-                have_option_for_any_phase("/multiphase_properties/type_Tabulated/Land_trapping/scalar_field::Land_coefficient", Mdims%n_in_pres))) then
-                call get_RockFluidProp(state, packed_state, Mdims, ndgln, post_adapt=.true.)
+            if (have_option("/numerical_methods/correction_mass_sat")) then
+                ! Apply correction factor if needed to conserve mass
+                call correction_mass_sat(state, packed_state, Mdims, ndgln, &
+                    total_mass_sat_before_adapt, total_mass_sat_after_adapt)
+                ! Recompute CV_immobile from corrected sat after correction, only when mesh was adapted and Land trapping is active
+                if (do_reallocate_fields .and. is_porous_media .and. &
+                    (have_option_for_any_phase("/multiphase_properties/type_Formula/immobile_fraction/scalar_field::Land_coefficient", Mdims%n_in_pres) .or. &
+                    have_option_for_any_phase("/multiphase_properties/type_Tabulated/Land_trapping/scalar_field::Land_coefficient", Mdims%n_in_pres))) then
+                    call get_RockFluidProp(state, packed_state, Mdims, ndgln, post_adapt=.true.)
+                end if
             end if
 
             deallocate(total_mass_sat_before_adapt,total_mass_sat_after_adapt)

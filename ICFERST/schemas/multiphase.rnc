@@ -1704,6 +1704,11 @@ start =
 
          ## Advanced options that are kept for debugging purposes
          element numerical_methods {
+            element correction_mass_sat {
+               ## Apply a correction factor to conserve multiphase mass after mesh adaptation.
+               ## Only active when mesh adaptivity is enabled.
+               empty
+            }?,
             ## Automatically after adapting the mesh and interpolating the fields a method to ensure boundeness of the field
             ## is run to guarantee physically plausible solutions. Nonetheless this may spread errors occurred during the interpolation
             ## that otherwise might have been cut off. Enable this option to avoid doing this operation.
