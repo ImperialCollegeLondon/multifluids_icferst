@@ -1704,9 +1704,9 @@ start =
 
          ## Advanced options that are kept for debugging purposes
          element numerical_methods {
+            ## Apply a correction factor to conserve multiphase mass after mesh adaptation.
+            ## Only active when mesh adaptivity is enabled.
             element correction_mass_sat {
-               ## Apply a correction factor to conserve multiphase mass after mesh adaptation.
-               ## Only active when mesh adaptivity is enabled.
                empty
             }?,
             ## Automatically after adapting the mesh and interpolating the fields a method to ensure boundeness of the field

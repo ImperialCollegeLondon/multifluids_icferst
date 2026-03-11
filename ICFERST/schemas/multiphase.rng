@@ -2044,10 +2044,9 @@ The following must be specified:
           <a:documentation>Advanced options that are kept for debugging purposes</a:documentation>
           <optional>
             <element name="correction_mass_sat">
-              <empty>
-                <a:documentation>Apply a correction factor to conserve CO2 mass after mesh adaptation.
+              <a:documentation>Apply a correction factor to conserve multiphase mass after mesh adaptation.
 Only active when mesh adaptivity is enabled.</a:documentation>
-              </empty>
+              <empty/>
             </element>
           </optional>
           <optional>
