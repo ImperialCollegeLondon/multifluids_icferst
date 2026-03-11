@@ -1789,6 +1789,7 @@ contains
       real :: expo
       logical :: is_thermal_conductivity_wet
       real :: dry_thermal_conductivity
+      real :: applied_porosity
 
       is_thermal_conductivity_wet = have_option("/porous_media/porous_properties/tensor_field::porous_thermal_conductivity/wet_value")
 
@@ -1852,13 +1853,18 @@ contains
 
               do ele = 1, Mdims%totele
                 ele_nod = min(size(sfield%val), ele)
+                if (iphase>Mdims%n_in_pres) then
+                  applied_porosity = 1.0
+                else
+                  applied_porosity = sfield%val(ele_nod)
+                endif
                 do iloc = 1, Mdims%mat_nloc
                   mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
                   cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
                   do idim = 1, Mdims%ndim
                     ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) =    &
                     ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) +    &
-                    (sfield%val(ele_nod) *den%val(1, 1, cv_inod)**expo * node_val( diffusivity, idim, idim, mat_inod ))
+                    (applied_porosity*den%val(1, 1, cv_inod)**expo * node_val( diffusivity, idim, idim, mat_inod ))
                   enddo
                 end do
               end do
@@ -1893,6 +1899,11 @@ contains
                 do ele = 1, Mdims%totele
                   ele_nod = min(size(porosity_total_field%val), ele)
                   t_ele_nod = min(size(tfield%val, 3), ele)
+                  if (iphase>Mdims%n_in_pres) then
+                    applied_porosity = 1.0
+                  else
+                    applied_porosity = porosity_total_field%val(ele_nod)
+                  endif
                   do iloc = 1, Mdims%mat_nloc
                     mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
                     cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
@@ -1900,10 +1911,11 @@ contains
                     if (wiener_conductivity) then
                       do idim = 1, Mdims%ndim
                         ! Convert wet to dry thermal conductivity if needed
-                        if (is_thermal_conductivity_wet) then
+                        ! only applied to aquifer
+                        if (is_thermal_conductivity_wet .and. applied_porosity < 1.0 ) then
                           dry_thermal_conductivity = (tfield%val(idim, idim, t_ele_nod) - &
-                            node_val(diffusivity, idim, idim, mat_inod) * porosity_total_field%val(ele_nod)) / &
-                            (1.0 - porosity_total_field%val(ele_nod))
+                            node_val(diffusivity, idim, idim, mat_inod) * applied_porosity) / &
+                            (1.0 - applied_porosity)
                         else
                           dry_thermal_conductivity = tfield%val(idim, idim, t_ele_nod)
                         end if
@@ -1911,8 +1923,8 @@ contains
                         ! Use Wiener approach (required for wet inputs, optional for dry)
                         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
-                        (porosity_total_field%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ) &
-                        +(1.0-porosity_total_field%val(ele_nod))* dry_thermal_conductivity)
+                        (applied_porosity * node_val( diffusivity, idim, idim, mat_inod ) &
+                        +(1.0-applied_porosity)* dry_thermal_conductivity)
                       end do
                     else
                       ! This branch will only be reached with dry inputs
@@ -1921,9 +1933,17 @@ contains
                         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
                         (tfield%val(idim, idim, t_ele_nod)+3*tfield%val(idim, idim, t_ele_nod)* &
-                        (node_val( diffusivity, idim, idim, mat_inod ) - tfield%val(idim, idim, t_ele_nod))*porosity_total_field%val(ele_nod)/ &
+                        (node_val( diffusivity, idim, idim, mat_inod ) - tfield%val(idim, idim, t_ele_nod))*applied_porosity/ &
                         (3*tfield%val(idim, idim, t_ele_nod)+(node_val( diffusivity, idim, idim, mat_inod )-tfield%val(idim, idim, t_ele_nod))* &
-                        (1-porosity_total_field%val(ele_nod))))
+                        (1-applied_porosity)))
+                        ! When using H-S, it's easy to get somthing divide by 0 when rock and water conductivity are
+                        ! both too close to 0. This will result in NaN for conductivity and ruins equation assemble.
+                        ! If we get a NaN, we detect it by using property: Nan /= Nan, and force it back to 0.0
+                        if (ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) &
+                           /= ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) ) then
+                            ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = 0.0
+                        endif
+
                       end do
                     end if
 
@@ -1938,6 +1958,12 @@ contains
                 do ele = 1, Mdims%totele
                   ele_nod = min(size(sfield%val), ele)
                   t_ele_nod = min(size(tfield%val, 3), ele)
+                  ! enforce well domain porosity to be 1
+                  if (iphase>Mdims%n_in_pres) then
+                    applied_porosity = 1.0
+                  else
+                    applied_porosity = sfield%val(ele_nod)
+                  endif
                   do iloc = 1, Mdims%mat_nloc
                     mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
                     cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
@@ -1945,10 +1971,11 @@ contains
                     if (wiener_conductivity) then
                       do idim = 1, Mdims%ndim
                         ! Convert wet to dry thermal conductivity if needed
-                        if (is_thermal_conductivity_wet) then
+                        ! only applied to aquifer
+                        if (is_thermal_conductivity_wet .and. applied_porosity < 1.0) then
                           dry_thermal_conductivity = (tfield%val(idim, idim, t_ele_nod) - &
-                            node_val(diffusivity, idim, idim, mat_inod) * sfield%val(ele_nod)) / &
-                            (1.0 - sfield%val(ele_nod))
+                            node_val(diffusivity, idim, idim, mat_inod) * applied_porosity) / &
+                            (1.0 - applied_porosity)
                         else
                           dry_thermal_conductivity = tfield%val(idim, idim, t_ele_nod)
                         end if
@@ -1956,8 +1983,8 @@ contains
                         ! Use Wiener approach (required for wet inputs, optional for dry)
                         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
-                        (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ) &
-                        +(1.0-sfield%val(ele_nod))* dry_thermal_conductivity)
+                        (applied_porosity * node_val( diffusivity, idim, idim, mat_inod ) &
+                        +(1.0-applied_porosity)* dry_thermal_conductivity)
                       end do
                     else
                       ! This branch will only be reached with dry inputs
@@ -1966,9 +1993,16 @@ contains
                         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
                         (tfield%val(idim, idim, t_ele_nod)+3*tfield%val(idim, idim, t_ele_nod)* &
-                        (node_val( diffusivity, idim, idim, mat_inod ) - tfield%val(idim, idim, t_ele_nod))*sfield%val(ele_nod)/ &
+                        (node_val( diffusivity, idim, idim, mat_inod ) - tfield%val(idim, idim, t_ele_nod))*applied_porosity/ &
                         (3*tfield%val(idim, idim, t_ele_nod)+(node_val( diffusivity, idim, idim, mat_inod )-tfield%val(idim, idim, t_ele_nod))* &
-                        (1-sfield%val(ele_nod))))
+                        (1-applied_porosity)))
+                        ! When using H-S, it's easy to get somthing divide by 0 when rock and water conductivity are
+                        ! both too close to 0. This will result in NaN for conductivity and ruins equation assemble.
+                        ! If we get a NaN, we detect it by using property: Nan /= Nan, and force it back to 0.0
+                        if (ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) &
+                           /= ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) ) then
+                            ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = 0.0
+                        endif
                       end do
                     end if
 

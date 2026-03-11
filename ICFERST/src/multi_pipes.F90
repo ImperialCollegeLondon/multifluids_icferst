@@ -875,7 +875,9 @@ contains
                           ! Instead we project the diffusivity tensor onto the pipe axis direction to get a scalar effective diff
                           if (GOT_DIFFUS) then
                             do iphase = wells_first_phase, final_phase*2
-                                diff_phase = iphase - (Mdims%npres-1)*final_phase
+                                ! Ruixiao: now conductivity calculation is fixed, we can
+                                !          get the right conductivity using simply iphase
+                                !diff_phase = iphase - (Mdims%npres-1)*final_phase
 
                                 ! interpolate diffusivity at the face Gauss point and project onto the pipe axis. For a diagonal diffusivity tensor this is :
                                   ! k_eff = sum_i ( k_ii * d_i^2 ) where d is the unit pipe direction
@@ -884,7 +886,7 @@ contains
                                     mat_knod = MAT_GL_GL(cv_lkloc)
                                     do idim = 1, Mdims%ndim
                                         DIFF_K_GI = DIFF_K_GI + CVN_FEM(cv_lkloc, bgi) &
-                                            * TDIFFUSION(mat_knod, idim, idim, diff_phase) &
+                                            * TDIFFUSION(mat_knod, idim, idim, iphase) &
                                             * direction(idim)**2
                                     end do
                                 end do
