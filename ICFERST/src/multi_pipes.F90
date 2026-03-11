@@ -1540,7 +1540,8 @@ contains
               if (has_conductivity_pipes) then
                   !Apply only where wells are closed, this is a good approximation
                   !Gamma should be the same for at least the well phases, so we check nphase
-                  if (pipes_aux%GAMMA_PRES_ABS( Mdims%nphase, Mdims%nphase, CV_NODI )<1d-8) then
+                  !Now thermal conductivity coupling phase1 and phase2 appears whatever screen is open or close to flow 
+                  !if (pipes_aux%GAMMA_PRES_ABS( Mdims%nphase, Mdims%nphase, CV_NODI )<1d-8) then
                       count = min(size(conductivity_pipes%val),cv_nodi)
                       count2= min(size(well_thickness%val),cv_nodi)
                       !Rp is the internal radius of the well
@@ -1559,7 +1560,7 @@ contains
                           PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) + auxR
                           PIPE_ABS( iphase, jphase, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) - auxR
                       end do
-                  end if
+                  !end if
               end if
           END DO ! DO CV_NODI = 1, Mdims%cv_nonods
       endif ! if(GETCV_DISC) then
