@@ -894,11 +894,13 @@ contains
                                 ! Form the 1D diffusion : k_eff * face_area / segment_length
                                 DIFF_COEF_1D = DIFF_K_GI * suf_DETWEI(bgi) / DX
 
-                                ! Assemble into matrix and RHS ... same as for the reservoir (cv-adv-dif):
+                                ! Assemble into matrix ... same as for the reservoir (cv-adv-dif)        
                                 LOC_MAT_II(iphase) = LOC_MAT_II(iphase) + DIFF_COEF_1D
                                 LOC_MAT_IJ(iphase) = LOC_MAT_IJ(iphase) - DIFF_COEF_1D
-                                LOC_CV_RHS_I(iphase) = LOC_CV_RHS_I(iphase) &
-                                    + DIFF_COEF_1D * ( T_CV_NODJ(iphase) - T_CV_NODI(iphase) )
+                                ! Ruixiao: We shouldn't put anything to the rhs since well model is 
+                                !          fullly implicit i.e. no theta
+                                !LOC_CV_RHS_I(iphase) = LOC_CV_RHS_I(iphase) &
+                                !    + DIFF_COEF_1D * ( T_CV_NODJ(iphase) - T_CV_NODI(iphase) )
                             end do
                           end if
 
