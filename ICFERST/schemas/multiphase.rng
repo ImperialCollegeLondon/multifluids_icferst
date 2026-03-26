@@ -2043,6 +2043,23 @@ The following must be specified:
         <element name="numerical_methods">
           <a:documentation>Advanced options that are kept for debugging purposes</a:documentation>
           <optional>
+            <element name="underrelaxation_for_thermal_equation">
+              <a:documentation>underrelaxation for temperature solution update every nonlinear iteration</a:documentation>
+              <optional>
+                <element name="btrk">
+                  <a:documentation>underrelaxation factor</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="print_true_residual_after_solve">
+                  <a:documentation>reassemble A from T solution and print A*T-b</a:documentation>
+                  <empty/>
+                </element>
+              </optional>
+            </element>
+          </optional>
+          <optional>
             <element name="correction_mass_sat">
               <a:documentation>Apply a correction factor to conserve multiphase mass after mesh adaptation.
 Only active when mesh adaptivity is enabled.</a:documentation>

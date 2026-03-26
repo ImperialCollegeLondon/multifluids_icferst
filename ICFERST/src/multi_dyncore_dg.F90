@@ -183,6 +183,7 @@ contains
            real, dimension(Mdims%nphase, Mdims%cv_nonods) :: temp_bak
            logical :: repeat_assemb_solve, assemble_collapsed_to_one_phase
            type(vector_field) :: solution
+           real :: btrk
 
            !Initialise with an out of range value to be able to check it hasn't been
            totally_min_max = 1e30
@@ -381,6 +382,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            !Allocate the RHS
            call allocate(Mmat%CV_RHS,nphase,tracer%mesh,"RHS")
            call allocate(solution,nphase,tracer%mesh,"sol_tracer")!; call zero(solution)
+           ! Get underrelaxation factor from input, if not found set to 1 i.e. full update
+           call get_option("/numerical_methods/underrelaxation_for_thermal_equation/btrk", btrk, default=1.0)
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
                !Get information for capillary pressure to be use in CV_ASSEMB
@@ -431,12 +434,50 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  do iphase = 1 , n_in_pres
                    auxI = IPHASE + (ipres-1)*n_in_pres
                    if (assemble_collapsed_to_one_phase) auxI = ipres
-                   tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(auxI,:)
+                   ! Apply underrelaxation by: 
+                   tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) &
+                                                                       + btrk*(solution%val(auxI,:) - tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) )
                 end do
                end do
 
                 !Control how it is converging and decide
                call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)!Apply if required the min max principle
+
+               ! Calculate true residual of solution after underrelaxation
+               ! obtain the infinite norm of vector (A*T - b), where A is re-assembled with updated density
+               if (have_option("/numerical_methods/underrelaxation_for_thermal_equation/print_true_residual_after_solve")) then
+                   call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
+                   call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp = .true., use_old_pressure = .true. )
+                   !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
+                   call CV_ASSEMB( state, packed_state, &
+                                    n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
+                                    tracer, velocity, density, &
+                                    DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+                                    DEN_ALL, DENOLD_ALL, &
+                                    cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, cv_beta, &
+                                    SUF_SIG_DIAGTEN_BC, &
+                                    DERIV%val(1,:,:), P%val, &
+                                    T_SOURCE, T_ABSORB, VOLFRA_PORE, VOLFRA_PORE_TOTAL, &
+                                    GETCV_DISC, GETCT, &
+                                    IGOT_T2_loc,IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, &
+                                    THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
+                                    MeanPoreCV%val, MeanPoreCV_total%val, &
+                                    mass_Mn_pres, THERMAL, &
+                                    .false.,  mass_Mn_pres, &
+                                    mass_ele_transp, &
+                                    TDIFFUSION = TDIFFUSION,&
+                                    saturation=saturation, Permeability_tensor_field = perm,&
+                                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
+                                    porous_heat_coef = porous_heat_coef,porous_heat_coef_old = porous_heat_coef_old,solving_compositional = lcomp > 0, &
+                                    VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, &
+                                    assemble_collapsed_to_one_phase = assemble_collapsed_to_one_phase)
+                   ! Calculate infinite norm of residual vector
+                   call allocate(residual, Mdims%nphase, tracer%mesh, "residual_tracer")
+                   vtracer = as_vector(tracer, dim=2)
+                   call mult(residual, Mmat%petsc_ACV, vtracer)
+                   print*, maxval(abs(Mmat%CV_RHS%val - residual%val))/maxval(abs(Mmat%CV_RHS%val ))
+               end if
+
 
                !Just after the solvers
                call deallocate(Mmat%petsc_ACV)
