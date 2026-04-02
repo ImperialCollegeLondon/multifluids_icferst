@@ -1116,7 +1116,8 @@ contains
                         stored_dt=-1
                     end if
                 end if
-                dt = min( dt * rc / c, ic * dt )
+                !Use the actual dt that produced the Courant number, not the value modified by Adaptive_NonLinear
+                dt = min( (acctim - old_acctim) * rc / c, ic * (acctim - old_acctim) )
                 if(have_option("/timestepping/adaptive_timestep/minimum_timestep/dump_vtu_if_reached")) then
                   if(dt < minc) then
                     ewrite(0, *) "Minimum timestep reached - outputting vtu"
