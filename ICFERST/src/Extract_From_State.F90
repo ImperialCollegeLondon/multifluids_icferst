@@ -2335,6 +2335,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
 
           !We decide a priory if we use days or seconds to show dt to the user
           call get_option( '/timestepping/timestep', dt )
+          !Sync stored_dt with any external reduction (e.g. cfl adaptive timestep)
+          if (stored_dt > 0) stored_dt = min(stored_dt, dt)
 
             !If Automatic_NonLinerIterations then we compare the variation of the a property from one time step to the next one
             ExitNonLinearLoop = .false.
