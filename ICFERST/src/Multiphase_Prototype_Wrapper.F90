@@ -189,6 +189,19 @@ subroutine multiphase_prototype_wrapper() bind(C)
 
     call enforce_discrete_properties(state)
 
+    !Pre-register CV_Immobile_Fraction as a placeholder vector_field
+    block
+        type(vector_field) :: cv_imm_placeholder
+        type(mesh_type), pointer :: cv_mesh
+        integer :: nphase_local
+        nphase_local = option_count("/material_phase")
+        cv_mesh => extract_mesh(state(1), "PressureMesh")
+        call allocate(cv_imm_placeholder, nphase_local, cv_mesh, "CV_Immobile_Fraction")
+        call zero(cv_imm_placeholder)
+        call insert(state(1), cv_imm_placeholder, "CV_Immobile_Fraction")
+        call deallocate(cv_imm_placeholder)
+    end block
+    
     call run_diagnostics(state)
 
     ! Determine the output format

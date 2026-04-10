@@ -256,6 +256,7 @@ contains
         real, allocatable, dimension(:) :: total_mass_sat_before_adapt, total_mass_sat_after_adapt
         logical :: viscosity_EOS
         character(len=PYTHON_FUNC_LEN) :: pyfunc
+        type(vector_field), pointer :: cv_imm
         
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
@@ -509,6 +510,9 @@ contains
 
             !Get into packed state relative permeability, immobile fractions, ...
             call get_RockFluidProp(state, packed_state, Mdims, ndgln, current_time)
+            cv_imm => extract_vector_field(packed_state, "CV_Immobile_Fraction")
+            call insert(state(1), cv_imm, "CV_Immobile_Fraction")
+            call calculate_diagnostic_variables_new(state, exclude_nonrecalculated = .true.)
             !Allocate the memory to obtain the sigmas at the interface between elements
             call allocate_porous_adv_coefs(Mdims, upwnd)
             !Ensure that the initial condition for the saturation sum to 1.
