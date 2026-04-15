@@ -487,6 +487,50 @@ start =
                element at_first_timestep {
                   empty
                }?
+            }?,
+            ## Automatically constrain the timestep to land on user defined
+            ## schedule events loaded from a csv file.
+            ##
+            ## Events are specified as times in seconds (one per row, with a
+            ## header row).
+            ##
+            ## When the next event falls within the current proposed dt,
+            ## dt is reduced to land exactly on the event.
+            ##
+            ## If a period is given, the schedule repeats cyclically.
+            element simulation_events {
+               ## Path to the CSV file containing event times (in seconds).
+               ##
+               ## The file must have the following format:
+               ##
+               ## time_seconds
+               ##
+               ## 86400
+               ##
+               ## 172800
+               ##
+               ## 604800
+               ##
+               ## For periodic schedules, times are interpreted modulo the period
+               element from_file {
+                  element string_value { text }
+               },
+               ## Period of the cyclic schedule (in seconds).
+               ## If omitted, the schedule is non-periodic.
+               element period {
+                  element real_value {
+                     attribute rank { "0" },
+                     xsd:double
+                  }
+               }?,
+               ## Maximum timestep to impose immediately after landing on an event (in seconds).
+               ## If omitted, no cap is applied after events.
+               element post_event_timestep {
+                  element real_value {
+                     attribute rank { "0" },
+                     xsd:double
+                  }
+               }?
             }?
          },
 

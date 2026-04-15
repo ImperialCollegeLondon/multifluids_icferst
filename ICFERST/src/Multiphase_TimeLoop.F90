@@ -88,6 +88,7 @@ module multiphase_time_loop
     use multi_tools
     use momentum_diagnostic_fields, only: calculate_densities
     use embed_python
+    use multi_events
 
 #ifdef HAVE_ZOLTAN
   use zoltan
@@ -520,6 +521,9 @@ contains
         end if
 
 
+        ! Load simulation events from csv if specified in Diamond
+        call load_simulation_events()
+        
         !!$ Starting Time Loop
         itime = 0
         ! if this is not a zero timestep simulation (otherwise, there would
@@ -595,6 +599,14 @@ contains
             call get_option( '/timestepping/timestep', dt )
             call get_option( '/timestepping/current_time', acctim )
             old_acctim = acctim
+            ! Event scheduling :
+            ! Effective dt_min is the most restrictive of both adaptive controllers
+            call get_option('/timestepping/adaptive_timestep/minimum_timestep/constant', &
+                minc, stat, default=0.)
+            call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/' // &
+                'adaptive_timestep_nonlinear/min_timestep/constant', &
+                auxR, stat, default=0.)
+            call apply_event_timestep( old_acctim, dt, dt_min=max(minc, auxR) )
             acctim = acctim + dt
             current_time = acctim
             call set_option( '/timestepping/current_time', acctim )

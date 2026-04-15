@@ -559,6 +559,62 @@ at the first timestep or not.</a:documentation>
             </optional>
           </element>
         </optional>
+        <optional>
+          <element name="simulation_events">
+            <a:documentation>Automatically constrain the timestep to land on user defined
+schedule events loaded from a csv file.
+
+Events are specified as times in seconds (one per row, with a
+header row).
+
+When the next event falls within the current proposed dt,
+dt is reduced to land exactly on the event.
+
+If a period is given, the schedule repeats cyclically.</a:documentation>
+            <element name="from_file">
+              <a:documentation>Path to the CSV file containing event times (in seconds).
+
+The file must have the following format:
+
+time_seconds
+
+86400
+
+172800
+
+604800
+
+For periodic schedules, times are interpreted modulo the period</a:documentation>
+              <element name="string_value">
+                <text/>
+              </element>
+            </element>
+            <optional>
+              <element name="period">
+                <a:documentation>Period of the cyclic schedule (in seconds).
+If omitted, the schedule is non-periodic.</a:documentation>
+                <element name="real_value">
+                  <attribute name="rank">
+                    <value>0</value>
+                  </attribute>
+                  <data type="double"/>
+                </element>
+              </element>
+            </optional>
+            <optional>
+              <element name="post_event_timestep">
+                <a:documentation>Maximum timestep to impose immediately after landing on an event (in seconds).
+If omitted, no cap is applied after events.</a:documentation>
+                <element name="real_value">
+                  <attribute name="rank">
+                    <value>0</value>
+                  </attribute>
+                  <data type="double"/>
+                </element>
+              </element>
+            </optional>
+          </element>
+        </optional>
       </element>
       <optional>
         <ref name="physical_parameter_options"/>
