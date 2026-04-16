@@ -484,7 +484,7 @@ contains
     else if (is_nonlinear_field) then
       include_scalar_field_in_vtu=have_option(trim(output_option_path)//'/include_nonlinear_field')
     else if (is_iterated_field) then
-      include_scalar_field_in_vtu=have_option(trim(output_option_path)//'/include_nonlinear_field')
+      include_scalar_field_in_vtu=have_option(trim(output_option_path)//'/include_iterated_field')
     else
       include_scalar_field_in_vtu=.not. have_option(trim(output_option_path)//'/exclude_from_vtu')
     end if
