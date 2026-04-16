@@ -512,7 +512,9 @@ contains
             !Get into packed state relative permeability, immobile fractions, ...
             call get_RockFluidProp(state, packed_state, Mdims, ndgln, current_time)
             cv_imm => extract_vector_field(packed_state, "CV_Immobile_Fraction")
-            call insert(state(1), cv_imm, "CV_Immobile_Fraction")
+            do i = 1, size(state)
+                call insert(state(i), cv_imm, "CV_Immobile_Fraction")
+            end do
             call calculate_diagnostic_variables_new(state, exclude_nonrecalculated = .true.)
             !Allocate the memory to obtain the sigmas at the interface between elements
             call allocate_porous_adv_coefs(Mdims, upwnd)
@@ -1609,6 +1611,10 @@ contains
 
                 if (is_porous_media) then
                     call get_RockFluidProp(state, packed_state, Mdims, ndgln, post_adapt=.true.)
+                    cv_imm => extract_vector_field(packed_state, "CV_Immobile_Fraction")
+                    do i = 1, size(state)
+                        call insert(state(i), cv_imm, "CV_Immobile_Fraction")
+                    end do
                     call deallocate_porous_adv_coefs(upwnd)
                     call allocate_porous_adv_coefs(Mdims, upwnd)
                     !Clean the pipes memory if required
