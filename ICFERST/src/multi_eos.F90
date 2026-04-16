@@ -2919,6 +2919,16 @@ contains
               end if
             end if
         end do
+
+        ! Populate per phase diagnostic scalar field if declared in mpml
+        do iphase = 1, nphase
+            if (have_option("/material_phase["//int2str(iphase-1)// &
+                    "]/scalar_field::CV_ImmobileFraction")) then
+                s_field => extract_scalar_field(state(iphase), "CV_ImmobileFraction")
+                s_field%val(:) = CV_immobile_fraction(iphase, :)
+            end if
+        end do
+
         call deallocate(targ_Store)
         if (allocated(use_tabulated_relperm_phase)) deallocate(use_tabulated_relperm_phase)
         if (allocated(use_tabulated_pc_phase)) deallocate(use_tabulated_pc_phase)
