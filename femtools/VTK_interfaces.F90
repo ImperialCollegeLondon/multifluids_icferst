@@ -511,6 +511,12 @@ contains
 
     if (present(sfields)) then
        do i=1,size(sfields)
+       
+	  vtk_fname = trim(sfields(i)%name)
+          if (vtk_fname == "Time".or. &
+              vtk_fname(max(1,len_trim(vtk_fname)-5):len_trim(vtk_fname)) &
+              == "::Time") cycle
+       
           if(mesh_dim(sfields(i))/=mesh_dim(l_model)) cycle
 
           if (sfields(i)%mesh%shape%degree /= 0) then
