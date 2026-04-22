@@ -266,6 +266,9 @@ contains
     integer, allocatable, dimension(:)::ghost_levels
     real, allocatable, dimension(:,:) :: tempval
     integer :: lstat
+    double precision :: vtk_time_fielddata
+    character(len=FIELD_NAME_LEN) :: vtk_fname
+    external vtkwritetimevalue
 
     if (present(stat)) stat = 0
 
@@ -482,6 +485,25 @@ contains
     call VTKWRITEMESH(node_count(model_mesh), element_count(model_mesh), &
            v_field_buffer(:,X_), v_field_buffer(:,Y_), v_field_buffer(:,Z_)&
            &, ENLIST, ELtype, ELsize)
+
+    !----------------------------------------------------------------------
+    ! Output time
+    !----------------------------------------------------------------------
+
+    if (present(sfields)) then
+      do i = 1, size(sfields)
+        vtk_fname = trim(sfields(i)%name)
+        if (vtk_fname == "Time".or. &
+            vtk_fname(max(1,len_trim(vtk_fname)-5):len_trim(vtk_fname)) &
+            == "::Time") then
+          vtk_time_fielddata = dble(sfields(i)%val(1))
+          call vtkwritetimevalue(vtk_time_fielddata)
+          exit
+        end if
+      end do
+    end if
+
+
 
     !----------------------------------------------------------------------
     ! Output scalar fields

@@ -49,6 +49,7 @@
 #include <vtkDataSetAttributes.h>
 #include <vtkCellData.h>
 #include <vtkPointData.h>
+#include <vtkFieldData.h>
 
 #include <vector>
 #include <string>
@@ -323,6 +324,23 @@ extern "C" {
     dataSet->GetPointData()->AddArray(newScalars);
     newScalars->Delete();
     return;
+  }
+
+  /**
+  Write time as TimeArray, just once per vtu file
+  */
+
+  void vtkwritetimevalue(double *time_val){
+    vtkDoubleArray *timeArray = vtkDoubleArray::New();
+    timeArray->SetName("TimeValue");
+    timeArray->SetNumberOfComponents(1);
+    timeArray->SetNumberOfTuples(1);
+    timeArray->SetValue(0, *time_val);
+    dataSet->GetFieldData()->AddArray(timeArray);
+    timeArray->Delete();
+  }
+  void vtkwritetimevalue_(double *time_val){
+    vtkwritetimevalue(time_val);
   }
 
   /**
