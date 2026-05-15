@@ -89,6 +89,7 @@ module multiphase_time_loop
     use momentum_diagnostic_fields, only: calculate_densities
     use embed_python
     use multi_events
+    use python_diagnostics
 
 #ifdef HAVE_ZOLTAN
   use zoltan
@@ -212,7 +213,7 @@ contains
         type(vector_field), pointer :: positions, porosity_field, MeanPoreCV, PythonPhaseVolumeFractionSource, porosity_total_field
         logical :: have_porosity_total = .false.
         logical, save :: have_been_read = .false.
-        type(scalar_field), pointer :: DensitySource, T
+        type(scalar_field), pointer :: DensitySource, T, s_field
         !Variables that are used to define the pipe pos
         type(pipe_coords), dimension(:), allocatable:: eles_with_pipe
         type (multi_pipe_package) :: pipes_aux
@@ -258,6 +259,11 @@ contains
         logical :: viscosity_EOS
         character(len=PYTHON_FUNC_LEN) :: pyfunc
         type(vector_field), pointer :: cv_imm
+        type(vector_field), pointer :: cv_vol
+        type(scalar_field), pointer :: ps_field
+        integer :: ps_stat
+        real :: ps_time, ps_dt
+
         
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
@@ -741,7 +747,19 @@ contains
                 !#=================================================================================================================
                 !$ Now solving the Momentum Equation ( = Force Balance Equation )
                 Conditional_ForceBalanceEquation: if ( solve_force_balance .and. EnterSolve ) then
-                    !if (getprocno() == 1 .and. its==1) print*, "Time step is:", itime
+                    
+                    !Recalculate PressureSource if it is a Python diagnostic
+                    ps_field => extract_scalar_field(state(1), "PressureSource", ps_stat)
+                    if (ps_stat == 0) then
+                        if (have_option(trim(ps_field%option_path) &
+                            // "/diagnostic/algorithm/name")) then
+                            call get_option("/timestepping/current_time", ps_time)
+                            call get_option("/timestepping/timestep", ps_dt)
+                            call calculate_scalar_python_diagnostic_refreshed( &
+                                state, 1, ps_field, ps_time, ps_dt)
+                        end if
+                    end if
+
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
                         Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
@@ -1009,6 +1027,14 @@ contains
             !Now compute diagnostics
             call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
             !calculate_diagnostic_variables_new <= computes other diagnostics such as python-based fields
+
+            ! Populate CVIntegral diagnostic scalar field from packed_state
+            cv_vol => extract_vector_field(packed_state, "CVIntegral")
+            do iphase = 1, Mdims%nphase
+                s_field => extract_scalar_field(state(iphase), "CVIntegral", stat)
+                if (stat == 0) s_field%val(:) = cv_vol%val(1,:)
+            end do
+
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!sprint_to_do it used to zerod the pressure
 
             !!######################DIAGNOSTIC FIELD CALCULATION TREAT THIS LIKE A BLOCK######################

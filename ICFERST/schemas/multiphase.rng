@@ -4483,6 +4483,27 @@ and adapting on trapping.</a:documentation>
           </element>
         </choice>
       </element>
+      <element name="scalar_field">
+        <a:documentation>CVIntegral
+
+Control volume integral (volume per CV node).</a:documentation>
+        <attribute name="rank">
+          <value>0</value>
+        </attribute>
+        <attribute name="name">
+          <value>CVIntegral</value>
+        </attribute>
+        <choice>
+          <element name="diagnostic">
+            <ref name="internal_algorithm"/>
+            <ref name="pressure_mesh_choice"/>
+            <ref name="diagnostic_scalar_field"/>
+          </element>
+          <element name="aliased">
+            <ref name="generic_aliased_field"/>
+          </element>
+        </choice>
+      </element>
     </choice>
     <!--
       Insert new diagnostic scalar fields here using the template:

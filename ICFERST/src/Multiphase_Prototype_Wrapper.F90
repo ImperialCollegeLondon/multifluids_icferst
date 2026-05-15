@@ -201,6 +201,33 @@ subroutine multiphase_prototype_wrapper() bind(C)
         call insert(state(1), cv_imm_placeholder, "CV_Immobile_Fraction")
         call deallocate(cv_imm_placeholder)
     end block
+
+    !Pre-populate CVIntegral diagnostic scalar field with approximate CV volumes (for t=0 dump)
+    block
+        type(scalar_field), pointer :: cvint_sf
+        type(vector_field), pointer :: pos_ptr
+        type(mesh_type), pointer :: cv_mesh
+        integer, dimension(:), pointer :: ele_nodes_ptr
+        real :: ele_vol
+        integer :: ele_i, iloc_i, nloc_cv, iph, sf_stat
+
+        pos_ptr => extract_vector_field(state(1), "Coordinate")
+        cv_mesh => extract_mesh(state(1), "PressureMesh")
+        nloc_cv = ele_loc(cv_mesh, 1)
+
+        do iph = 1, size(state)
+            cvint_sf => extract_scalar_field(state(iph), "CVIntegral", sf_stat)
+            if (sf_stat /= 0) cycle
+            call zero(cvint_sf)
+            do ele_i = 1, ele_count(pos_ptr)
+                ele_vol = abs(element_volume(pos_ptr, ele_i))
+                ele_nodes_ptr => ele_nodes(cv_mesh, ele_i)
+                do iloc_i = 1, nloc_cv
+                    call addto(cvint_sf, ele_nodes_ptr(iloc_i), ele_vol / real(nloc_cv))
+                end do
+            end do
+        end do
+    end block
     
     call run_diagnostics(state)
 

@@ -501,6 +501,29 @@ Instead, define 1 boundary condition per region (e.g., "1" and "2" separately).
           </choice>
         </element>
       </zeroOrMore>
+      <optional>
+        <element name="scalar_field">
+          <a:documentation>Source term for the pressure equation.</a:documentation>
+          <attribute name="name">
+            <value>Source</value>
+          </attribute>
+          <attribute name="rank">
+            <value>0</value>
+          </attribute>
+          <choice>
+            <element name="prescribed">
+              <ref name="prescribed_scalar_field_no_adapt"/>
+            </element>
+            <element name="diagnostic">
+              <choice>
+                <ref name="scalar_python_diagnostic_algorithm"/>
+                <ref name="internal_algorithm"/>
+              </choice>
+              <ref name="diagnostic_scalar_field_no_adapt"/>
+            </element>
+          </choice>
+        </element>
+      </optional>
       <!--
         pressure_output_options,
         prognostic_scalar_stat_options,

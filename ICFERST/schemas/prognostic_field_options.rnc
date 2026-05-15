@@ -414,6 +414,23 @@ prognostic_pressure_field =
             }
          )
       }*,
+      ## Source term for the pressure equation.
+      element scalar_field {
+         attribute name { "Source" },
+         attribute rank { "0" },
+         (
+            element prescribed {
+               prescribed_scalar_field_no_adapt
+            }|
+            element diagnostic {
+               (
+                  scalar_python_diagnostic_algorithm |
+                  internal_algorithm
+               ),
+               diagnostic_scalar_field_no_adapt
+            }
+         )
+      }?,
       #pressure_output_options,
       #prognostic_scalar_stat_options,
       #scalar_convergence_options,

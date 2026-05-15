@@ -2422,6 +2422,8 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
         type( tensor_field ), pointer :: OLDvelocity, den_all2, denold_all2, tfield, den_all3!, u_all2
         type( tensor_field ), pointer :: p_all, cvp_all, deriv, python_tfield
         type( vector_field ), pointer :: x_all2, U
+        type( scalar_field ), pointer :: pressure_source_field
+        integer :: vsrc_stat
         type( scalar_field ), pointer :: sf, soldf, gamma, cvp
         type( vector_field ) :: packed_vel, rhs
         type( vector_field ) :: deltap, rhs_p
@@ -2785,6 +2787,20 @@ end if
         rhs_p%val = 0.
         call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
         rhs_p%val = -rhs_p%val + Mmat%CT_RHS%val
+        ! Pressure source term
+        pressure_source_field => extract_scalar_field(state(1), "PressureSource", vsrc_stat)
+        if (vsrc_stat == 0) then
+            do CV_NOD = 1, Mdims%cv_nonods
+                do COUNT = Mspars%CMC%fin(CV_NOD), &
+                        Mspars%CMC%fin(CV_NOD+1)-1
+                    if (Mspars%CMC%col(COUNT) == CV_NOD) then
+                        rhs_p%val(1, CV_NOD) = rhs_p%val(1, CV_NOD) &
+                            + pressure_source_field%val(CV_NOD) * MASS_MN_PRES(COUNT)
+                        exit
+                    end if
+                end do
+            end do
+        end if
         call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
         !Call impose strong BCs must be here before the rescaling and after include wells and
         !compressibility - only done if using P0DG and gamma is zero at the BC see
@@ -2987,6 +3003,20 @@ end if
             rhs_p%val = 0.
             call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
             rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
+            ! Pressure source term
+            pressure_source_field => extract_scalar_field(state(1), "PressureSource", vsrc_stat)
+            if (vsrc_stat == 0) then
+                do CV_NOD = 1, Mdims%cv_nonods
+                    do COUNT = Mspars%CMC%fin(CV_NOD), &
+                            Mspars%CMC%fin(CV_NOD+1)-1
+                        if (Mspars%CMC%col(COUNT) == CV_NOD) then
+                            rhs_p%val(1, CV_NOD) = rhs_p%val(1, CV_NOD) &
+                                + pressure_source_field%val(CV_NOD) * MASS_MN_PRES(COUNT)
+                            exit
+                        end if
+                    end do
+                end do
+            end if
             call include_wells_and_compressibility_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
             call solve_and_update_pressure(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC, update_pres = .not. Special_precond)
             if (isParallel()) call halo_update(deltap)
