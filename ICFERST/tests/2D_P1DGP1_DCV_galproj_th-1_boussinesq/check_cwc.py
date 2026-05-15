@@ -29,10 +29,7 @@ def get_water_depths(filelist, xarray, delta):
 
     num = int(f.split(".vtu")[0].split('_')[-1])
     vtu = vtktools.vtu(f)
-    for name in vtu.GetFieldNames():
-      if name.endswith("Time"):
-        time = max(vtu.GetScalarRange(name))
-        break
+    time = vtu.ugrid.GetFieldData().GetArray("TimeValue").GetValue(0)
     waterdepths = []
     waterdepths.append(num)
     waterdepths.append(time)

@@ -49,6 +49,7 @@
 #include <vtkDataSetAttributes.h>
 #include <vtkCellData.h>
 #include <vtkPointData.h>
+#include <vtkFieldData.h>
 
 #include <vector>
 #include <string>
@@ -110,6 +111,37 @@ void pvtu_fix_path(const char* pFilename, const char *dir){
   bool loadOkay = doc.LoadFile();
   if(loadOkay){
     pvtu_search_and_replace(&doc, dir);
+    
+        // NEW: Remove corrupt binary FieldData and re-inject as clean ASCII.
+    // TinyXML corrupts binary base64 text nodes when saving by escaping
+    // newlines as &#x0A;, making TimeValue unreadable by ParaView.
+    // We remove the corrupt block and re-inject clean ASCII in one pass.
+    TiXmlElement *root = doc.RootElement();
+    if(root){
+      TiXmlElement *pug = root->FirstChildElement("PUnstructuredGrid");
+      if(pug){
+        TiXmlElement *fd = pug->FirstChildElement("FieldData");
+        if(fd){
+          double tval = 0.0;
+          TiXmlElement *da = fd->FirstChildElement("DataArray");
+          if(da) da->QueryDoubleAttribute("RangeMin", &tval);
+          pug->RemoveChild(fd);
+          TiXmlElement *newfd = new TiXmlElement("FieldData");
+          TiXmlElement *newda = new TiXmlElement("DataArray");
+          newda->SetAttribute("type", "Float64");
+          newda->SetAttribute("Name", "TimeValue");
+          newda->SetAttribute("NumberOfTuples", "1");
+          newda->SetAttribute("format", "ascii");
+          char buf[64];
+          snprintf(buf, sizeof(buf), "%.15E", tval);
+          newda->LinkEndChild(new TiXmlText(buf));
+          newfd->LinkEndChild(newda);
+          pug->InsertBeforeChild(pug->FirstChild(), *newfd);
+          delete newfd;
+        }
+      }
+    }
+    
   }else{
     cerr<<"ERROR: Failed to load file "<<pFilename<<endl;
   }
@@ -323,6 +355,23 @@ extern "C" {
     dataSet->GetPointData()->AddArray(newScalars);
     newScalars->Delete();
     return;
+  }
+
+  /**
+  Write time as TimeArray, just once per vtu file
+  */
+
+  void vtkwritetimevalue(double *time_val){
+    vtkDoubleArray *timeArray = vtkDoubleArray::New();
+    timeArray->SetName("TimeValue");
+    timeArray->SetNumberOfComponents(1);
+    timeArray->SetNumberOfTuples(1);
+    timeArray->SetValue(0, *time_val);
+    dataSet->GetFieldData()->AddArray(timeArray);
+    timeArray->Delete();
+  }
+  void vtkwritetimevalue_(double *time_val){
+    vtkwritetimevalue(time_val);
   }
 
   /**

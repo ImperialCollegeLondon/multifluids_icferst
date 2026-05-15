@@ -266,6 +266,9 @@ contains
     integer, allocatable, dimension(:)::ghost_levels
     real, allocatable, dimension(:,:) :: tempval
     integer :: lstat
+    double precision :: vtk_time_fielddata
+    character(len=FIELD_NAME_LEN) :: vtk_fname
+    external vtkwritetimevalue
 
     if (present(stat)) stat = 0
 
@@ -484,11 +487,36 @@ contains
            &, ENLIST, ELtype, ELsize)
 
     !----------------------------------------------------------------------
+    ! Output time
+    !----------------------------------------------------------------------
+
+    if (present(sfields)) then
+      do i = 1, size(sfields)
+        vtk_fname = trim(sfields(i)%name)
+        if (vtk_fname == "Time".or. &
+            vtk_fname(max(1,len_trim(vtk_fname)-5):len_trim(vtk_fname)) &
+            == "::Time") then
+          vtk_time_fielddata = dble(sfields(i)%val(1))
+          call vtkwritetimevalue(vtk_time_fielddata)
+          exit
+        end if
+      end do
+    end if
+
+
+
+    !----------------------------------------------------------------------
     ! Output scalar fields
     !----------------------------------------------------------------------
 
     if (present(sfields)) then
        do i=1,size(sfields)
+       
+	  vtk_fname = trim(sfields(i)%name)
+          if (vtk_fname == "Time".or. &
+              vtk_fname(max(1,len_trim(vtk_fname)-5):len_trim(vtk_fname)) &
+              == "::Time") cycle
+       
           if(mesh_dim(sfields(i))/=mesh_dim(l_model)) cycle
 
           if (sfields(i)%mesh%shape%degree /= 0) then
