@@ -536,21 +536,35 @@ void python_add_polynomial_(double *coefs,int *size,int *degree, int *x,int *y, 
 
 void python_add_array_double_1d(double *arr, int *size, char *name){
 #ifdef HAVE_NUMPY
-  // Add an array in Python which will be availabe under the variable name 'name'
   PyObject *pMain = PyImport_AddModule("__main__");
   PyObject *pDict = PyModule_GetDict(pMain);
-
-  // Create our NumPy matrix struct:
-  // Arguments are: 
-  //  number of dimensions (int),
-  //  size of each dimension (int[]),
-  //  data type to determine the width of each element in memory (int)
-  //  the actual data as a byte array(char*)
-
-  // Set the array
-  PyObject *a = PyArray_SimpleNewFromData(1, (npy_intp[]){*size}, NPY_DOUBLE, (char*)arr);
-  PyDict_SetItemString(pDict,name,a);
+  PyObject *tmp = PyArray_SimpleNewFromData(1, (npy_intp[]){*size}, NPY_DOUBLE, (char*)arr);
+  PyObject *a = PyArray_NewCopy((PyArrayObject*)tmp, NPY_ANYORDER);
+  Py_DECREF(tmp);
+  PyDict_SetItemString(pDict, name, a);
   Py_DECREF(a);
+#endif
+}
+
+void python_read_array_double_1d_(double *arr, int *size, char *name, int *name_len, int *stat){
+#ifdef HAVE_NUMPY
+  *stat = 0;
+  PyObject *pMain = PyImport_AddModule("__main__");
+  PyObject *pDict = PyModule_GetDict(pMain);
+  char *namec = fix_string(name, *name_len);
+  PyObject *obj = PyDict_GetItemString(pDict, namec);
+  free(namec);
+  if (obj == NULL || !PyArray_Check(obj)) {
+    *stat = 1;
+    return;
+  }
+  PyArrayObject *arr_obj = (PyArrayObject*)obj;
+  npy_intp n = PyArray_SIZE(arr_obj);
+  if (n > *size) n = *size;
+  double *src = (double*)PyArray_DATA(arr_obj);
+  memcpy(arr, src, n * sizeof(double));
+#else
+  *stat = 1;
 #endif
 }
 

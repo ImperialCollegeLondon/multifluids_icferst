@@ -42,6 +42,7 @@ module python_state
   public :: python_run_string, python_run_file
   public :: python_shell
   public :: python_fetch_real
+  public :: python_read_array
 
   interface
     !! Python init and end
@@ -127,6 +128,10 @@ module python_state
     module procedure python_add_array_i_2d_directly
     module procedure python_add_array_i_3d_directly
   end interface python_add_array
+
+  interface python_read_array
+    module procedure python_read_array_d_1d_directly
+  end interface python_read_array
 
 
   !! Add a field to a State (these are for the C-interface, python_add_field_directly() is what you want probably)
@@ -535,6 +540,13 @@ module python_state
     name_len = len(var_name)
     call python_add_array_double_1d(arr,sizex,var_name,name_len)
   end subroutine python_add_array_d_1d_directly
+  subroutine python_read_array_d_1d_directly(arr, sizex, var_name, stat)
+    real, dimension(:) :: arr
+    integer, intent(in) :: sizex
+    character(len=*), intent(in) :: var_name
+    integer, intent(out) :: stat
+    call python_read_array_double_1d(arr, sizex, var_name, len(var_name), stat)
+  end subroutine python_read_array_d_1d_directly
   subroutine python_add_array_d_2d_directly(arr,var_name)
     real,dimension(:,:) :: arr
     character(len=*) :: var_name

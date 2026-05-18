@@ -755,7 +755,7 @@ contains
                             // "/diagnostic/algorithm/name")) then
                             call get_option("/timestepping/current_time", ps_time)
                             call get_option("/timestepping/timestep", ps_dt)
-                            call calculate_scalar_python_diagnostic_refreshed( &
+                            call calculate_scalar_python_diagnostic( &
                                 state, 1, ps_field, ps_time, ps_dt)
                         end if
                     end if
