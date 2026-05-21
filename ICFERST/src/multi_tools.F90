@@ -1067,6 +1067,16 @@ END subroutine RotationMatrix
       ! Run the code
       call python_run_string( trim( pycode ) )
 
+      ! Read back results from Python (needed with PyArray_NewCopy)
+      if (present(scalar_result)) then
+          call python_run_string("_wb = state.scalar_fields['Dummy'].val")
+          call python_read_array(s_field%val, s_field%mesh%nodes, "_wb", i)
+      end if
+      if (present(sfield)) then
+          call python_run_string("_wb = state.scalar_fields['" // trim(sfield%name) // "'].val")
+          call python_read_array(sfield%val, sfield%mesh%nodes, "_wb", i)
+      end if
+
       if (present(scalar_result)) scalar_result = s_field%val
       call python_reset()
     end subroutine multi_compute_python_field
