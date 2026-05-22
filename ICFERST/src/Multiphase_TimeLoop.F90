@@ -260,11 +260,11 @@ contains
         character(len=PYTHON_FUNC_LEN) :: pyfunc
         type(vector_field), pointer :: cv_imm
         type(vector_field), pointer :: cv_vol
-        type(scalar_field), pointer :: ps_field
-        integer :: ps_stat
-        real :: ps_time, ps_dt
+        type(scalar_field), pointer :: nl_field
+        integer :: nl_stat, iph, nfields, kk
+        character(len=OPTION_PATH_LEN) :: nl_name
+        real :: nl_time, nl_dt
 
-        
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -531,7 +531,7 @@ contains
 
         ! Load simulation events from csv if specified in Diamond
         call load_simulation_events()
-        
+
         !!$ Starting Time Loop
         itime = 0
         ! if this is not a zero timestep simulation (otherwise, there would
@@ -733,6 +733,24 @@ contains
                 call petsc_logging(3,stages,ierrr,default=.true.)
                 call petsc_logging(2,stages,ierrr,default=.true., push_no=2)
 
+                ! Recalculate any Python diagnostic scalar fields flagged for NL refresh
+                call get_option("/timestepping/current_time", nl_time)
+                call get_option("/timestepping/timestep", nl_dt)
+
+                do iph = 1, size(state)
+                    nfields = option_count("/material_phase[" // int2str(iph-1) // "]/scalar_field")
+                    do kk = 1, nfields
+                        call get_option("/material_phase[" // int2str(iph-1) // &
+                            "]/scalar_field[" // int2str(kk-1) // "]/name", nl_name)
+                        nl_field => extract_scalar_field(state(iph), trim(nl_name), nl_stat)
+                        if (nl_stat /= 0) cycle
+                        if (.not. have_option(trim(nl_field%option_path) // &
+                            "/diagnostic/algorithm/recalculate_each_nonlinear_iteration")) cycle
+                        call calculate_scalar_python_diagnostic( &
+                            state, iph, nl_field, nl_time, nl_dt)
+                    end do
+                end do
+
                 !#=================================================================================================================
                 !# Andreas. I took the velocity and pressure_fields out of the Conditional_ForceBalanceEquation, to always update
                 !#=================================================================================================================
@@ -747,18 +765,6 @@ contains
                 !#=================================================================================================================
                 !$ Now solving the Momentum Equation ( = Force Balance Equation )
                 Conditional_ForceBalanceEquation: if ( solve_force_balance .and. EnterSolve ) then
-                    
-                    !Recalculate PressureSource if it is a Python diagnostic
-                    ps_field => extract_scalar_field(state(1), "PressureSource", ps_stat)
-                    if (ps_stat == 0) then
-                        if (have_option(trim(ps_field%option_path) &
-                            // "/diagnostic/algorithm/name")) then
-                            call get_option("/timestepping/current_time", ps_time)
-                            call get_option("/timestepping/timestep", ps_dt)
-                            call calculate_scalar_python_diagnostic( &
-                                state, 1, ps_field, ps_time, ps_dt)
-                        end if
-                    end if
 
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &

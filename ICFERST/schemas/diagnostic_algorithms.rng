@@ -1337,6 +1337,13 @@ and 'tensor_fields';
       </attribute>
       <ref name="python_code"/>
       <optional>
+        <element name="recalculate_each_nonlinear_iteration">
+          <a:documentation>If enabled, this diagnostic field is recalculated at the start
+of every non-linear iteration.</a:documentation>
+          <empty/>
+        </element>
+      </optional>
+      <optional>
         <element name="depends">
           <a:documentation>Enable to specify dependencies manually. Any field specified here
 will be calculated before this python diagnostic field.
@@ -1367,6 +1374,13 @@ state1 (for phase 1), state2 for phase 2, etc.</a:documentation>
         <value>scalar_python_diagnostic</value>
       </attribute>
       <ref name="python_code"/>
+      <optional>
+        <element name="recalculate_each_nonlinear_iteration">
+          <a:documentation>If enabled, this diagnostic field is recalculated at the start
+of every non-linear iteration.</a:documentation>
+          <empty/>
+        </element>
+      </optional>
       <optional>
         <element name="depends">
           <a:documentation>Enable to specify dependencies manually. Any field specified here
