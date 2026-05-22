@@ -264,7 +264,7 @@ contains
         integer :: nl_stat, iph, nfields, kk
         character(len=OPTION_PATH_LEN) :: nl_name
         real :: nl_time, nl_dt
-
+        
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -531,7 +531,7 @@ contains
 
         ! Load simulation events from csv if specified in Diamond
         call load_simulation_events()
-
+        
         !!$ Starting Time Loop
         itime = 0
         ! if this is not a zero timestep simulation (otherwise, there would
@@ -732,7 +732,7 @@ contains
 
                 call petsc_logging(3,stages,ierrr,default=.true.)
                 call petsc_logging(2,stages,ierrr,default=.true., push_no=2)
-
+                
                 ! Recalculate any Python diagnostic scalar fields flagged for NL refresh
                 call get_option("/timestepping/current_time", nl_time)
                 call get_option("/timestepping/timestep", nl_dt)
@@ -1502,6 +1502,10 @@ contains
             type (tensor_field), pointer  :: Concentration
             character(len=PYTHON_FUNC_LEN) :: pyfunc
             real :: acctim
+            integer :: n_tracer_sfields, ik, tracer_stat
+            character(len=OPTION_PATH_LEN) :: tracer_name
+            type(tensor_field), pointer :: tracer_tmp
+            real, allocatable, dimension(:,:) :: tracer_min_max_before
 
             if (numberfields_CVGalerkin_interp > 0) then ! If there is at least one instance of CVgalerkin then apply the method
                 if (have_option('/mesh_adaptivity')) then ! Only need to use interpolation if mesh adaptivity switched on
@@ -1523,6 +1527,20 @@ contains
                 !concentration_min_max_limits_before(1) = 0.; call allmin(concentration_min_max_limits_before(1))
                 !concentration_min_max_limits_before(2) = 1.0; call allmax(concentration_min_max_limits_before(2))
             end if
+            ! For all other tracers we also want to ensure that when adapting the mesh the fields are between bounds
+            n_tracer_sfields = option_count("/material_phase[0]/scalar_field")
+            allocate(tracer_min_max_before(n_tracer_sfields, 2))
+            tracer_min_max_before = 0.0
+            do ik = 1, n_tracer_sfields
+              call get_option("/material_phase[0]/scalar_field["// int2str(ik - 1) //"]/name", tracer_name)
+              if (is_Tracer_field(tracer_name) .and. trim(tracer_name) /= "Concentration") then
+                tracer_tmp => extract_tensor_field(packed_state, "Packed"//trim(tracer_name), tracer_stat)
+                if (tracer_stat == 0) then
+                  tracer_min_max_before(ik, 1) = minval(tracer_tmp%val); call allmin(tracer_min_max_before(ik, 1))
+                  tracer_min_max_before(ik, 2) = maxval(tracer_tmp%val); call allmax(tracer_min_max_before(ik, 2))
+                end if
+              end if
+            end do
             do_reallocate_fields = .false.
 
             call get_option( '/timestepping/current_time', acctim )
@@ -1664,6 +1682,18 @@ contains
                 if (.not. have_option("/numerical_methods/do_not_bound_after_adapt")) then
                   if (has_temperature) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedTemperature", min_max_limits = min_max_limits_before)
                   if (has_concentration) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedConcentration" ,min_max_limits = concentration_min_max_limits_before)
+                  ! Bound tracer fields (PassiveTracer*, Tracer*, Species*) after adapt
+                  do ik = 1, n_tracer_sfields
+                    call get_option("/material_phase[0]/scalar_field["// int2str(ik - 1) //"]/name", tracer_name)
+                    if (is_Tracer_field(tracer_name) .and. trim(tracer_name) /= "Concentration") then
+                      tracer_tmp => extract_tensor_field(packed_state, "Packed"//trim(tracer_name), tracer_stat)
+                      if (tracer_stat == 0) then
+                        call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, &
+                          Mspars%small_acv%fin, Mspars%small_acv%col, &
+                          "Packed"//trim(tracer_name), min_max_limits = tracer_min_max_before(ik,:))
+                      end if
+                    end if
+                  end do
                 end if
                 ! SECOND INTERPOLATION CALL - After adapting the mesh ******************************
                 if (numberfields_CVGalerkin_interp > 0) then
@@ -1735,6 +1765,7 @@ contains
                     DEN_PFROZEN = 0.0
                 end if
             end if Conditional_ReallocatingFields
+            if (allocated(tracer_min_max_before)) deallocate(tracer_min_max_before)
         end subroutine adapt_mesh_mp
 
 
