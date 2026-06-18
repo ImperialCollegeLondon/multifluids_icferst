@@ -184,6 +184,8 @@ contains
            logical :: repeat_assemb_solve, assemble_collapsed_to_one_phase
            type(vector_field) :: solution
            real :: btrk
+           ! This is for strong temperture BC at well top
+           logical :: impose_strong_T_BC_wells
 
            !Initialise with an out of range value to be able to check it hasn't been
            totally_min_max = 1e30
@@ -383,7 +385,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            call allocate(Mmat%CV_RHS,nphase,tracer%mesh,"RHS")
            call allocate(solution,nphase,tracer%mesh,"sol_tracer")!; call zero(solution)
            ! Get underrelaxation factor from input, if not found set to 1 i.e. full update
-           call get_option("/numerical_methods/underrelaxation_for_thermal_equation/btrk", btrk, default=1.0)
+           call get_option("/numerical_methods/underrelaxation_for_thermal_equation/fixed_brtk", btrk, default=1.0)
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
                !Get information for capillary pressure to be use in CV_ASSEMB
@@ -427,6 +429,13 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    assemble_collapsed_to_one_phase = assemble_collapsed_to_one_phase)
                    ! vtracer=as_vector(tracer,dim=2)
                    ! call zero(vtracer)
+
+                   ! Specify strong T BC if necessary...
+                   ! not functional yet since we should apply strong BC based on upwind direction of pipe:
+                   ! i.e. strong T BC when injection and weak T BC when producing.
+                   impose_strong_T_BC_wells = .false.
+                   if (impose_strong_T_BC_wells) call impose_strong_bcs_wells_thermal(state, pipes_aux, Mdims, Mmat, ndgln, Mmat%petsc_ACV, tracer,Mmat%CV_RHS%val)
+
                    call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken);total_lIts = total_lIts + its_taken;
 
                !Copy solution back to tracer(not ideal...)
@@ -9690,6 +9699,64 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         call assemble( CMC_petsc )
         call deallocate( pressure_BCs )
       end subroutine
+
+    
+    ! This is the way for specifing strong temperature BC at the top of the well, it is useful to get around 
+    ! the slow buildup of temperature at the beginning of simulation.
+    subroutine impose_strong_bcs_wells_thermal(state, pipes_aux, Mdims, Mmat, ndgln, ACV_petsc, temperature,rhs_t)
+
+        ! form temperature ACV matrix using a colouring approach
+        type(multi_dimensions), intent(in) :: Mdims
+        type (multi_matrices), intent(in) :: Mmat
+        type( state_type ), dimension(:), intent( in ) :: state
+        type(multi_ndgln), intent(in) :: ndgln
+        type(petsc_csr_matrix), intent(inout)::  ACV_petsc
+        real, dimension (:,:), intent(inout) :: rhs_t
+        type( tensor_field ), intent(in) :: temperature
+        type (multi_pipe_package), intent(in) :: pipes_aux
+        INTEGER, DIMENSION ( 1, Mdims%npres, surface_element_count(temperature) ) :: WIC_T_BC_ALL
+        INTEGER, PARAMETER :: WIC_T_BC_DIRICHLET = 1
+        ! Local variables
+        INTEGER :: SELE, IPRES, CV_SILOC, CV_NOD, i, ierr, k
+        integer, dimension(Mdims%stotel) :: Impose_strong
+        type(tensor_field) :: temperature_BCs
+        type(scalar_field), pointer :: pipe_diameter
+
+        call get_entire_boundary_condition(temperature,&
+            ['weakdirichlet'],&
+            temperature_BCs,WIC_T_BC_ALL)
+        PIPE_Diameter => EXTRACT_SCALAR_FIELD(state(1), "DiameterPipe")
+        Impose_strong = -1; k = 1
+        !Only for wells
+        ACV_petsc%is_assembled=.false.
+        call assemble( ACV_petsc )
+        DO SELE = 1, Mdims%stotel
+          DO IPRES = 2, Mdims%npres
+            if (WIC_T_BC_ALL(1, IPRES, SELE ) == WIC_T_BC_DIRICHLET) then
+                DO CV_SILOC = 1, Mdims%cv_snloc
+                  CV_NOD = ndgln%suf_p((SELE-1)*Mdims%cv_snloc + CV_SILOC )
+                  if (.not. pipes_aux%impose_strongBCs(CV_NOD)) cycle
+                  Impose_strong(k) = ACV_petsc%row_numbering%gnn2unn( cv_nod, ipres )
+                  k = k + 1
+                  !Temperature BC should only be the temperature specified
+                  rhs_t(ipres,cv_nod) = temperature_BCs%val(1,IPRES, (SELE-1)*Mdims%cv_snloc + CV_SILOC )
+                  !print*, temperature_BCs%val(1,IPRES, (SELE-1)*Mdims%cv_snloc + CV_SILOC )
+                  end do
+            end if
+          END DO
+        end do
+        !Now we call MatZeroRows to zero the rows (not the diagonal)
+        i = 0
+        do k = 1, Mdims%stotel
+          if (Impose_strong(k) > 0) i = i + 1
+        end do
+        call MatZeroRows(ACV_petsc%M, i, Impose_strong(1:i), 1.0,PETSC_NULL_VEC, PETSC_NULL_VEC, ierr)
+        !Re-assemble just in case
+        ACV_petsc%is_assembled=.false.
+        call assemble( ACV_petsc )
+        call deallocate( temperature_BCs )
+      end subroutine
+
 
     !----------------------------------------------------------------------------------------
     !> @author Vinicius L S Silva

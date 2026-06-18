@@ -3082,6 +3082,14 @@ contains
         INTEGER, DIMENSION ( :,:,: ), allocatable :: WIC_P_BC_ALL
         type(tensor_field) :: pressure_BCs
         type(tensor_field), pointer :: pressure
+
+        ! we can specify strong T BC as well...
+        INTEGER, PARAMETER :: WIC_T_BC_DIRICHLET = 1
+        INTEGER, DIMENSION ( :,:,: ), allocatable :: WIC_T_BC_ALL
+        type(tensor_field) :: temperature_BCs
+        type(tensor_field), pointer :: temperature
+
+
         !Initialize memory, despite we call it, if it is already allocated no memory is re-allocated
         call allocate_multi_pipe_package(pipes_aux, Mdims, Mspars)
 
@@ -3117,18 +3125,24 @@ contains
             PIPE_Diameter => EXTRACT_SCALAR_FIELD(state(1), "DiameterPipe")
             call get_entire_boundary_condition(pressure, ['weakdirichlet','freesurface  '],&
                                                 pressure_BCs,WIC_P_BC_ALL)
+            
+            ! routine if we want to specify strong T BC
+            temperature=>extract_tensor_field(packed_state,"PackedTemperature", ipres)
+            allocate(WIC_T_BC_ALL(1, Mdims%npres, surface_element_count(tempearture)))
+            call get_entire_boundary_condition(temperature, ['weakdirichlet','freesurface  '],&
+                                                temperature_BCs,WIC_T_BC_ALL)
 
             DO SELE = 1, Mdims%stotel
               DO IPRES = 2, Mdims%npres
-                !Find element where we have a pressure BC defined
-                if (WIC_P_BC_ALL(1, IPRES, SELE ) == WIC_P_BC_DIRICHLET) then
+                !Find element where we have a pressure BC defined. now temperture BC is included.
+                if (WIC_P_BC_ALL(1, IPRES, SELE ) == WIC_P_BC_DIRICHLET .or. WIC_T_BC_ALL(1, IPRES, SELE ) == WIC_T_BC_DIRICHLET) then
                   DO CV_SILOC = 1, Mdims%cv_snloc
                     CV_NOD = ndgln%suf_p((SELE-1)*Mdims%cv_snloc + CV_SILOC )
                     !If pipe diameter = 0, no changes made
                     if (PIPE_Diameter%val(cv_nod) <= RM8) cycle
                     !If gamma =0 and pressure bc and P0DG then we need to impose strong BCs
                     if (maxval(abs(pipes_aux%GAMMA_PRES_ABS(:,:,cv_nod))) < RM8) then
-                      pipes_aux%impose_strongBCs(cv_nod) = .true.
+                      pipes_aux%impose_strongBCs(cv_nod) = .true.                  
                     end if
                   end do
                 end if
