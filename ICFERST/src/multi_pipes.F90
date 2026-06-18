@@ -3128,7 +3128,7 @@ contains
             
             ! routine if we want to specify strong T BC
             temperature=>extract_tensor_field(packed_state,"PackedTemperature", ipres)
-            allocate(WIC_T_BC_ALL(1, Mdims%npres, surface_element_count(tempearture)))
+            allocate(WIC_T_BC_ALL(1, Mdims%npres, surface_element_count(temperature)))
             call get_entire_boundary_condition(temperature, ['weakdirichlet','freesurface  '],&
                                                 temperature_BCs,WIC_T_BC_ALL)
 
