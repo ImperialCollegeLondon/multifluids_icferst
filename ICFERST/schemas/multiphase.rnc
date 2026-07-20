@@ -1761,6 +1761,17 @@ start =
             element do_not_bound_after_adapt {
                empty
             }?,
+            ## Disable the mass-conservative scaling of tracers/Concentration/Temperature across
+            ## the mesh-adaptivity interpolation. On by default, this switch is a debugging aid.
+            element disable_adapt_mass_conservation_tracers {
+               empty
+            }?,
+            ## Disable the mass-conservative scaling of the phase volume fractions across the
+            ## mesh-adaptivity interpolation (and the associated per-phase pore-volume restore).
+            ## On by default, this switch is a debugging aid.
+            element disable_adapt_mass_conservation_saturation {
+               empty
+            }?,
             ## This disable the limiters regarless of the precision used
             ## Limiters are quite expensive so if your simulation is slow it might be worth trying this.
             element disable_limiters {

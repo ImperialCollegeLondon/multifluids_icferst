@@ -225,6 +225,11 @@ contains
         type (multi_outfluxes) :: outfluxes
         ! Variables used in the CVGalerkin interpolation calculation
         integer, save :: numberfields_CVGalerkin_interp = -1
+        !MASS FIX: the adapt projection conserves int(field)dV, not the mass.
+        ! Fixed by scaling the fields by the conserved-quantity weight before the projection and unscaling after (see build_conserved_weight).
+        ! The saturation scaling is only safe together with Restore_Phase_Mass_SumOne, which repairs the mass that Set_Saturation_to_sum_one moves.
+        ! Both are on by default and can be disabled from /numerical_methods (set below).
+        logical :: massfix_scale_tracers, massfix_scale_saturation
         real :: t_adapt_threshold
         ! Calculate_mass_delta to store the change in mass calculated over the whole domain
         real, allocatable, dimension(:,:) :: calculate_mass_delta
@@ -256,6 +261,17 @@ contains
         double precision, ALLOCATABLE, dimension(:,:) :: concetration_phreeqc
         real :: total_mass_metal_before_adapt, total_mass_metal_after_adapt, total_mass_metal_after_correction, total_mass_metal_after_bound
         real, allocatable, dimension(:) :: total_mass_sat_before_adapt, total_mass_sat_after_adapt
+        !Per-phase pore volume (mass where massfix_use_rho) recorded before the adapt, the target Restore_Phase_Mass_SumOne puts back after it
+        real, allocatable, dimension(:) :: sat_pore_vol_before_adapt
+        !Per-phase density policy: .true. where the saturation scaling carries the nodal density (compressible, not Boussinesq). Filled by massfix_density_policy.
+        logical, allocatable, dimension(:) :: massfix_use_rho
+        !Snapshot of the well-block (jpres > 1) saturations around the post-adapt BSC call
+        real, allocatable, dimension(:,:) :: massfix_wellsat_snap
+        type( tensor_field ), pointer :: massfix_sat_f
+        integer :: massfix_jwell0
+        !Saturation snapshot just before Set_Saturation_to_sum_one, so the restore can confine its correction to the nodes that routine changed
+        real, allocatable, dimension(:,:) :: sat_pre_sumone
+        type( tensor_field ), pointer :: tempfield_sat
         logical :: viscosity_EOS
         character(len=PYTHON_FUNC_LEN) :: pyfunc
         type(vector_field), pointer :: cv_imm
@@ -281,6 +297,10 @@ contains
 
         !We may not want to compute always the stats
         write_all_stats = .not.have_option("/io/Sync_stat_file_with_vtu")
+
+        !Mass-conservative adaptivity is on by default. The disable switches are debugging aids
+        massfix_scale_tracers = .not. have_option("/numerical_methods/disable_adapt_mass_conservation_tracers")
+        massfix_scale_saturation = .not. have_option("/numerical_methods/disable_adapt_mass_conservation_saturation")
 
         ! Check wether we are using the CV_Galerkin method
         numberfields_CVGalerkin_interp=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
@@ -1492,6 +1512,388 @@ contains
             end if
         end subroutine create_dump_vtu_and_checkpoints
 
+        !>@brief Build the weight w applied to a field before the mesh-to-mesh projection so
+        !> that the projection conserves mass: projecting w*C and unscaling by the new-mesh w
+        !> conserves int(w*C)dV.
+        !>   weight_kind = 1  tracers/Concentration: w = phi * S
+        !>   weight_kind = 2  Temperature: w = S * ( phi*(rho cp)_fluid + (1-phi)*rho_rock*cp_rock ),
+        !>                    with phi = porosity_total where defined, as in cv-adv-dif
+        !>   weight_kind = 3  Saturation: w = phi (S is the field, excluded from its own weight)
+        !> The nodal density is included per phase only where it is not constant (compressible,
+        !> not Boussinesq): a constant density cancels between the scaling and the unscaling.
+        !> The nodal phi is the CV-volume-weighted average of the P0 porosity.
+        !> @author Meissam Bahlali
+        subroutine build_conserved_weight( weight_kind, weight )
+            integer, intent(in) :: weight_kind
+            real, dimension(:,:), allocatable, intent(inout) :: weight  ! (nphase, cv_nonods)
+            !local
+            type( vector_field ), pointer :: porosity_w, x_w
+            type( tensor_field ), pointer :: den_w, sat_w, rhocp_w
+            type( scalar_field ), pointer :: rock_den_w, rock_cp_w
+            type (multi_dev_shape_funs) :: DevFuns_w
+            integer, dimension( : ), pointer :: x_ndgln_w, cv_ndgln_w
+            real, dimension(:,:), allocatable :: aux_phi_w
+            real, dimension(:), allocatable :: aux_rock_w, volsum_w, phimax_w
+            logical :: is_boussinesq_w, have_rhocp_w, have_rock_w, have_phi_tot_w
+            logical, dimension(:), allocatable :: use_nodal_density_w
+            type( tensor_field ), pointer :: den_chk_w
+            integer :: ele_w, iloc_w, jloc_w, inod_w, j_w, jpres_w, w_stat, nph_w
+            real :: mm_w, rock_term_w
+
+            !Nodal density included per phase only where it varies (constant densities cancel)
+            !Evaluated per phase, once, outside the node loop
+            allocate( use_nodal_density_w( Mdims%nphase ) )
+            do j_w = 1, Mdims%nphase
+                is_boussinesq_w = &
+                     have_option( "/material_phase[" // int2str( j_w - 1 ) // &
+                                  "]/phase_properties/Density/compressible/Boussinesq_approximation" ) &
+                     .or. have_option( "/material_phase[" // int2str( j_w - 1 ) // &
+                                  "]/phase_properties/Density/python_state/Boussinesq_approximation" )
+                use_nodal_density_w( j_w ) = ( .not. is_boussinesq_w ) .and. &
+                     ( .not. have_option( "/material_phase[" // int2str( j_w - 1 ) // &
+                                  "]/phase_properties/Density/incompressible" ) )
+            end do
+            !PackedDensity is zeroed by pack_multistate until Calculate_All_Rhos has run, so recompute it before it is read
+            if ( any( use_nodal_density_w ) ) then
+                den_chk_w => extract_tensor_field( packed_state, "PackedDensity" )
+                if ( maxval( abs( den_chk_w%val ) ) <= 1.0e-20 ) then
+                    !Post-adapt: densities not yet recomputed on the new mesh
+                    call Calculate_All_Rhos( state, packed_state, Mdims )
+                end if
+            end if
+            !Temperature uses porosity_total where defined, matching cv-adv-dif (R_PHASE vs R_PHASE_TOTAL)
+            have_phi_tot_w = ( weight_kind == 2 ) .and. &
+                 have_option( "/porous_media/porous_properties/scalar_field::porosity_total" )
+            if ( have_phi_tot_w ) then
+                porosity_w => extract_vector_field( packed_state, "porosity_total" )
+            else
+                porosity_w => extract_vector_field( packed_state, "Porosity" )
+            end if
+            den_w => extract_tensor_field( packed_state, "PackedDensity" )
+            sat_w => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+            have_rhocp_w = .false. ; have_rock_w = .false.
+            if ( weight_kind == 2 ) then
+                rhocp_w => extract_tensor_field( packed_state, "PackedDensityHeatCapacity", w_stat )
+                have_rhocp_w = ( w_stat == 0 )
+                if ( have_rhocp_w ) then
+                    if ( maxval( abs( rhocp_w%val ) ) <= 1.0e-20 ) then
+                        !Post-adapt: not yet recomputed on the new mesh
+                        call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp = .true. )
+                    end if
+                end if
+                rock_den_w => extract_scalar_field( state(1), "porous_density", w_stat )
+                if ( w_stat == 0 ) then
+                    rock_cp_w => extract_scalar_field( state(1), "porous_heat_capacity", w_stat )
+                    have_rock_w = ( w_stat == 0 )
+                end if
+            end if
+            x_w => extract_vector_field( packed_state, "PressureCoordinate" )
+            x_ndgln_w => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
+            cv_ndgln_w => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
+
+            nph_w = size( den_w%val, 2 )
+            if ( allocated( weight ) ) deallocate( weight )
+            allocate( weight( nph_w, Mdims%cv_nonods ) )
+            allocate( aux_phi_w( size( porosity_w%val, 1 ), Mdims%cv_nonods ) )
+            allocate( aux_rock_w( Mdims%cv_nonods ), volsum_w( Mdims%cv_nonods ) )
+            aux_phi_w = 0.0 ; aux_rock_w = 0.0 ; volsum_w = 0.0
+
+            call allocate_multi_dev_shape_funs(CV_funs, DevFuns_w)
+            do ele_w = 1, Mdims%totele
+                call DETNLXR(ele_w, x_w%val, x_ndgln_w, CV_funs%cvweight, CV_funs%CVFEN, CV_funs%CVFENLX_ALL, DevFuns_w)
+                rock_term_w = 0.0
+                if ( weight_kind == 2 .and. have_rock_w ) then
+                    rock_term_w = rock_den_w%val( min( size( rock_den_w%val ), ele_w ) ) * &
+                                  rock_cp_w%val( min( size( rock_cp_w%val ), ele_w ) )
+                end if
+                do iloc_w = 1, Mdims%cv_nloc
+                    inod_w = cv_ndgln_w( ( ele_w - 1 ) * Mdims%cv_nloc + iloc_w )
+                    do jloc_w = 1, Mdims%cv_nloc
+                        mm_w = sum( CV_funs%cvn( iloc_w, : ) * CV_funs%cvn( jloc_w, : ) * DevFuns_w%detwei )
+                        volsum_w( inod_w ) = volsum_w( inod_w ) + mm_w
+                        aux_phi_w( :, inod_w ) = aux_phi_w( :, inod_w ) + mm_w * porosity_w%val( :, ele_w )
+                        if ( weight_kind == 2 .and. have_rock_w ) then
+                            !(1-porosity_w) matches the rock term in cv-adv-dif
+                            aux_rock_w( inod_w ) = aux_rock_w( inod_w ) + &
+                                mm_w * ( 1.0 - porosity_w%val( 1, ele_w ) ) * rock_term_w
+                        end if
+                    end do
+                end do
+            end do
+            call deallocate_multi_dev_shape_funs(DevFuns_w)
+
+            do inod_w = 1, Mdims%cv_nonods
+                do j_w = 1, nph_w
+                    !Contiguous phase -> pressure-block mapping; min(j,npres) is wrong for nphase > npres > 1
+                    jpres_w = ( ( j_w - 1 ) * size( aux_phi_w, 1 ) ) / max( nph_w, 1 ) + 1
+                    if ( weight_kind == 2 ) then
+                        ! Temperature: w = S * ( phi*(rho cp)_f + (1-phi)*rho_rock*cp_rock )
+                        ! rock scaled by S as in cv-adv-dif (contributes once in total since sum_p S_p = 1)
+                        if ( have_rhocp_w ) then
+                            weight( j_w, inod_w ) = ( aux_phi_w( jpres_w, inod_w ) * &
+                                rhocp_w%val( 1, min( j_w, size( rhocp_w%val, 2 ) ), inod_w ) &
+                                + aux_rock_w( inod_w ) ) / max( volsum_w( inod_w ), 1.0e-30 ) * &
+                                max( sat_w%val( 1, min( j_w, size( sat_w%val, 2 ) ), inod_w ), 1.0e-10 )
+                        else
+                            weight( j_w, inod_w ) = ( aux_phi_w( jpres_w, inod_w ) * &
+                                den_w%val( 1, min( j_w, size( den_w%val, 2 ) ), inod_w ) &
+                                + aux_rock_w( inod_w ) ) / max( volsum_w( inod_w ), 1.0e-30 ) * &
+                                max( sat_w%val( 1, min( j_w, size( sat_w%val, 2 ) ), inod_w ), 1.0e-10 )
+                        end if
+                    else if ( weight_kind == 3 ) then
+                        ! Saturation: w = phi * rho (rho omitted when constant per phase)
+                        ! Well-block (jpres > 1) phases ride consistent interpolation, which the scaling cannot help and only perturbs at the locked pipe nodes: identity
+                        if ( jpres_w > 1 ) then
+                            weight( j_w, inod_w ) = 1.0
+                        else
+                            weight( j_w, inod_w ) = aux_phi_w( jpres_w, inod_w ) / max( volsum_w( inod_w ), 1.0e-30 )
+                            if ( use_nodal_density_w( min( j_w, Mdims%nphase ) ) ) &
+                                weight( j_w, inod_w ) = weight( j_w, inod_w ) * &
+                                den_w%val( 1, min( j_w, size( den_w%val, 2 ) ), inod_w )
+                        end if
+                    else
+                        ! Tracers/Concentration: w = phi * rho * S (rho omitted when constant)
+                        weight( j_w, inod_w ) = ( aux_phi_w( jpres_w, inod_w ) / max( volsum_w( inod_w ), 1.0e-30 ) ) * &
+                            max( sat_w%val( 1, min( j_w, size( sat_w%val, 2 ) ), inod_w ), 1.0e-10 )
+                        if ( use_nodal_density_w( min( j_w, Mdims%nphase ) ) ) &
+                            weight( j_w, inod_w ) = weight( j_w, inod_w ) * &
+                            den_w%val( 1, min( j_w, size( den_w%val, 2 ) ), inod_w )
+                    end if
+                    weight( j_w, inod_w ) = max( weight( j_w, inod_w ), 1.0e-30 )
+                end do
+            end do
+            !Nodes with negligible porosity carry no pore volume: exclude them from the scaling (identity weight) instead of dividing the projected field by a near-zero weight there, which amplifies projection ringing unboundedly.
+            !Weighted mass at these nodes is below 1e-8 of the local scale, so the conservation cost is of that order.
+            !Temperature (kind 2) is excluded: its rock term keeps the weight finite at phi = 0.
+            if ( weight_kind /= 2 ) then
+                allocate( phimax_w( size( aux_phi_w, 1 ) ) )
+                do jpres_w = 1, size( aux_phi_w, 1 )
+                    phimax_w( jpres_w ) = 0.0
+                    do inod_w = 1, Mdims%cv_nonods
+                        phimax_w( jpres_w ) = max( phimax_w( jpres_w ), &
+                            aux_phi_w( jpres_w, inod_w ) / max( volsum_w( inod_w ), 1.0e-30 ) )
+                    end do
+                    call allmax( phimax_w( jpres_w ) )
+                end do
+                do inod_w = 1, Mdims%cv_nonods
+                    do j_w = 1, nph_w
+                        jpres_w = ( ( j_w - 1 ) * size( aux_phi_w, 1 ) ) / max( nph_w, 1 ) + 1
+                        if ( aux_phi_w( jpres_w, inod_w ) / max( volsum_w( inod_w ), 1.0e-30 ) < &
+                             1.0e-8 * phimax_w( jpres_w ) ) weight( j_w, inod_w ) = 1.0
+                    end do
+                end do
+                deallocate( phimax_w )
+            end if
+            !An everywhere-zero weight means an input field was never filled in
+            !We divide by the weight later, so stop here instead of corrupting the fields
+            if ( maxval( weight ) <= 1.0e-20 ) then
+                FLAbort( "build_conserved_weight: weight is zero everywhere - an input field was not filled in" )
+            end if
+            deallocate( aux_phi_w, aux_rock_w, volsum_w, use_nodal_density_w )
+        end subroutine build_conserved_weight
+
+        !>@brief Multiply the transported fields by the weight before adapting (direction = +1)
+        !> and divide by it after (-1). Covers Temperature, Concentration and every tracer,
+        !> plus their Old copies.
+        !> @author Meissam Bahlali
+        subroutine scale_conserved_fields( direction )
+            integer, intent(in) :: direction
+            !local
+            real, dimension(:,:), allocatable :: weight_tr, weight_te
+            integer :: ik_w
+            character(len=OPTION_PATH_LEN) :: fname_w
+            logical, save :: warned_components_w = .false.
+
+            if ( .not. massfix_scale_tracers ) return
+            !Component mass fractions are outside the conserved measures of this fix
+            if ( direction > 0 .and. .not. warned_components_w ) then
+                if ( has_scalar_field( state( 1 ), "ComponentMassFractionPhase1" ) ) then
+                    ewrite(1,*) 'WARNING: compositional fields (ComponentMassFraction*) are not covered by the'
+                    ewrite(1,*) 'mass-conservative adaptivity scaling. Their mass may drift across adapts'
+                    warned_components_w = .true.
+                end if
+            end if
+            call build_conserved_weight( 1, weight_tr )
+            if ( has_temperature ) call build_conserved_weight( 2, weight_te )
+
+            !Temperature
+            if ( has_temperature ) then
+                call apply_weight_to_packed( "PackedTemperature", weight_te, direction )
+                call apply_weight_to_packed( "PackedOldTemperature", weight_te, direction )
+            end if
+            !Concentration
+            if ( has_concentration ) then
+                call apply_weight_to_packed( "PackedConcentration", weight_tr, direction )
+                call apply_weight_to_packed( "PackedOldConcentration", weight_tr, direction )
+            end if
+            !Other tracer fields (PassiveTracer*, Tracer*, Species*)
+            do ik_w = 0, option_count("/material_phase[0]/scalar_field") - 1
+                call get_option("/material_phase[0]/scalar_field["// int2str(ik_w) //"]/name", fname_w)
+                if ( is_Tracer_field(fname_w) .and. trim(fname_w) /= "Concentration" ) then
+                    call apply_weight_to_packed( "Packed"//trim(fname_w), weight_tr, direction )
+                    call apply_weight_to_packed( "PackedOld"//trim(fname_w), weight_tr, direction )
+                end if
+            end do
+
+            if ( allocated( weight_tr ) ) deallocate( weight_tr )
+            if ( allocated( weight_te ) ) deallocate( weight_te )
+        end subroutine scale_conserved_fields
+
+        !>@brief Fill massfix_use_rho: .true. for the phases whose saturation scaling carries
+        !> the nodal density. Deliberately a verbatim copy of the test in build_conserved_weight:
+        !> the restore must repair in exactly the measure the scaling conserves.
+        !> @author Meissam Bahlali
+        subroutine massfix_density_policy()
+            integer :: jp_m
+            logical :: is_bsq_m
+            if ( .not. allocated( massfix_use_rho ) ) allocate( massfix_use_rho( Mdims%nphase ) )
+            do jp_m = 1, Mdims%nphase
+                is_bsq_m = &
+                     have_option( "/material_phase[" // int2str( jp_m - 1 ) // &
+                                  "]/phase_properties/Density/compressible/Boussinesq_approximation" ) &
+                     .or. have_option( "/material_phase[" // int2str( jp_m - 1 ) // &
+                                  "]/phase_properties/Density/python_state/Boussinesq_approximation" )
+                massfix_use_rho( jp_m ) = ( .not. is_bsq_m ) .and. &
+                     ( .not. have_option( "/material_phase[" // int2str( jp_m - 1 ) // &
+                                  "]/phase_properties/Density/incompressible" ) ) .and. &
+                     ( ( jp_m - 1 ) * Mdims%npres ) / Mdims%nphase == 0
+                !The last condition keeps well-block (jpres > 1) phases in the volume measure: they are excluded from the scaling (identity weight in build_conserved_weight), so mass is not what the adapt conserves for them
+            end do
+        end subroutine massfix_density_policy
+
+        !>@brief Pack-zero guard for the mass-measured captures and the restore: PackedDensity
+        !> is zeroed by pack_multistate until Calculate_All_Rhos runs, so mass-measure
+        !> integrations must recompute it first. Bypassed when no phase is mass-measured.
+        !> @author Meissam Bahlali
+        subroutine massfix_ensure_density()
+            type( tensor_field ), pointer :: den_m
+            if ( .not. allocated( massfix_use_rho ) ) return
+            if ( .not. any( massfix_use_rho ) ) return
+            den_m => extract_tensor_field( packed_state, "PackedDensity" )
+            if ( maxval( abs( den_m%val ) ) <= 1.0e-20 ) then
+                call Calculate_All_Rhos( state, packed_state, Mdims )
+            end if
+        end subroutine massfix_ensure_density
+
+        !>@brief Density priming for compressible + thermal (or concentration-dependent EOS)
+        !> runs: inside the adapt window the scalar fields are scaled, so a Calculate_All_Rhos
+        !> triggered before the unscale would read a scaled T/C and produce a wrong density.
+        !> A Picard sweep on snapshots { rho from current T,C -> trial S-unscale ->
+        !> trial T,C-unscale } x3 leaves the converged, physical-T density in PackedDensity
+        !> and puts the scaled fields back untouched. Bypassed unless a compressible phase and
+        !> a scaled T or C field are both present.
+        !> @author Meissam Bahlali
+        subroutine massfix_prime_density_physical_T()
+            real, dimension( :, : ), allocatable :: s_snap_p, t_snap_p, c_snap_p
+            real, dimension( :, : ), allocatable :: weight_p
+            type( tensor_field ), pointer :: sat_p, tem_p, con_p
+            integer :: is_p
+            logical, save :: warned_eos_p = .false.
+            if ( .not. allocated( massfix_use_rho ) ) return
+            if ( .not. any( massfix_use_rho ) ) return
+            if ( .not. massfix_scale_tracers ) return
+            if ( .not. ( has_temperature .or. has_concentration ) ) return
+            !The Picard sweep below relies on a bounded EOS (e.g. Linear_eos). An unbounded linear_in_pressure density can diverge when evaluated on the scaled fields
+            if ( .not. warned_eos_p ) then
+                do is_p = 1, Mdims%nphase
+                    if ( massfix_use_rho( is_p ) .and. have_option( "/material_phase[" // &
+                         int2str( is_p - 1 ) // "]/phase_properties/Density/compressible/linear_in_pressure" ) ) then
+                        ewrite(1,*) 'WARNING: phase', is_p, 'uses the unbounded linear_in_pressure EOS with the'
+                        ewrite(1,*) 'mass-conservative adaptivity density priming. The bounded Linear_eos is recommended'
+                        warned_eos_p = .true.
+                    end if
+                end do
+            end if
+            sat_p => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+            allocate( s_snap_p( size( sat_p%val, 2 ), size( sat_p%val, 3 ) ) )
+            s_snap_p = sat_p%val( 1, :, : )
+            if ( has_temperature ) then
+                tem_p => extract_tensor_field( packed_state, "PackedTemperature" )
+                allocate( t_snap_p( size( tem_p%val, 2 ), size( tem_p%val, 3 ) ) )
+                t_snap_p = tem_p%val( 1, :, : )
+            end if
+            if ( has_concentration ) then
+                con_p => extract_tensor_field( packed_state, "PackedConcentration" )
+                allocate( c_snap_p( size( con_p%val, 2 ), size( con_p%val, 3 ) ) )
+                c_snap_p = con_p%val( 1, :, : )
+            end if
+            do is_p = 1, 3
+                !rho from the current T,C: sweep 1 reads the scaled values (the Picard start), later sweeps the previous trial unscale
+                call Calculate_All_Rhos( state, packed_state, Mdims )
+                sat_p%val( 1, :, : ) = s_snap_p
+                call scale_saturation_conserved( -1 )
+                if ( has_temperature ) then
+                    tem_p%val( 1, :, : ) = t_snap_p
+                    call build_conserved_weight( 2, weight_p )
+                    call apply_weight_to_packed( "PackedTemperature", weight_p, -1 )
+                    deallocate( weight_p )
+                end if
+                if ( has_concentration ) then
+                    con_p%val( 1, :, : ) = c_snap_p
+                    call build_conserved_weight( 1, weight_p )
+                    call apply_weight_to_packed( "PackedConcentration", weight_p, -1 )
+                    deallocate( weight_p )
+                end if
+            end do
+            !Final rho from the converged physical T,C; then put the scaled fields back untouched
+            call Calculate_All_Rhos( state, packed_state, Mdims )
+            sat_p%val( 1, :, : ) = s_snap_p
+            if ( has_temperature ) then
+                tem_p%val( 1, :, : ) = t_snap_p
+                deallocate( t_snap_p )
+            end if
+            if ( has_concentration ) then
+                con_p%val( 1, :, : ) = c_snap_p
+                deallocate( c_snap_p )
+            end if
+            deallocate( s_snap_p )
+        end subroutine massfix_prime_density_physical_T
+
+        !>@brief Same idea for the saturation, with w = phi. Order matters: S feeds the tracer
+        !> and temperature weights, so scale_conserved_fields(+1) runs before
+        !> scale_saturation_conserved(+1), and after the adapt the saturation is unscaled
+        !> first and scale_conserved_fields(-1) last, once the saturation is final.
+        !> @author Meissam Bahlali
+        subroutine scale_saturation_conserved( direction )
+            integer, intent(in) :: direction
+            !local
+            real, dimension(:,:), allocatable :: weight_sa
+            if ( .not. massfix_scale_saturation ) return
+            call build_conserved_weight( 3, weight_sa )
+            call apply_weight_to_packed( "PackedPhaseVolumeFraction", weight_sa, direction )
+            call apply_weight_to_packed( "PackedOldPhaseVolumeFraction", weight_sa, direction )
+            if ( allocated( weight_sa ) ) deallocate( weight_sa )
+        end subroutine scale_saturation_conserved
+
+        !>@brief Helper of scale_conserved_fields: apply/remove the weight on one
+        !> packed tensor field, if it exists.
+        !> @author Meissam Bahlali
+        subroutine apply_weight_to_packed( packed_name, weight, direction )
+            character(len=*), intent(in) :: packed_name
+            real, dimension(:,:), intent(in) :: weight
+            integer, intent(in) :: direction
+            !local
+            type( tensor_field ), pointer :: fld_w
+            integer :: w_stat, j_w, inod_w
+
+            fld_w => extract_tensor_field( packed_state, trim(packed_name), w_stat )
+            if ( w_stat /= 0 ) return
+            do inod_w = 1, size( fld_w%val, 3 )
+                do j_w = 1, size( fld_w%val, 2 )
+                    if ( direction > 0 ) then
+                        fld_w%val( :, j_w, inod_w ) = fld_w%val( :, j_w, inod_w ) * &
+                            weight( min( j_w, size( weight, 1 ) ), inod_w )
+                    else
+                        fld_w%val( :, j_w, inod_w ) = fld_w%val( :, j_w, inod_w ) / &
+                            weight( min( j_w, size( weight, 1 ) ), inod_w )
+                    end if
+                end do
+            end do
+            !In parallel the owned nodes see a full element stencil, so their
+            !weights are right. Just sync the halo copies
+            if ( IsParallel() ) call halo_update( fld_w )
+        end subroutine apply_weight_to_packed
+
         !>This subroutine performs all the necessary steps to adapt the mesh and create new memory
         subroutine adapt_mesh_mp()
             !local variables
@@ -1586,6 +1988,18 @@ contains
                         if( have_option( '/io/stat/output_before_adapts' ) ) call write_diagnostics( state, current_time, dt, &
                             itime, not_to_move_det_yet = .true. , non_linear_iterations = FPI_eq_taken)
                         call run_diagnostics( state )
+                        !Record the per-phase pore volume (mass for compressible phases) on the OLD mesh, while the saturation is still unscaled: the target the restore puts back.
+                        !Same integrator as the restore's measurement, so the closure is exact.
+                        if ( massfix_scale_saturation ) then
+                            if ( allocated( sat_pore_vol_before_adapt ) ) deallocate( sat_pore_vol_before_adapt )
+                            allocate( sat_pore_vol_before_adapt( Mdims%nphase ) )
+                            call massfix_density_policy()
+                            call massfix_ensure_density()
+                            call Sat_pore_volume_per_phase( Mdims, packed_state, state, CV_funs, &
+                                 sat_pore_vol_before_adapt, use_rho = massfix_use_rho )
+                        end if
+                        call scale_conserved_fields( +1 )
+                        call scale_saturation_conserved( +1 )
                         call adapt_state( state, metric_tensor, suppress_reference_warnings = .true.)
                         call update_state_post_adapt( state, metric_tensor, dt, sub_state, nonlinear_iterations, &
                             nonlinear_iterations_adapt )
@@ -1599,6 +2013,18 @@ contains
                         if( have_option( '/io/stat/output_before_adapts' ) ) call write_diagnostics( state, current_time, dt, &
                             timestep, not_to_move_det_yet = .true. )
                         call run_diagnostics( state )
+                        !Record the per-phase pore volume (mass for compressible phases) on the OLD mesh, while the saturation is still unscaled: the target the restore puts back.
+                        !Same integrator as the restore's measurement, so the closure is exact.
+                        if ( massfix_scale_saturation ) then
+                            if ( allocated( sat_pore_vol_before_adapt ) ) deallocate( sat_pore_vol_before_adapt )
+                            allocate( sat_pore_vol_before_adapt( Mdims%nphase ) )
+                            call massfix_density_policy()
+                            call massfix_ensure_density()
+                            call Sat_pore_volume_per_phase( Mdims, packed_state, state, CV_funs, &
+                                 sat_pore_vol_before_adapt, use_rho = massfix_use_rho )
+                        end if
+                        call scale_conserved_fields( +1 )
+                        call scale_saturation_conserved( +1 )
                         call adapt_state_prescribed( state, current_time )
                         call update_state_post_adapt( state, metric_tensor, dt, sub_state, nonlinear_iterations, &
                             nonlinear_iterations_adapt)
@@ -1660,7 +2086,9 @@ contains
                 call put_CSR_spars_into_packed_state()
 
                 if (is_porous_media) then
-                    call get_RockFluidProp(state, packed_state, Mdims, ndgln, post_adapt=.true.)
+                    !defer_sat_flip: the saturation is still scaled here, so the Land-trapping flip update and cap are deferred to Apply_Land_flip_post_adapt below
+                    call get_RockFluidProp(state, packed_state, Mdims, ndgln, post_adapt=.true., &
+                        defer_sat_flip=massfix_scale_saturation)
                     cv_imm => extract_vector_field(packed_state, "CV_Immobile_Fraction")
                     do i = 1, size(state)
                         call insert(state(i), cv_imm, "CV_Immobile_Fraction")
@@ -1673,12 +2101,55 @@ contains
                         call retrieve_pipes_coords(state, packed_state, Mdims, ndgln, eles_with_pipe)
                         call initialize_pipes_package_and_gamma(state, packed_state, pipes_aux, Mdims, Mspars, ndgln)
                     end if
+                    !Porosity and pipes exist on the new mesh now, so undo the saturation scaling (after priming the density from the physical T,C) so the bounding acts on the real saturation
+                    !The bounding stays ON: its neighbour diffusion cleans the ringing left by the projection of the scaled field.
+                    call massfix_prime_density_physical_T()
+                    call scale_saturation_conserved( -1 )
+                    !Deferred Land-trapping flip update and cap, now on the real saturation, so BSC/sum-one/restore below see the correct immobile fractions
+                    if ( massfix_scale_saturation ) &
+                        call Apply_Land_flip_post_adapt(state, packed_state, Mdims, ndgln)
                     if (.not. have_option("/numerical_methods/do_not_bound_after_adapt")) then
+                      !Well-block (jpres > 1) phases are excluded from the saturation BSC by snapshot/reimpose
+                      if ( Mdims%npres > 1 ) then
+                          massfix_jwell0 = Mdims%nphase / Mdims%npres + 1
+                          massfix_sat_f => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+                          allocate( massfix_wellsat_snap( Mdims%nphase - massfix_jwell0 + 1, Mdims%cv_nonods ) )
+                          massfix_wellsat_snap = massfix_sat_f%val( 1, massfix_jwell0:Mdims%nphase, : )
+                      end if
                       !Ensure that the saturation is physically plausible by diffusing unphysical values to neighbouring nodes
                       call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,"PackedPhaseVolumeFraction", for_sat=.true.)
+                      if ( Mdims%npres > 1 ) then
+                          massfix_sat_f%val( 1, massfix_jwell0:Mdims%nphase, : ) = massfix_wellsat_snap
+                          deallocate( massfix_wellsat_snap )
+                          if ( IsParallel() ) call halo_update( massfix_sat_f )
+                      end if
+                    end if
+                    if ( massfix_scale_saturation ) then
+                        !Snapshot: the restore confines its correction to the nodes sum-one changes
+                        tempfield_sat => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+                        if ( allocated( sat_pre_sumone ) ) deallocate( sat_pre_sumone )
+                        allocate( sat_pre_sumone( Mdims%nphase, Mdims%cv_nonods ) )
+                        sat_pre_sumone = tempfield_sat%val( 1, :, : )
                     end if
                     call Set_Saturation_to_sum_one(mdims, packed_state, state)!<= just in case, cap unphysical values if there are still some
+                    !Set_Saturation_to_sum_one restored sum_p S_p = 1 at the cost of the per-phase pore volume
+                    !put the volume back with an update that leaves sum-one untouched
+                    if ( massfix_scale_saturation ) then
+                        if ( allocated( sat_pore_vol_before_adapt ) ) then
+                            !Density guard: on the new mesh PackedDensity is zeroed until Calculate_All_Rhos runs
+                            call massfix_ensure_density()
+                            call Restore_Phase_Mass_SumOne( Mdims, packed_state, state, CV_funs, &
+                                 sat_pore_vol_before_adapt, sat_pre_sumone, &
+                                 use_rho = massfix_use_rho )
+                        end if
+                        if ( allocated( sat_pre_sumone ) ) deallocate( sat_pre_sumone )
+                    end if
                 end if
+                !Non-porous runs skip the block above, so unscale the saturation here
+                if (.not. is_porous_media) call massfix_prime_density_physical_T()
+                if (.not. is_porous_media) call scale_saturation_conserved( -1 )
+                !Undo the tracer/T scaling last: the saturation is final, so the weight matches
+                call scale_conserved_fields( -1 )
                 if (.not. have_option("/numerical_methods/do_not_bound_after_adapt")) then
                   if (has_temperature) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedTemperature", min_max_limits = min_max_limits_before)
                   if (has_concentration) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedConcentration" ,min_max_limits = concentration_min_max_limits_before)

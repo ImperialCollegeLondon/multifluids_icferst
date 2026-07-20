@@ -771,6 +771,8 @@ contains
     contains
       subroutine linear_EOS_formula(rho_internal)
         real, dimension( : ), intent( inout ) :: rho_internal
+        !Local R0/Coef for the extra-scalar-field loop: reusing eos_coefs(2:3) leaked them into the next evaluation of this formula (called several times per phase)
+        real :: sf_R0_l, sf_Coef_l
         rho_internal = 1.0
         !Add the concentration contribution
         if (eos_coefs( 3 ) > 0 ) then
@@ -793,10 +795,10 @@ contains
           if (stat /=0) then
             FLAbort("ERROR: Field defined for Boussinesq EOS does not exists. Field name: "// trim(option_name))
           end if!We now reuse coefficients
-          call get_option( trim(buffer)//"scalar_field["// int2str( ifield - 1 )//"]/R0", eos_coefs( 2 ))!Reference
-          call get_option( trim(buffer)//"scalar_field["// int2str( ifield - 1 )//"]/Coef", eos_coefs( 3 ))!Coefficient
+          call get_option( trim(buffer)//"scalar_field["// int2str( ifield - 1 )//"]/R0", sf_R0_l )!Reference
+          call get_option( trim(buffer)//"scalar_field["// int2str( ifield - 1 )//"]/Coef", sf_Coef_l )!Coefficient
           !Now include into EOS
-          rho_internal =  rho_internal + eos_coefs( 3 ) * (pnt_sfield % val - eos_coefs( 2 ) )
+          rho_internal =  rho_internal + sf_Coef_l * (pnt_sfield % val - sf_R0_l )
         end do
         !Finally multiply by the reference density
         rho_internal = rho_internal * eos_coefs( 1 )
@@ -2625,7 +2627,7 @@ contains
     !>@param  ndgln Global to local variables
     !>@param current_time current time in type(real). Only for the first time ever, not for checkpointing, overwrite the saturation flipping value with the initial one
     !>@param update_only If true then only the Immobile fraction is updated (for Land trapping modelling only)
-    subroutine get_RockFluidProp(state, packed_state, Mdims, ndgln, current_time, update_only, post_adapt)
+    subroutine get_RockFluidProp(state, packed_state, Mdims, ndgln, current_time, update_only, post_adapt, defer_sat_flip)
         implicit none
         type( multi_dimensions ), intent( in ) :: Mdims
         type(state_type), dimension(:), intent(inout) :: state
@@ -2634,6 +2636,9 @@ contains
         real, optional, intent(in) :: current_time
         logical, optional, intent(in) :: update_only
         logical, optional, intent(in) :: post_adapt
+        !When true, skip the saturation-dependent Land updates (Update_saturation_flipping and the post-adapt cap).
+        !Inside the adapt window the saturation is still scaled by the mass fix, so they are deferred to Apply_Land_flip_post_adapt, called after the unscale
+        logical, optional, intent(in) :: defer_sat_flip
         !Local variables
         type (tensor_field), pointer :: t_field, Saturation, SaturationOld
         type (scalar_field), target :: targ_Store
@@ -2896,13 +2901,16 @@ contains
                   !Then the immobile fraction depends on the Land coefficient as follows (this must occur outside the non-linear loop!)
                   !Formula is: Immobile = S_flip/(1+C*S_flip). Where S_flip is the saturation
                   !when changing from imbibition to drainage or the other way round
-                  call Update_saturation_flipping(saturation_flip%val(cv_nod), Saturation%val(1,iphase,cv_nod), SaturationOld%val(1,iphase,cv_nod))
+                  !When defer_sat_flip the saturation is scaled (mass fix, adapt window), so the flip update and cap are deferred to Apply_Land_flip_post_adapt
+                  if (.not. present_and_true(defer_sat_flip)) then
+                    call Update_saturation_flipping(saturation_flip%val(cv_nod), Saturation%val(1,iphase,cv_nod), SaturationOld%val(1,iphase,cv_nod))
 
-                  if (present_and_true(post_adapt)) then
-                    ! Cap sat_flip <= sat: independent interpolation of both fields after adapt can give sat_flip > sat => which inflates Land trapped fraction
-                    saturation_flip%val(cv_nod) = sign( &
-                        min(abs(saturation_flip%val(cv_nod)), Saturation%val(1,iphase,cv_nod)), &
-                        saturation_flip%val(cv_nod))
+                    if (present_and_true(post_adapt)) then
+                      ! Cap sat_flip <= sat: independent interpolation of both fields after adapt can give sat_flip > sat => which inflates Land trapped fraction
+                      saturation_flip%val(cv_nod) = sign( &
+                          min(abs(saturation_flip%val(cv_nod)), Saturation%val(1,iphase,cv_nod)), &
+                          saturation_flip%val(cv_nod))
+                    end if
                   end if
 
                   auxR = abs(saturation_flip%val(cv_nod))
@@ -2933,9 +2941,9 @@ contains
         if (allocated(use_tabulated_relperm_phase)) deallocate(use_tabulated_relperm_phase)
         if (allocated(use_tabulated_pc_phase)) deallocate(use_tabulated_pc_phase)
 
-    contains
+    end subroutine get_RockFluidProp
 
-    !>@brief:  This internal subroutine checks the if we are flipping from drainage to imbibition, or the other way round,
+    !>@brief:  This subroutine checks the if we are flipping from drainage to imbibition, or the other way round,
     !> and updates if required the value stored in Saturation_flipping
     !> Saturation_flipping stores both the value and the history, being positive if the phase is increasing and negative if the phase is decreasing.
     !> Therefore its minimum absolute value is non-zero
@@ -2958,9 +2966,94 @@ contains
           sat_flip = sign(old_sat, sat - old_sat )
       end if
 
-    end subroutine
+    end subroutine Update_saturation_flipping
 
-    end subroutine get_RockFluidProp
+    !>@brief Deferred half of the Land-trapping post-adapt update.
+    !> Inside the adapt window the saturation is still scaled by the mass fix, so get_RockFluidProp is called there with defer_sat_flip.
+    !> This routine, called right after the unscale, applies the flip update and the post-adapt cap on the real saturation.
+    !> It then recomputes the Land immobile fraction from scratch (reset to the same 1e10 init: the flip update can raise |S_flip|, so a re-min on the deferred value would be wrong).
+    !> No-op for phases without the Land option.
+    !> @author Meissam Bahlali
+    subroutine Apply_Land_flip_post_adapt(state, packed_state, Mdims, ndgln)
+        implicit none
+        type( multi_dimensions ), intent( in ) :: Mdims
+        type(state_type), dimension(:), intent(inout) :: state
+        type( multi_ndgln ), intent( in ) :: ndgln
+        type( state_type ), intent( inout ) :: packed_state
+        !Local variables
+        type (tensor_field), pointer :: Saturation, SaturationOld
+        type (scalar_field), target :: targ_Store
+        type (scalar_field), pointer :: s_field, saturation_flip
+        type (vector_field), pointer :: position
+        type(mesh_type), pointer :: fl_mesh
+        type(mesh_type) :: Auxmesh
+        real, dimension(:,:), pointer :: CV_immobile_fraction
+        character(len=500) :: path
+        real :: auxR
+        integer :: iphase, ele, cv_iloc, cv_nod
+        logical :: any_land
+
+        !Fast exit when no reservoir phase uses Land trapping
+        any_land = .false.
+        do iphase = 1, Mdims%n_in_pres
+            any_land = any_land .or. &
+                have_option("/material_phase["//int2str(iphase-1)//&
+                    "]/multiphase_properties/type_Formula/immobile_fraction/scalar_field::Land_coefficient/prescribed/value") &
+                .or. have_option("/material_phase["//int2str(iphase-1)//&
+                    "]/multiphase_properties/type_Tabulated/Land_trapping/scalar_field::Land_coefficient/prescribed/value")
+        end do
+        if (.not. any_land) return
+
+        Saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+        SaturationOld => extract_tensor_field(packed_state,"PackedOldPhaseVolumeFraction")
+        call get_var_from_packed_state(packed_state, CV_Immobile_Fraction = CV_Immobile_Fraction)
+        s_field => extract_scalar_field(state(1),1)
+        position => get_external_coordinate_field(packed_state, s_field%mesh)
+        fl_mesh => extract_mesh( state(1), "P0DG" )
+        Auxmesh = fl_mesh
+        call allocate (targ_Store, Auxmesh, "Temporary_Apply_Land_flip")
+
+        do iphase = 1, Mdims%n_in_pres
+            if (have_option("/material_phase["//int2str(iphase-1)//&
+                    "]/multiphase_properties/type_Formula/immobile_fraction/scalar_field::Land_coefficient/prescribed/value")) then
+                path = "/material_phase["//int2str(iphase-1)//&
+                    "]/multiphase_properties/type_Formula/immobile_fraction/scalar_field::Land_coefficient/prescribed/value"
+            else if (have_option("/material_phase["//int2str(iphase-1)//&
+                    "]/multiphase_properties/type_Tabulated/Land_trapping/scalar_field::Land_coefficient/prescribed/value")) then
+                path = "/material_phase["//int2str(iphase-1)//&
+                    "]/multiphase_properties/type_Tabulated/Land_trapping/scalar_field::Land_coefficient/prescribed/value"
+            else
+                cycle
+            end if
+            !Extract the Land parameter, exactly as get_RockFluidProp does
+            call initialise_field_over_regions(targ_Store, trim(path) , position)
+            saturation_flip => extract_scalar_field(state(iphase), "Saturation_flipping")
+            !Reset before the re-min, exactly as get_RockFluidProp initialises it
+            CV_immobile_fraction(iphase, :) = 1e10
+            do ele = 1, Mdims%totele
+                do cv_iloc = 1, Mdims%cv_nloc
+                    cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
+                    call Update_saturation_flipping(saturation_flip%val(cv_nod), &
+                        Saturation%val(1,iphase,cv_nod), SaturationOld%val(1,iphase,cv_nod))
+                    ! Cap sat_flip <= sat, as in get_RockFluidProp's post_adapt branch
+                    saturation_flip%val(cv_nod) = sign( &
+                        min(abs(saturation_flip%val(cv_nod)), Saturation%val(1,iphase,cv_nod)), &
+                        saturation_flip%val(cv_nod))
+                    auxR = abs(saturation_flip%val(cv_nod))
+                    CV_immobile_fraction(iphase, cv_nod) = min(CV_immobile_fraction(iphase, cv_nod), &
+                        auxR/(1. + targ_Store%val(ele) * auxR))
+                end do
+            end do
+            !Refresh the per-phase diagnostic field if declared
+            if (have_option("/material_phase["//int2str(iphase-1)// &
+                    "]/scalar_field::CV_ImmobileFraction")) then
+                s_field => extract_scalar_field(state(iphase), "CV_ImmobileFraction")
+                s_field%val(:) = CV_immobile_fraction(iphase, :)
+            end if
+        end do
+
+        call deallocate(targ_Store)
+    end subroutine Apply_Land_flip_post_adapt
 
     !>JWL equation functions
     function JWL( A, B, w, R1, R2, E0, p,  roe, ro) result(fro)

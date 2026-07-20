@@ -45,6 +45,7 @@ module solvers_module
     private
 
     public :: BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one,&
+         Sat_pore_volume_per_phase, Restore_Phase_Mass_SumOne,&
          Initialise_Saturation_sums_one, auto_backtracking, get_Anderson_acceleration_new_guess, &
          non_porous_ensure_sum_to_one, duplicate_petsc_matrix, scale_PETSc_matrix, petsc_Stokes_solver,&
          scale_PETSc_matrix_by_vector,PETSc_MatVec
@@ -93,7 +94,20 @@ contains
         real, dimension( :, : ), allocatable :: scalar_field_dev_max, scalar_field_dev_min
         real, dimension( :, : ), allocatable :: r_min, r_max
         integer, dimension( :, : ), allocatable :: ii_min, ii_max
-        real, dimension( : ), allocatable :: mass_cv, mass_cv_sur
+        !Weighted CV mass (phase, cv node) so the redistribution conserves int(w*field)dV, the mass, instead of int(field)dV
+        !Same weights as build_conserved_weight (Multiphase_TimeLoop.F90): tracers w = phi*S, saturation w = phi, temperature w = S*(phi*(rho cp)_f + (1-phi)*rho_rock*cp_rock).
+        !The nodal density is included per phase, only where it is not constant.
+        real, dimension( :, : ), allocatable :: mass_cv, mass_cv_sur
+        real, dimension( :, : ), allocatable :: aux_phi_mass
+        real, dimension( : ), allocatable :: aux_rock_mass
+        type( vector_field ), pointer :: porosity_w
+        type( tensor_field ), pointer :: den_w, sat_w, rhocp_w
+        type( scalar_field ), pointer :: rock_den_w, rock_cp_w
+        logical :: is_temperature_field, is_boussinesq_w, have_rhocp_w, have_rock_w, have_phi_tot_w
+        logical, dimension(:), allocatable :: use_nodal_density_w
+        character( len = OPTION_PATH_LEN ) :: den_path_w
+        integer :: jpres, w_stat, p_den_w, h_cap_w, b1_w, b2_w
+        real :: rock_term_w, clipped_mass_w, headroom_w, frac_w
         integer :: ndim1, ndim2,  i, j, knod, inod, jnod, count, ii, jj, loc_its, loc_its2, its, gl_its, cv_iloc
         logical :: changed, changed_something
         real :: max_change, error_changed, max_max_error, scalar_field_dev, mass_off, alt_max, alt_min
@@ -120,33 +134,117 @@ contains
         allocate( scalar_field_dev_max( ndim1, ndim2 ), scalar_field_dev_min( ndim1, ndim2 ) )
         allocate( r_min( ndim1, ndim2 ), r_max( ndim1, ndim2 ) )
         allocate( ii_min( ndim1, ndim2 ), ii_max( ndim1, ndim2 ) )
-        allocate( mass_cv( Mdims%cv_nonods ), mass_cv_sur( Mdims%cv_nonods ) )
+        allocate( mass_cv( ndim2, Mdims%cv_nonods ), mass_cv_sur( ndim2, Mdims%cv_nonods ) )
         ufield => extract_tensor_field( packed_state, "PackedVelocity" )
 
         x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
         cv_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
         x => extract_vector_field( packed_state, "PressureCoordinate" )
-        mass_cv = 0.0
+        is_temperature_field = ( index( trim(Field_name), "Temperature" ) > 0 )
+        !Nodal density included per phase only where it varies (constant densities cancel)
+        allocate( use_nodal_density_w( ndim2 ) )
+        do j = 1, ndim2
+            write( den_path_w, '(a,i0,a)' ) "/material_phase[", min( j, Mdims%nphase ) - 1, &
+                 "]/phase_properties/Density/"
+            is_boussinesq_w = &
+                 have_option( trim( den_path_w ) // "compressible/Boussinesq_approximation" ) &
+                 .or. have_option( trim( den_path_w ) // "python_state/Boussinesq_approximation" )
+            use_nodal_density_w( j ) = ( .not. is_boussinesq_w ) .and. &
+                 ( .not. have_option( trim( den_path_w ) // "incompressible" ) )
+        end do
+        !Temperature uses porosity_total where defined, matching cv-adv-dif (R_PHASE vs R_PHASE_TOTAL)
+        have_phi_tot_w = is_temperature_field .and. &
+             have_option( "/porous_media/porous_properties/scalar_field::porosity_total" )
+        if ( have_phi_tot_w ) then
+            porosity_w => extract_vector_field( packed_state, "porosity_total" )
+        else
+            porosity_w => extract_vector_field( packed_state, "Porosity" )   ! = 1 if not porous media
+        end if
+        den_w => extract_tensor_field( packed_state, "PackedDensity" )   ! nodal, (1, nphase, cv_nonods)
+        sat_w => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+        have_rhocp_w = .false. ; have_rock_w = .false.
+        if ( is_temperature_field ) then
+            rhocp_w => extract_tensor_field( packed_state, "PackedDensityHeatCapacity", w_stat )
+            have_rhocp_w = ( w_stat == 0 )
+            rock_den_w => extract_scalar_field( state(1), "porous_density", w_stat )
+            if ( w_stat == 0 ) then
+                rock_cp_w => extract_scalar_field( state(1), "porous_heat_capacity", w_stat )
+                have_rock_w = ( w_stat == 0 )
+            end if
+        end if
+        !aux_phi_mass = int(N_i*phi) per CV. aux_rock_mass = int(N_i*(1-phi)*rho_rock*cp_rock), temperature only
+        allocate( aux_phi_mass( size( porosity_w%val, 1 ), Mdims%cv_nonods ) )
+        allocate( aux_rock_mass( Mdims%cv_nonods ) )
+        aux_phi_mass = 0.0 ; aux_rock_mass = 0.0
         call allocate_multi_dev_shape_funs(CV_funs, DevFuns)
         do  ele = 1, Mdims%totele
             !Retrieve DevFuns%detwei
             call DETNLXR(ele, X%val, x_ndgln, CV_funs%cvweight, CV_funs%CVFEN, CV_funs%CVFENLX_ALL, DevFuns)
 
+            rock_term_w = 0.0
+            if ( is_temperature_field .and. have_rock_w ) then
+                p_den_w = min( size( rock_den_w%val ), ele )
+                h_cap_w = min( size( rock_cp_w%val ), ele )
+                rock_term_w = rock_den_w%val( p_den_w ) * rock_cp_w%val( h_cap_w )
+            end if
             do iloc = 1, Mdims%cv_nloc
                 inod = cv_ndgln( ( ele - 1 ) * Mdims%cv_nloc + iloc )
                 do jloc = 1, Mdims%cv_nloc
                     mm = sum( CV_funs%cvn( iloc, : ) * CV_funs%cvn( jloc, : ) * DevFuns%detwei )
-                    mass_cv( inod ) = mass_cv( inod ) + mm
+                    aux_phi_mass( :, inod ) = aux_phi_mass( :, inod ) + mm * porosity_w%val( :, ele )
+                    if ( is_temperature_field .and. have_rock_w ) then
+                        aux_rock_mass( inod ) = aux_rock_mass( inod ) + &
+                            mm * ( 1.0 - porosity_w%val( 1, ele ) ) * rock_term_w
+                    end if
                 end do
             end do
         end do
+        !Combine with the nodal factors to obtain the conserved-quantity weight
+        mass_cv = 0.0
+        do inod = 1, Mdims%cv_nonods
+            do j = 1, ndim2
+                !Contiguous phase -> pressure-block mapping (see Sat_pore_volume_per_phase)
+                jpres = ( ( j - 1 ) * size( aux_phi_mass, 1 ) ) / max( ndim2, 1 ) + 1
+                if ( is_temperature_field ) then
+                    ! w = S * ( phi*(rho cp)_fluid + (1-phi)*rho_rock*cp_rock ). Rock scaled by S as in cv-adv-dif
+                    ! An unpopulated rhocp falls through to den_w. The floor below guards the rest
+                    if ( have_rhocp_w .and. maxval( abs( rhocp_w%val ) ) > 1.0e-20 ) then
+                        mass_cv( j, inod ) = ( aux_phi_mass( jpres, inod ) * &
+                            rhocp_w%val( 1, min( j, size( rhocp_w%val, 2 ) ), inod ) &
+                            + aux_rock_mass( inod ) ) * &
+                            max( sat_w%val( 1, min( j, size( sat_w%val, 2 ) ), inod ), 1.0e-10 )
+                    else
+                        mass_cv( j, inod ) = ( aux_phi_mass( jpres, inod ) * &
+                            den_w%val( 1, min( j, size( den_w%val, 2 ) ), inod ) &
+                            + aux_rock_mass( inod ) ) * &
+                            max( sat_w%val( 1, min( j, size( sat_w%val, 2 ) ), inod ), 1.0e-10 )
+                    end if
+                else if ( present_and_true( for_sat ) ) then
+                    ! saturation: w = phi (S is the field, excluded from its own weight)
+                    mass_cv( j, inod ) = aux_phi_mass( jpres, inod )
+                    if ( use_nodal_density_w( j ) .and. maxval( abs( den_w%val ) ) > 1.0e-20 ) &
+                        mass_cv( j, inod ) = mass_cv( j, inod ) * &
+                        den_w%val( 1, min( j, size( den_w%val, 2 ) ), inod )
+                else
+                    ! tracers / concentration: w = phi * S
+                    mass_cv( j, inod ) = aux_phi_mass( jpres, inod ) * &
+                        max( sat_w%val( 1, min( j, size( sat_w%val, 2 ) ), inod ), 1.0e-10 )
+                    if ( use_nodal_density_w( j ) .and. maxval( abs( den_w%val ) ) > 1.0e-20 ) &
+                        mass_cv( j, inod ) = mass_cv( j, inod ) * &
+                        den_w%val( 1, min( j, size( den_w%val, 2 ) ), inod )
+                end if
+                !The weight is used as a divisor in the redistribution below.
+                mass_cv( j, inod ) = max( mass_cv( j, inod ), 1.0e-30 )
+            end do
+        end do
+        deallocate( aux_phi_mass, aux_rock_mass, use_nodal_density_w )
         mass_cv_sur = 0.0
         do inod = 1, Mdims%cv_nonods
             !Since everything is local, we overcycle and then we can avoid halo_updates
             ! if ( .not. node_owned( field, inod ) ) cycle
             do count = small_findrm( inod ), small_findrm( inod + 1 ) - 1
                 jnod = small_colm( count )
-                mass_cv_sur(inod) = mass_cv_sur(inod) + mass_cv( jnod )
+                mass_cv_sur(:,inod) = mass_cv_sur(:,inod) + mass_cv( :, jnod )
             end do
         end do
         !Establish bounds
@@ -156,8 +254,11 @@ contains
 
             do inod = 1, Mdims%cv_nonods
                 do ii = 1, ndim2!phases
+                    !Immobile fractions are summed over the phase's own pressure block: sum-one holds per block, so another block's immobile must not tighten these bounds
+                    b1_w = ( ( ( ii - 1 ) * Mdims%npres ) / Mdims%nphase ) * ( Mdims%nphase / Mdims%npres ) + 1
+                    b2_w = b1_w + Mdims%nphase / Mdims%npres - 1
                     field_min(:, ii, inod) = CV_Immobile_Fraction(ii, inod)
-                    field_max(:, ii, inod) = 1.0 - sum(CV_Immobile_Fraction(:,inod))&
+                    field_max(:, ii, inod) = 1.0 - sum(CV_Immobile_Fraction(b1_w:b2_w,inod))&
                         + CV_Immobile_Fraction(ii,inod)
                 end do
             end do
@@ -193,14 +294,14 @@ contains
                                     else
                                         scalar_field_dev = 0.0
                                     end if
-                                    if ( scalar_field_dev * mass_cv ( jnod ) > r_max( i, j ) ) then
+                                    if ( scalar_field_dev * mass_cv ( j, jnod ) > r_max( i, j ) ) then
                                         scalar_field_dev_max( i, j ) = scalar_field_dev
-                                        r_max( i, j ) = scalar_field_dev * mass_cv( jnod )
+                                        r_max( i, j ) = scalar_field_dev * mass_cv( j, jnod )
                                         ii_max( i, j ) = jnod
                                     end if
-                                    if ( scalar_field_dev * mass_cv ( jnod ) < r_min( i, j ) ) then
+                                    if ( scalar_field_dev * mass_cv ( j, jnod ) < r_min( i, j ) ) then
                                         scalar_field_dev_min( i, j ) = scalar_field_dev
-                                        r_min( i, j ) = scalar_field_dev * mass_cv( jnod )
+                                        r_min( i, j ) = scalar_field_dev * mass_cv( j, jnod )
                                         ii_min( i, j ) = jnod
                                     end if
                                 end do
@@ -214,11 +315,11 @@ contains
                                 jj = ii_min( i, j )
                                 if ( ii /= 0 .and. jj /= 0 ) then
                                     if ( abs( r_max( i, j ) ) > abs( r_min( i, j ) ) ) then
-                                        alt_max = ( r_max( i, j ) + r_min( i, j ) ) / mass_cv( ii )
+                                        alt_max = ( r_max( i, j ) + r_min( i, j ) ) / mass_cv( j, ii )
                                         alt_min = 0.0
                                     else
                                         alt_max = 0.0
-                                        alt_min = ( r_max( i, j ) + r_min( i, j ) ) / mass_cv( jj )
+                                        alt_min = ( r_max( i, j ) + r_min( i, j ) ) / mass_cv( j, jj )
                                     end if
                                     max_change = max( max_change, abs( -scalar_field_dev_max( i, j ) + alt_max ) )
                                     max_change = max( max_change, abs( -scalar_field_dev_min( i, j ) + alt_min ) )
@@ -260,8 +361,10 @@ contains
                     if ( .not. node_owned( field, inod ) ) cycle
                     do count = small_findrm( inod ), small_findrm( inod + 1 ) - 1
                         jnod = small_colm( count )
-                        mass_off = mass_cv( jnod ) / mass_cv_sur( jnod )
-                        field_alt_val( :, :, inod ) = field_alt_val( :, :, inod ) + mass_off * field_dev_val( :, :, jnod )
+                        do j = 1, ndim2
+                            mass_off = mass_cv( j, jnod ) / mass_cv_sur( j, jnod )
+                            field_alt_val( :, j, inod ) = field_alt_val( :, j, inod ) + mass_off * field_dev_val( :, j, jnod )
+                        end do
                     end do ! do count = small_findrm( inod ), small_findrm( inod + 1 ) - 1
                 end do ! do inod = 1, Mdims%cv_nonods
                 ! w_relax\in[0,1]: - This relaxation is used because we
@@ -281,6 +384,63 @@ contains
             call allmax( max_max_error )
             if ( max_max_error < error_tol ) exit
         end do ! gl_its
+        !SAFETY STOP: if the redistribution above did not converge, enforce the bounds with a clip-and-reinject that conserves the weighted mass, and log any unrecovered residual
+        if ( max_max_error >= error_tol ) then
+            ewrite(1,*) 'WARNING BoundedSolutionCorrections: not converged after ', ngl_its, &
+                ' iterations (residual ', max_max_error, ') for ', trim(Field_name), &
+                ' - applying conservative clip-and-reinject backstop'
+            do j = 1, ndim2
+                do i = 1, ndim1
+                    !First, clip and account the weighted mass removed (positive = mass removed)
+                    !Owned nodes only: halo copies are counted by their owner, values are synced at the final halo_update
+                    clipped_mass_w = 0.0
+                    do inod = 1, Mdims%cv_nonods
+                        if ( field%val( i, j, inod ) > field_max( i, j, inod ) ) then
+                            if ( node_owned( field, inod ) ) clipped_mass_w = clipped_mass_w + &
+                                ( field%val( i, j, inod ) - field_max( i, j, inod ) ) * mass_cv( j, inod )
+                            field%val( i, j, inod ) = field_max( i, j, inod )
+                        else if ( field%val( i, j, inod ) < field_min( i, j, inod ) ) then
+                            if ( node_owned( field, inod ) ) clipped_mass_w = clipped_mass_w + &
+                                ( field%val( i, j, inod ) - field_min( i, j, inod ) ) * mass_cv( j, inod )
+                            field%val( i, j, inod ) = field_min( i, j, inod )
+                        end if
+                    end do
+                    call allsum( clipped_mass_w )
+                    !Second, reinject into available headroom (2 passes are enough)
+                    do its = 1, 2
+                        if ( abs( clipped_mass_w ) <= 1.0e-12 ) exit
+                        headroom_w = 0.0
+                        do inod = 1, Mdims%cv_nonods
+                            if ( .not. node_owned( field, inod ) ) cycle
+                            if ( clipped_mass_w > 0.0 ) then
+                                headroom_w = headroom_w + &
+                                    ( field_max( i, j, inod ) - field%val( i, j, inod ) ) * mass_cv( j, inod )
+                            else
+                                headroom_w = headroom_w + &
+                                    ( field%val( i, j, inod ) - field_min( i, j, inod ) ) * mass_cv( j, inod )
+                            end if
+                        end do
+                        call allsum( headroom_w )
+                        if ( headroom_w <= 1.0e-30 ) exit
+                        frac_w = min( 1.0, abs( clipped_mass_w ) / headroom_w )
+                        do inod = 1, Mdims%cv_nonods
+                            if ( clipped_mass_w > 0.0 ) then
+                                field%val( i, j, inod ) = field%val( i, j, inod ) + &
+                                    frac_w * ( field_max( i, j, inod ) - field%val( i, j, inod ) )
+                            else
+                                field%val( i, j, inod ) = field%val( i, j, inod ) - &
+                                    frac_w * ( field%val( i, j, inod ) - field_min( i, j, inod ) )
+                            end if
+                        end do
+                        clipped_mass_w = clipped_mass_w - sign( frac_w * headroom_w, clipped_mass_w )
+                    end do
+                    if ( abs( clipped_mass_w ) > 1.0e-12 ) then
+                        ewrite(1,*) '        component ', i, j, &
+                            ': UNRECOVERED weighted mass (no headroom): ', clipped_mass_w
+                    end if
+                end do
+            end do
+        end if
         !After performing everything update halos only once...
         if (IsParallel()) call halo_update( field )
 
@@ -712,15 +872,25 @@ contains
                   if(pipe_diameter%val(cv_nod)<=1d-8) cycle
                 end if                      !Do not go out of the wells domain!!!
                 moveable_sat = 1.0 - sum(CV_Immobile_Fraction(i_start:i_end, cv_nod))
-                !Work in normalized saturation here
-                Normalized_sat(i_start:i_end) = (satura(i_start:i_end,cv_nod) - &
-                    CV_Immobile_Fraction(i_start:i_end, cv_nod))/moveable_sat
-                sum_of_phases = sum(Normalized_sat(i_start:i_end))
-                correction = (1.0 - sum_of_phases)
-                !Spread the error to all the phases weighted by their moveable presence in that CV
-                !Increase the range to look for solutions by allowing oscillations below 0.01 percent
-                if (abs(correction) > 1d-8) satura(i_start:i_end, cv_nod) = (Normalized_sat(i_start:i_end) * &
-                    (1.0 + correction/sum_of_phases))* moveable_sat + CV_Immobile_Fraction(i_start:i_end, cv_nod)
+                if (moveable_sat > 1.0e-10) then
+                  !Work in normalized saturation here
+                  Normalized_sat(i_start:i_end) = (satura(i_start:i_end,cv_nod) - &
+                      CV_Immobile_Fraction(i_start:i_end, cv_nod))/moveable_sat
+                  sum_of_phases = sum(Normalized_sat(i_start:i_end))
+                  correction = (1.0 - sum_of_phases)
+                  !Spread the error to all the phases weighted by their moveable presence in that CV
+                  !Increase the range to look for solutions by allowing oscillations below 0.01 percent
+                  if (abs(correction) > 1d-8) then
+                    if (abs(sum_of_phases) > 1.0e-10) then
+                      satura(i_start:i_end, cv_nod) = (Normalized_sat(i_start:i_end) * &
+                          (1.0 + correction/sum_of_phases))* moveable_sat + CV_Immobile_Fraction(i_start:i_end, cv_nod)
+                    else
+                      !Every phase sits at its immobile fraction: the proportional spread is undefined (0/0), so share the moveable pore space equally instead
+                      satura(i_start:i_end, cv_nod) = moveable_sat/real(i_end - i_start + 1) + &
+                          CV_Immobile_Fraction(i_start:i_end, cv_nod)
+                    end if
+                  end if
+                end if
                 !Make sure saturation is between bounds after the modification
                 do iphase = i_start, i_end
                     minsat = CV_Immobile_Fraction(iphase, cv_nod)
@@ -741,6 +911,8 @@ contains
                   if (ipres>1) then
                     if(pipe_diameter%val(cv_nod)<=1d-8) cycle
                   end if
+                  !moveable_sat must be computed before the bounds clamp below (it was read one node late, making the clamp node-order dependent)
+                  moveable_sat = 1.0 - sum(CV_Immobile_Fraction(i_start:i_end, cv_nod))
                   !Make sure saturation is between bounds before the modification
                   do iphase = i_start, i_end
                       minsat = CV_Immobile_Fraction(iphase, cv_nod)
@@ -748,7 +920,7 @@ contains
                       satura(iphase,cv_nod) =  min(max(minsat, satura(iphase,cv_nod)),maxsat)
                   end do
 
-                  moveable_sat = 1.0 - sum(CV_Immobile_Fraction(i_start:i_end, cv_nod))
+                  if (moveable_sat <= 1.0e-10) cycle
                   !Work in normalize saturation here
                   Normalized_sat(i_start:i_end) = (satura(i_start:i_end,cv_nod) - &
                       CV_Immobile_Fraction(i_start:i_end, cv_nod))/moveable_sat
@@ -765,6 +937,281 @@ contains
         if (IsParallel())call halo_update(sat_field)
 
     end subroutine Set_Saturation_to_sum_one
+
+    !>@brief Per-phase pore volume v_p = sum_nod phi_nod * V_nod * S_p,nod, using the same
+    !> mass-lumped nodal porosity as build_conserved_weight so both measure the same quantity.
+    !> Called before the adapt to record the target and after it to measure the error.
+    !> Where use_rho(p) is .true. the phase is integrated in its mass measure
+    !> int(phi rho_p S_p)dV instead (nodal PackedDensity, which the caller must have primed).
+    !> @author Meissam Bahlali
+    subroutine Sat_pore_volume_per_phase( Mdims, packed_state, state, CV_funs, vol_phase, use_rho )
+        Implicit none
+        !Global variables
+        type( multi_dimensions ), intent( in ) :: Mdims
+        type( state_type ), intent( inout ) :: packed_state
+        type( state_type ), dimension( : ), intent( in ) :: state
+        type( multi_shape_funs ), intent( inout ) :: CV_funs
+        real, dimension( : ), intent( out ) :: vol_phase
+        logical, dimension( : ), intent( in ), optional :: use_rho
+        !Local variables
+        type( multi_dev_shape_funs ) :: DevFuns
+        type( tensor_field ), pointer :: sat_v
+        type( tensor_field ), pointer :: den_v
+        type( vector_field ), pointer :: porosity_v, x_v
+        real, dimension( :, : ), allocatable :: cvol_v
+        integer, dimension( : ), pointer :: x_ndgln_v, cv_ndgln_v
+        integer :: ele_v, iloc_v, jloc_v, inod_v, j_v, jpres_v
+        real :: mm_v, wnod_v
+        logical :: any_rho_v
+
+        sat_v      => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+        porosity_v => extract_vector_field( packed_state, "Porosity" )
+        x_v        => extract_vector_field( packed_state, "PressureCoordinate" )
+        x_ndgln_v  => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
+        cv_ndgln_v => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
+
+        any_rho_v = .false.
+        if ( present( use_rho ) ) any_rho_v = any( use_rho )
+        if ( any_rho_v ) den_v => extract_tensor_field( packed_state, "PackedDensity" )
+
+        !cvol_v(jpres, inod) = int( N_i * phi ) over the CV, i.e. the nodal pore volume
+        allocate( cvol_v( size( porosity_v%val, 1 ), Mdims%cv_nonods ) )
+        cvol_v = 0.0
+        call allocate_multi_dev_shape_funs( CV_funs, DevFuns )
+        do ele_v = 1, Mdims%totele
+            call DETNLXR( ele_v, X_v%val, x_ndgln_v, CV_funs%cvweight, CV_funs%CVFEN, &
+                 CV_funs%CVFENLX_ALL, DevFuns )
+            do iloc_v = 1, Mdims%cv_nloc
+                inod_v = cv_ndgln_v( ( ele_v - 1 ) * Mdims%cv_nloc + iloc_v )
+                do jloc_v = 1, Mdims%cv_nloc
+                    mm_v = sum( CV_funs%cvn( iloc_v, : ) * CV_funs%cvn( jloc_v, : ) * DevFuns%detwei )
+                    cvol_v( :, inod_v ) = cvol_v( :, inod_v ) + mm_v * porosity_v%val( :, ele_v )
+                end do
+            end do
+        end do
+        call deallocate_multi_dev_shape_funs( DevFuns )
+
+        vol_phase = 0.0
+        do j_v = 1, Mdims%nphase
+            !Contiguous phase -> pressure-block mapping
+            !min(j,npres) is wrong for nphase > npres > 1
+            jpres_v = ( ( j_v - 1 ) * size( cvol_v, 1 ) ) / Mdims%nphase + 1
+            do inod_v = 1, Mdims%cv_nonods
+                if ( .not. node_owned( sat_v, inod_v ) ) cycle
+                wnod_v = cvol_v( jpres_v, inod_v )
+                if ( any_rho_v ) then
+                    if ( use_rho( j_v ) ) wnod_v = wnod_v * den_v%val( 1, j_v, inod_v )
+                end if
+                vol_phase( j_v ) = vol_phase( j_v ) + wnod_v * sat_v%val( 1, j_v, inod_v )
+            end do
+            call allsum( vol_phase( j_v ) )
+        end do
+        deallocate( cvol_v )
+    end subroutine Sat_pore_volume_per_phase
+
+
+    !>@brief Restore the per-phase pore volume (or mass, where use_rho) after the adapt,
+    !> without disturbing sum_p S_p = 1.
+    !> The phi(*rho) scaling makes the projection conserve each phase's pore volume, but
+    !> leaves sum_p S_p /= 1 at porosity contrasts. Set_Saturation_to_sum_one repairs the
+    !> sum pointwise, which is not volume conserving. This routine repairs the repair: a
+    !> pairwise update with sum_p delta_p = 0 at every node (so sum-one is preserved by
+    !> construction), sized so each phase recovers its target, confined to the nodes
+    !> sum-one actually changed. The closure floor is the change in total pore volume
+    !> across the adapt, a purely geometric effect.
+    !> Where use_rho(p) the target/measure is the phase mass int(phi rho_p S_p)dV; each
+    !> pair then closes the DRIVEN phase exactly and ledgers the partner's second-order
+    !> residual. Without use_rho the algorithm is identical to the volume-only path.
+    !> Only for use after an adapt, where a target exists.
+    !> @author Meissam Bahlali
+    subroutine Restore_Phase_Mass_SumOne( Mdims, packed_state, state, CV_funs, vol_target, sat_pre, use_rho )
+        Implicit none
+        !Global variables
+        type( multi_dimensions ), intent( in ) :: Mdims
+        type( state_type ), intent( inout ) :: packed_state
+        type( state_type ), dimension( : ), intent( in ) :: state
+        type( multi_shape_funs ), intent( inout ) :: CV_funs
+        real, dimension( : ), intent( in ) :: vol_target
+        !Saturation immediately before Set_Saturation_to_sum_one: marks where that repair acted
+        real, dimension( :, : ), intent( in ) :: sat_pre
+        !Per-phase mass measure selector, same convention as Sat_pore_volume_per_phase
+        logical, dimension( : ), intent( in ), optional :: use_rho
+        !Local variables
+        type( multi_dev_shape_funs ) :: DevFuns
+        type( tensor_field ), pointer :: sat_r
+        type( tensor_field ), pointer :: den_r
+        type( vector_field ), pointer :: porosity_r, x_r
+        real, dimension( :, : ), pointer :: CV_Immobile_Fraction
+        real, dimension( : ), allocatable :: vol_now, room_r, wgt_r
+        real, dimension( :, : ), allocatable :: cvol_r
+        logical, dimension( : ), allocatable :: rho_on_r
+        integer, dimension( : ), pointer :: x_ndgln_r, cv_ndgln_r
+        integer :: ele_r, iloc_r, jloc_r, inod_r, j_r, jpres_r, ipair_r, ipass_r
+        integer :: i1_r, i2_r, jd_r, jq_r
+        !A node only receives volume back if the phase was meaningfully present there before sum-one ran:
+        !trims on spurious background specks (projection ringing) are deliberately not restored. Their volume goes back into the plume band instead
+        real, parameter :: plume_smin_r = 1.0e-2
+        real :: mm_r, err_r, wgt_tot_r, delta_r, dn_r, moved_r, imm_sum_r
+        real :: sd_r, wnod_r, wq_r, moved_p_r, moved_p_tot_r
+        logical :: down_r
+
+        if ( Mdims%nphase < 2 ) return
+
+        allocate( rho_on_r( Mdims%nphase ) )
+        rho_on_r = .false.
+        if ( present( use_rho ) ) rho_on_r = use_rho
+
+        allocate( vol_now( Mdims%nphase ) )
+        call Sat_pore_volume_per_phase( Mdims, packed_state, state, CV_funs, vol_now, &
+             use_rho = rho_on_r )
+
+        if ( any( rho_on_r ) ) den_r => extract_tensor_field( packed_state, "PackedDensity" )
+
+        sat_r      => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+        porosity_r => extract_vector_field( packed_state, "Porosity" )
+        x_r        => extract_vector_field( packed_state, "PressureCoordinate" )
+        x_ndgln_r  => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
+        cv_ndgln_r => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
+        call get_var_from_packed_state( packed_state, CV_Immobile_Fraction = CV_Immobile_Fraction )
+
+        !Nodal pore volume, the weight that turns a saturation change into a volume change
+        allocate( cvol_r( size( porosity_r%val, 1 ), Mdims%cv_nonods ) )
+        allocate( room_r( Mdims%cv_nonods ), wgt_r( Mdims%cv_nonods ) )
+        cvol_r = 0.0
+        call allocate_multi_dev_shape_funs( CV_funs, DevFuns )
+        do ele_r = 1, Mdims%totele
+            call DETNLXR( ele_r, X_r%val, x_ndgln_r, CV_funs%cvweight, CV_funs%CVFEN, &
+                 CV_funs%CVFENLX_ALL, DevFuns )
+            do iloc_r = 1, Mdims%cv_nloc
+                inod_r = cv_ndgln_r( ( ele_r - 1 ) * Mdims%cv_nloc + iloc_r )
+                do jloc_r = 1, Mdims%cv_nloc
+                    mm_r = sum( CV_funs%cvn( iloc_r, : ) * CV_funs%cvn( jloc_r, : ) * DevFuns%detwei )
+                    cvol_r( :, inod_r ) = cvol_r( :, inod_r ) + mm_r * porosity_r%val( :, ele_r )
+                end do
+            end do
+        end do
+        call deallocate_multi_dev_shape_funs( DevFuns )
+
+        !Phases are corrected in pairs (j, j+1) WITHIN each pressure block. Each transfer has sum_p delta_p = 0 at every node so the block's sum-one survives by construction
+        !Pairs never cross a block boundary: that would preserve the global sum while breaking both block sums
+        do ipair_r = 1, Mdims%nphase - 1
+            j_r = ipair_r
+            !Skip pairs that straddle a block boundary (blocks are contiguous, nphase/npres each)
+            if ( ( ( j_r - 1 ) * Mdims%npres ) / Mdims%nphase /= &
+                 ( j_r * Mdims%npres ) / Mdims%nphase ) cycle
+            jpres_r = ( ( j_r - 1 ) * size( cvol_r, 1 ) ) / Mdims%nphase + 1
+            !Skip well blocks (jpres > 1). They are excluded from the scaling (identity weight in
+            !build_conserved_weight), so the projection introduces no per-phase volume error to
+            !repair, and this loop has no pipe-node gating: acting here would move the well phases
+            !off their locked support and drain them over the adapts
+            if ( jpres_r > 1 ) cycle
+            !Immobile fractions are summed over this pressure block only, as in Set_Saturation_to_sum_one
+            i1_r = ( ( ( j_r - 1 ) * Mdims%npres ) / Mdims%nphase ) * ( Mdims%nphase / Mdims%npres ) + 1
+            i2_r = i1_r + Mdims%nphase / Mdims%npres - 1
+            !Driven phase: j, unless j+1 is the only compressible one of the pair (its mass is the physical requirement). sd_r = sign of the driven measure change per unit +dn
+            jd_r = j_r
+            if ( rho_on_r( j_r + 1 ) .and. .not. rho_on_r( j_r ) ) jd_r = j_r + 1
+            jq_r = j_r + ( j_r + 1 ) - jd_r
+            sd_r = merge( 1.0, -1.0, jd_r == j_r )
+            err_r = vol_now( jd_r ) - vol_target( jd_r )
+            moved_p_tot_r = 0.0
+
+            !Pass 1 returns the volume to the nodes sum-one took it from, weighted by the directional deficit of phase j+1 there.
+            !Pass 2 places any leftover into those same nodes' remaining headroom
+            !Deliberately no wider fallback: a residual is kept and logged rather than deposited outside the damage band
+            Two_passes: do ipass_r = 1, 2
+                if ( abs( err_r ) <= 1.0e-30 ) exit Two_passes
+
+                !down_r: net direction is phase j down, phase j+1 up
+                down_r = ( ( jd_r == j_r ) .eqv. ( err_r > 0.0 ) )
+                wgt_tot_r = 0.0
+                do inod_r = 1, Mdims%cv_nonods
+                    imm_sum_r = sum( CV_Immobile_Fraction( i1_r:i2_r, inod_r ) )
+                    if ( down_r ) then
+                        !phase j gives volume: phase j down, phase j+1 up
+                        room_r( inod_r ) = min( sat_r%val( 1, j_r, inod_r ) &
+                             - CV_Immobile_Fraction( j_r, inod_r ), &
+                             ( 1.0 - imm_sum_r + CV_Immobile_Fraction( j_r + 1, inod_r ) ) &
+                             - sat_r%val( 1, j_r + 1, inod_r ) )
+                    else
+                        !phase j up, phase j+1 down
+                        room_r( inod_r ) = min( ( 1.0 - imm_sum_r &
+                             + CV_Immobile_Fraction( j_r, inod_r ) ) - sat_r%val( 1, j_r, inod_r ), &
+                             sat_r%val( 1, j_r + 1, inod_r ) - CV_Immobile_Fraction( j_r + 1, inod_r ) )
+                    end if
+                    room_r( inod_r ) = max( room_r( inod_r ), 0.0 )
+                    if ( ipass_r == 1 ) then
+                        !Weight = the directional deficit alone (headroom acts only as the per-node cap below. deficit*headroom would bias the return outwards at fronts)
+                        if ( down_r ) then
+                            wgt_r( inod_r ) = max( &
+                                 sat_pre( j_r + 1, inod_r ) - sat_r%val( 1, j_r + 1, inod_r ), 0.0 )
+                        else
+                            wgt_r( inod_r ) = max( &
+                                 sat_r%val( 1, j_r + 1, inod_r ) - sat_pre( j_r + 1, inod_r ), 0.0 )
+                        end if
+                        if ( sat_pre( j_r + 1, inod_r ) - CV_Immobile_Fraction( j_r + 1, inod_r ) &
+                             <= plume_smin_r ) wgt_r( inod_r ) = 0.0
+                    else
+                        !Leftover into the remaining headroom of the damage band only
+                        if ( down_r ) then
+                            wgt_r( inod_r ) = room_r( inod_r ) * merge( 1.0, 0.0, &
+                                 sat_pre( j_r + 1, inod_r ) - sat_r%val( 1, j_r + 1, inod_r ) > 0.0 )
+                        else
+                            wgt_r( inod_r ) = room_r( inod_r ) * merge( 1.0, 0.0, &
+                                 sat_r%val( 1, j_r + 1, inod_r ) - sat_pre( j_r + 1, inod_r ) > 0.0 )
+                        end if
+                        if ( sat_pre( j_r + 1, inod_r ) - CV_Immobile_Fraction( j_r + 1, inod_r ) &
+                             <= plume_smin_r ) wgt_r( inod_r ) = 0.0
+                    end if
+                    if ( node_owned( sat_r, inod_r ) ) then
+                        wnod_r = cvol_r( jpres_r, inod_r )
+                        if ( rho_on_r( jd_r ) ) wnod_r = wnod_r * den_r%val( 1, jd_r, inod_r )
+                        wgt_tot_r = wgt_tot_r + wnod_r * wgt_r( inod_r )
+                    end if
+                end do
+                call allsum( wgt_tot_r )
+                if ( wgt_tot_r <= 1.0e-30 ) cycle Two_passes
+
+                !dn is the same field for both phases with opposite sign, capped at the local headroom
+                !moved_r tracks the driven measure transferred; moved_p_r the partner's measure of the same transfers (differs from -moved_r only under unequal rho weights)
+                delta_r = -err_r / wgt_tot_r * sd_r
+                moved_r = 0.0
+                moved_p_r = 0.0
+                do inod_r = 1, Mdims%cv_nonods
+                    dn_r = delta_r * wgt_r( inod_r )
+                    dn_r = sign( min( abs( dn_r ), room_r( inod_r ) ), dn_r )
+                    sat_r%val( 1, j_r,     inod_r ) = sat_r%val( 1, j_r,     inod_r ) + dn_r
+                    sat_r%val( 1, j_r + 1, inod_r ) = sat_r%val( 1, j_r + 1, inod_r ) - dn_r
+                    if ( node_owned( sat_r, inod_r ) ) then
+                        wnod_r = cvol_r( jpres_r, inod_r )
+                        if ( rho_on_r( jd_r ) ) wnod_r = wnod_r * den_r%val( 1, jd_r, inod_r )
+                        wq_r = cvol_r( jpres_r, inod_r )
+                        if ( rho_on_r( jq_r ) ) wq_r = wq_r * den_r%val( 1, jq_r, inod_r )
+                        moved_r   = moved_r   + wnod_r * dn_r * sd_r
+                        moved_p_r = moved_p_r - wq_r   * dn_r * sd_r
+                    end if
+                end do
+                call allsum( moved_r )
+                call allsum( moved_p_r )
+                err_r = err_r + moved_r
+                moved_p_tot_r = moved_p_tot_r + moved_p_r
+            end do Two_passes
+
+            !Log only a residual that is significant relative to the target (roundoff otherwise)
+            if ( abs( err_r ) > 1.0e-12 * max( abs( vol_target( jd_r ) ), 1.0e-30 ) ) then
+                ewrite( 1, * ) 'Restore_Phase_Mass_SumOne: residual for driven phase', jd_r, &
+                     merge( ' [mass]  ', ' [volume]', rho_on_r( jd_r ) ), ' =', err_r, &
+                     ' (no headroom left in the damage band)'
+            end if
+            !Carry the achieved state into the next pair: driven phase at target + residual, partner moved by the ledgered amount in its own measure
+            vol_now( jq_r ) = vol_now( jq_r ) + moved_p_tot_r
+            vol_now( jd_r ) = vol_target( jd_r ) + err_r
+        end do
+
+        call halo_update( sat_r )
+        deallocate( vol_now, cvol_r, room_r, wgt_r, rho_on_r )
+    end subroutine Restore_Phase_Mass_SumOne
+
 
 
     !>@brief: This subroutines eliminates the oscillations in the saturation that are bigger than a

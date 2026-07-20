@@ -2116,6 +2116,21 @@ This option is useful if your field is suddenly changing after adapting the mesh
             </element>
           </optional>
           <optional>
+            <element name="disable_adapt_mass_conservation_tracers">
+              <a:documentation>Disable the mass-conservative scaling of tracers/Concentration/Temperature across
+the mesh-adaptivity interpolation. On by default, this switch is a debugging aid.</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
+            <element name="disable_adapt_mass_conservation_saturation">
+              <a:documentation>Disable the mass-conservative scaling of the phase volume fractions across the
+mesh-adaptivity interpolation (and the associated per-phase pore-volume restore).
+On by default, this switch is a debugging aid.</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
             <element name="disable_limiters">
               <a:documentation>This disable the limiters regarless of the precision used
 Limiters are quite expensive so if your simulation is slow it might be worth trying this.</a:documentation>

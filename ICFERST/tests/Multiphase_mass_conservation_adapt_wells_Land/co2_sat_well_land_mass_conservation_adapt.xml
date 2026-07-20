@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>co2_sat_well_land_mass_conservation_adapt</name>
+  <owner userid="meissam.bahlali"/>
+  <tags>porous mpml adaptivity wells land</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>python3 ./Check_co2_sat_well_land_mass_conservation.py &gt; log</command_line>
+  </problem_definition>
+  <variables/>
+  <pass_tests>
+    <test name="co2_sat_well_land_mass_conservation_adapt" language="python">ok = False
+with open("log", "r") as f:
+    linelist = f.readlines()
+    last = linelist[len(linelist)-1]
+f.close
+
+if 'OK' in last: ok = True
+
+assert(ok)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

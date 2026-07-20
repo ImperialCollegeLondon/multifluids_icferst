@@ -1,0 +1,38 @@
+$ CO2 toy well trace
+SOL 101
+CEND
+ECHO = SORT
+SUBCASE = 1
+LABEL = Default Set
+BEGIN BULK
+$
+$ Node cards
+$
+GRID    1       0       100     100     120     
+GRID    2       0       100     100     110     
+GRID    3       0       100     100     100     
+GRID    4       0       100     100     90      
+GRID    5       0       100     100     80      
+GRID    6       0       100     100     70      
+GRID    7       0       100     100     60      
+GRID    8       0       100     100     50      
+GRID    9       0       100     100     40      
+GRID    10      0       100     100     30      
+GRID    11      0       100     100     20      
+$ Element cards
+CROD    1       100     1       2       
+CROD    2       100     2       3       
+CROD    3       100     3       4       
+CROD    4       100     4       5       
+CROD    5       100     5       6       
+CROD    6       100     6       7       
+CROD    7       100     7       8       
+CROD    8       100     8       9       
+CROD    9       100     9       10      
+CROD    10      100     10      11      
+$ Property cards
+PROD    100     100     0       0       0       0
+$ Material cards
+MAT1*   100             206800          80155.039       0.29
+*       7e-06           1.2e-05
+ENDDATA
