@@ -2393,11 +2393,20 @@ contains
         logical :: skip
         logical, save :: dump_vtu_zero = .true.
         integer, dimension(:), pointer :: neighbours
+        !WELLS IN PARALLEL: mask of mesh nodes already assigned to a detected well section
+        !In parallel, a partition's intersection with a well trajectory is NOT guaranteed to be connected. So a single seed + flood-fill silently drops the remaining segments
+        !We therefore iterate seed-search/flood-fill until no uncovered in-pipe node remains.
+        logical, dimension(:), allocatable :: covered_nodes
+        integer :: detection_pass
+        integer, parameter :: max_detection_passes = 10000
         !Initialise
         AUX_eles_with_pipe%ele = -1
         k = 1; NCORNER = Mdims%ndim + 1
         PIPE_DIAMETER => extract_scalar_field( state(1), "DiameterPipe" )
         X => EXTRACT_VECTOR_FIELD( packed_state, "PressureCoordinate" )
+        !WELLS IN PARALLEL: coverage mask sized by the coordinate-node numbering used by both the seed search (ndgln%p) and the flood-fill (ndgln%x)
+        allocate(covered_nodes(size(X%val, 2)))
+        covered_nodes = .false.
         !Create list of corners
         call CALC_CORNER_NODS( CV_LOC_CORNER, Mdims%NDIM, Mdims%CV_NLOC)
         !Retrieve, if there are any number of input .bdf files
@@ -2423,11 +2432,21 @@ contains
                 !First identify the well trajectory
                 call get_option("/porous_media/wells_and_pipes/well_from_file["// int2str(k-1) //"]/file_path", file_path)
                 call read_nastran_file(file_path, nodes, edges)
-                call find_pipe_seeds(well_domains, X%val, nodes, edges, pipe_seeds)
-                !Only if a seed is found then the well is constructed
-                if ( size(pipe_seeds)>0 ) call find_nodes_of_well(X%val, nodes, edges, pipe_seeds, eles_with_pipe, diameter_of_the_pipe_aux)
+                !WELLS IN PARALLEL: iterate until every connected component of this well present in the local (owned + halo) mesh has been detected
+                !Each pass marks at least its seed node in covered_nodes, so the loop is guaranteed to terminate
+                detection_loop_file: do detection_pass = 1, max_detection_passes
+                    call find_pipe_seeds(well_domains, X%val, nodes, edges, pipe_seeds)
+                    if ( size(pipe_seeds) == 0 ) then
+                        deallocate(pipe_seeds)
+                        exit detection_loop_file
+                    end if
+                    call find_nodes_of_well(X%val, nodes, edges, pipe_seeds, eles_with_pipe, diameter_of_the_pipe_aux)
+                    deallocate(pipe_seeds)
+                end do detection_loop_file
+                if (detection_pass > max_detection_passes) then
+                    ewrite(0,*) "WARNING: wells detection reached max_detection_passes; well may be incomplete on proc", getprocno()
+                end if
                 deallocate(nodes, edges)!because nodes and edges are allocated inside read_nastran_file
-                deallocate(pipe_seeds)
             end do
             !Use only coordinates instead of a nastran file
             do k = 1, option_count("/porous_media/wells_and_pipes/well_from_coordinates")
@@ -2436,11 +2455,20 @@ contains
                 call get_option("/porous_media/wells_and_pipes/well_from_coordinates["// int2str(k-1) //"]/top_coordinates", nodes(:, 1))
                 call get_option("/porous_media/wells_and_pipes/well_from_coordinates["// int2str(k-1) //"]/bottom_coordinates", nodes(:, 2))
                 edges(1, 1) = 1; edges(2, 1) = 2!Stablish connection between the nodes
-                call find_pipe_seeds(well_domains, X%val, nodes, edges, pipe_seeds)
-                !Only if a seed is found then the well is constructed
-                if ( size(pipe_seeds)>0 ) call find_nodes_of_well(X%val, nodes, edges, pipe_seeds, eles_with_pipe, diameter_of_the_pipe_aux)
+                !WELLS IN PARALLEL: same iterative detection as for well_from_file
+                detection_loop_coords: do detection_pass = 1, max_detection_passes
+                    call find_pipe_seeds(well_domains, X%val, nodes, edges, pipe_seeds)
+                    if ( size(pipe_seeds) == 0 ) then
+                        deallocate(pipe_seeds)
+                        exit detection_loop_coords
+                    end if
+                    call find_nodes_of_well(X%val, nodes, edges, pipe_seeds, eles_with_pipe, diameter_of_the_pipe_aux)
+                    deallocate(pipe_seeds)
+                end do detection_loop_coords
+                if (detection_pass > max_detection_passes) then
+                    ewrite(0,*) "WARNING: wells detection reached max_detection_passes; well may be incomplete on proc", getprocno()
+                end if
                 deallocate(nodes, edges)!because nodes and edges are allocated inside read_nastran_file
-                deallocate(pipe_seeds)
             end do
 
             if (.not.allocated(eles_with_pipe)) allocate(eles_with_pipe(0)) !This if is important for parallel so it exists and the loops are skipped
@@ -2457,6 +2485,13 @@ contains
                      diameter_of_the_pipe_aux(ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + x_iloc ))
                 end do
             end do
+            !WELLS IN PARALLEL: enforce owner-consistent diameters at partition interfaces.
+            !With the iterative detection above, every owned node has all its adjacent (owned + level-1 halo) pipe elements detected locally, so the owner value is complete and propagating it to halo copies makes all processes agree on which nodes carry a well
+            if (IsParallel()) call halo_update(PIPE_DIAMETER)
+            !Diagnostic: number of pipe CV nodes detected on this process (compare across
+            !adapts/processes when debugging parallel wells)
+            ewrite(2,*) "Wells detection: proc", getprocno(), "detected pipe elements:", size(eles_with_pipe), &
+                        "pipe CV nodes:", count(PIPE_DIAMETER%val > 0.0)
         else
             do ele = 1, Mdims%totele
                 ! Look for pipe indicator in element:
@@ -2497,6 +2532,8 @@ contains
                                     eles_with_pipe(k)%pipe_corner_nds2, eles_with_pipe(k)%npipes )
             end do
         end if
+
+        if (allocated(covered_nodes)) deallocate(covered_nodes)
 
         if (dump_vtu_zero) then
             !Overwrite the first dump with the values of the diameter of the pipe, don't remove this section
@@ -2587,6 +2624,8 @@ contains
                 if (well_domains%val(ele) <= RM8) cycle!Only look at elements within the well regions, the rest is set to 0
                 do iloc  = 1, Mdims%cv_nloc
                     inod = ndgln%p( ( ele - 1 ) * Mdims%cv_nloc + iloc )
+                    !WELLS IN PARALLEL: skip nodes already assigned to a detected well section
+                    if (covered_nodes(inod)) cycle
                     do edge = 1, size(edges,2)
                         if (is_within_pipe(X(:,inod), nodes(:,edges(1,edge)), nodes(:,edges(2,edge)), tolerancePipe)) then
                             found = .false.
@@ -2597,7 +2636,10 @@ contains
                             if (.not.found) then
                                 l = l + 1
                                 aux_pipe_seeds(l) = inod!Store the global node number
-                                exit element_loop !just one seed per well
+                                !WELLS IN PARALLEL: mark the seed itself as covered
+                                !This guarantees termination of the iterative detection loop even if the flood-fill from this seed stores no new pipe section
+                                covered_nodes(inod) = .true.
+                                exit element_loop !one seed per detection pass; remaining components are caught by the iteration in retrieve_pipes_coords
                             end if
                         end if
                     end do
@@ -2733,6 +2775,9 @@ contains
                                                 AUX_eles_with_pipe(k)%pipe_corner_nds1(ipipe) = first_loc!first_node
                                                 AUX_eles_with_pipe(k)%pipe_index(x_iloc) = .true.!Don't know if necessary now...
                                                 AUX_eles_with_pipe(k)%pipe_corner_nds2(ipipe) = x_iloc!x_inod
+                                                !WELLS IN PARALLEL: record both ends of this pipe section so the seed search does not re-seed an already-detected component
+                                                covered_nodes(first_node) = .true.
+                                                covered_nodes(x_inod) = .true.
                                                 k = k + 1
                                                 exit loc_loop!Change reference to this element
                                             end if
