@@ -809,11 +809,73 @@ contains
 
     if(nparts > 1) then
        call vtkpclose(getrank(), nparts)
+       if (getrank() == 0) then
+          call repair_pvtu_piece_list(trim(filename)//trim(dumpnum), nparts)
+       end if
     else
        call vtkclose()
     end if
 
   end subroutine vtk_write_fields
+
+  subroutine repair_pvtu_piece_list(pvtu_name, nparts)
+    !!< Rewrite the <Piece .../> list of a .pvtu summary so it references all nparts piece
+    !!< files, cloning the entry the VTK writer produced for piece 0 (which encodes the
+    !!< correct relative path, with or without a piece subdirectory).
+    character(len=*), intent(in) :: pvtu_name
+    integer, intent(in) :: nparts
+
+    integer, parameter :: max_line_len = 4096
+    character(len=max_line_len), dimension(:), allocatable :: lines
+    character(len=max_line_len) :: piece_template
+    integer :: io_unit, io, nlines, i, j, piece_line, tail_pos, npieces_found
+
+    io_unit = free_unit()
+    open(unit=io_unit, file=trim(pvtu_name), action="read", status="old", iostat=io)
+    if (io /= 0) return
+    nlines = 0
+    do
+      read(io_unit, '(a)', iostat=io)
+      if (io /= 0) exit
+      nlines = nlines + 1
+    end do
+    allocate(lines(nlines))
+    rewind(io_unit)
+    do i = 1, nlines
+      read(io_unit, '(a)') lines(i)
+    end do
+    close(io_unit)
+
+    ! Locate the piece entries the writer produced
+    piece_line = 0
+    npieces_found = 0
+    do i = 1, nlines
+      if (index(lines(i), "<Piece") > 0 .and. index(lines(i), "Source=") > 0) then
+        npieces_found = npieces_found + 1
+        piece_line = i
+      end if
+    end do
+    ! Nothing to repair if the summary already lists every piece (or none were found)
+    if (piece_line == 0 .or. npieces_found >= nparts) return
+
+    piece_template = lines(piece_line)
+    tail_pos = index(piece_template, "_0.vtu")
+    if (tail_pos == 0) return
+
+    io_unit = free_unit()
+    open(unit=io_unit, file=trim(pvtu_name), action="write", status="replace")
+    do i = 1, nlines
+      if (i == piece_line) then
+        do j = 0, nparts-1
+          write(io_unit, '(a,i0,a)') piece_template(1:tail_pos), j, trim(piece_template(tail_pos+2:))
+        end do
+      else
+        write(io_unit, '(a)') trim(lines(i))
+      end if
+    end do
+    close(io_unit)
+
+  end subroutine repair_pvtu_piece_list
 
   function fluidity_mesh2vtk_numbering(ndglno, element) result (renumber)
     type(element_type), intent(in) :: element
