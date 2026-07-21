@@ -33,7 +33,7 @@ module vtk_interfaces
 
   use fldebug
   use global_parameters, only : FIELD_NAME_LEN
-  use futils, only: present_and_true, int2str
+  use futils, only: present_and_true, int2str, free_unit
   use quadrature
   use elements
   use mpi_interfaces
