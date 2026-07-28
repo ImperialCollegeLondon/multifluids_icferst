@@ -1263,7 +1263,7 @@ contains
                           !For the discontinuous formulation we want to use the discontinuous method only where there is a permeability jump
                           !elsewhere the normal method should work better as it is also more reliable
                           if (is_porous_media .and. between_elements) then
-                            permeability_jump = abs(perm%val(1,1,ele) - perm%val(1,1,ele2)/perm%val(1,1,ele)) > RM8
+                            permeability_jump = abs(perm%val(1,1,ele) - perm%val(1,1,ele2)) > RM8 * max(abs(perm%val(1,1,ele)), abs(perm%val(1,1,ele2)))
                           end if
                           !Create local variables to reduce slicing
                           LOC_T_J = T_ALL(1:final_phase, cv_nodj); LOC_TOLD_J = TOLD_ALL(1:final_phase, cv_nodj)

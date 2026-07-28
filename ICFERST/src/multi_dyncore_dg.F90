@@ -2793,11 +2793,8 @@ end if
             do CV_NOD = 1, Mdims%cv_nonods
                 do COUNT = Mspars%CMC%fin(CV_NOD), &
                         Mspars%CMC%fin(CV_NOD+1)-1
-                    if (Mspars%CMC%col(COUNT) == CV_NOD) then
-                        rhs_p%val(1, CV_NOD) = rhs_p%val(1, CV_NOD) &
-                            + pressure_source_field%val(CV_NOD) * MASS_MN_PRES(COUNT)
-                        exit
-                    end if
+                    rhs_p%val(1, CV_NOD) = rhs_p%val(1, CV_NOD) &
+                        + pressure_source_field%val(Mspars%CMC%col(COUNT)) * MASS_MN_PRES(COUNT)
                 end do
             end do
         end if
@@ -3009,11 +3006,8 @@ end if
                 do CV_NOD = 1, Mdims%cv_nonods
                     do COUNT = Mspars%CMC%fin(CV_NOD), &
                             Mspars%CMC%fin(CV_NOD+1)-1
-                        if (Mspars%CMC%col(COUNT) == CV_NOD) then
-                            rhs_p%val(1, CV_NOD) = rhs_p%val(1, CV_NOD) &
-                                + pressure_source_field%val(CV_NOD) * MASS_MN_PRES(COUNT)
-                            exit
-                        end if
+                        rhs_p%val(1, CV_NOD) = rhs_p%val(1, CV_NOD) &
+                            + pressure_source_field%val(Mspars%CMC%col(COUNT)) * MASS_MN_PRES(COUNT)
                     end do
                 end do
             end if
@@ -3350,9 +3344,19 @@ end if
 
         incl_compress_press = .not. (has_boussinesq_aprox .or. .not. have_option_for_any_phase('/phase_properties/Density/compressible', Mdims%nphase))
         !Check whether we have to do something here or not
-        if (Mdims%npres == 1 .and. .not. incl_compress_press) return
+        if (Mdims%npres == 1 .and. .not. incl_compress_press .and. .not. is_porous_media) return
 
-        if(got_free_surf) POLD_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldFEPressure" )
+        if(got_free_surf .or. is_porous_media) POLD_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldFEPressure" )
+        if (is_porous_media) then
+            DO CV_NOD = 1, Mdims%cv_nonods
+                DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                    CV_JNOD = Mspars%CMC%col( COUNT )
+                    rhs_p%val( 1, CV_NOD ) = rhs_p%val( 1, CV_NOD ) &
+                        - DIAG_SCALE_PRES( 1, CV_NOD ) * MASS_MN_PRES( COUNT ) &
+                        * ( P_ALL%VAL( 1, 1, CV_JNOD ) - POLD_ALL%VAL( 1, 1, CV_JNOD ) )
+                END DO
+            END DO
+        end if
         ! Matrix vector involving the mass diagonal term
         DO CV_NOD = 1, Mdims%cv_nonods
             DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
