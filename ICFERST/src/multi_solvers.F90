@@ -38,6 +38,7 @@ module solvers_module
     use shape_functions_Linear_Quadratic
     use shape_functions_prototype
     use multi_data_types
+    use multi_tools, only : is_solid_metal_tracer
     implicit none
 
 #include "petsc_legacy.h"
@@ -104,6 +105,7 @@ contains
         type( tensor_field ), pointer :: den_w, sat_w, rhocp_w
         type( scalar_field ), pointer :: rock_den_w, rock_cp_w
         logical :: is_temperature_field, is_boussinesq_w, have_rhocp_w, have_rock_w, have_phi_tot_w
+        logical :: is_solid_metal_field
         logical, dimension(:), allocatable :: use_nodal_density_w
         character( len = OPTION_PATH_LEN ) :: den_path_w
         integer :: jpres, w_stat, p_den_w, h_cap_w, b1_w, b2_w
@@ -141,6 +143,12 @@ contains
         cv_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
         x => extract_vector_field( packed_state, "PressureCoordinate" )
         is_temperature_field = ( index( trim(Field_name), "Temperature" ) > 0 )
+        !Solid metal tracer: conserved weight is (1-phi)*rho_s, not phi*S
+        if ( len_trim(Field_name) > 6 ) then
+            is_solid_metal_field = is_solid_metal_tracer( Field_name(7:len_trim(Field_name)) )
+        else
+            is_solid_metal_field = .false.
+        end if
         !Nodal density included per phase only where it varies (constant densities cancel)
         allocate( use_nodal_density_w( ndim2 ) )
         do j = 1, ndim2
@@ -171,6 +179,9 @@ contains
                 rock_cp_w => extract_scalar_field( state(1), "porous_heat_capacity", w_stat )
                 have_rock_w = ( w_stat == 0 )
             end if
+        else if ( is_solid_metal_field ) then
+            rock_den_w => extract_scalar_field( state(1), "porous_density", w_stat )
+            have_rock_w = ( w_stat == 0 )
         end if
         !aux_phi_mass = int(N_i*phi) per CV. aux_rock_mass = int(N_i*(1-phi)*rho_rock*cp_rock), temperature only
         allocate( aux_phi_mass( size( porosity_w%val, 1 ), Mdims%cv_nonods ) )
@@ -195,6 +206,11 @@ contains
                     if ( is_temperature_field .and. have_rock_w ) then
                         aux_rock_mass( inod ) = aux_rock_mass( inod ) + &
                             mm * ( 1.0 - porosity_w%val( 1, ele ) ) * rock_term_w
+                    else if ( is_solid_metal_field .and. have_rock_w ) then
+                        !int N_i * (1-phi) * rho_s per CV: the solid-metal conserved weight
+                        aux_rock_mass( inod ) = aux_rock_mass( inod ) + &
+                            mm * ( 1.0 - porosity_w%val( 1, ele ) ) * &
+                            rock_den_w%val( min( size( rock_den_w%val ), ele ) )
                     end if
                 end do
             end do
@@ -219,6 +235,9 @@ contains
                             + aux_rock_mass( inod ) ) * &
                             max( sat_w%val( 1, min( j, size( sat_w%val, 2 ) ), inod ), 1.0e-10 )
                     end if
+                else if ( is_solid_metal_field ) then
+                    ! solid metal tracer: w = (1-phi) * rho_s (lives in the rock, not the pore fluid)
+                    mass_cv( j, inod ) = aux_rock_mass( inod )
                 else if ( present_and_true( for_sat ) ) then
                     ! saturation: w = phi (S is the field, excluded from its own weight)
                     mass_cv( j, inod ) = aux_phi_mass( jpres, inod )

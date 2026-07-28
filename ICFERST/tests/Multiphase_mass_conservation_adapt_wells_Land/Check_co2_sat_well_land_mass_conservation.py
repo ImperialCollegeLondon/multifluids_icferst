@@ -41,9 +41,7 @@ Min_mesh_changes    = 3
 Phases              = ["water", "CO2"]   # reservoir phases to check
 Land_phase          = "CO2"    # reservoir phase carrying the Land immobile frac
 Imm_drop_max        = 0.40     # max relative drop of max CV_ImmobileFraction per
-                               # dump AND first->last. With the fix the immobile
-                               # fraction holds; without it, it collapses by ~the
-                               # porosity factor (~0.8) at the first adapt.
+                               # dump AND first->last
 Imm_floor           = 1.0e-3   # a dump whose max immobile is below this counts
                                # as collapsed regardless of ratio
 
@@ -218,17 +216,8 @@ if Passed:
         print('Mesh barely changed: adaptation did not exercise the projection')
         Passed = False
 
-# NOTE: the well-block saturation (Well_H2O / Well_CO2) is NOT checked. In this
-# toy those prognostic phases collapse to zero on the first ordinary timestep,
-# before any adapt, identically in stock IC-FERST and every campaign build : it is
-# pre-existing well-solver behaviour, unrelated to the mass fix. This test guards
-# reservoir mass conservation and the Land immobile fraction (below).
-
 # ---- Land verdict: the CO2 immobile fraction must not collapse across adapts.
-# With fix F1 (deferred flip/cap after the unscale) it holds; without it the cap
-# runs on the scaled phi*S inside the adapt window and it collapses.
-# Run this independently of the mass verdict so it always prints (the mass and
-# Land verdicts are separate concerns; a marginal mass reading must not hide Land).
+
 if imm_hist:
     if any(v is None for v in imm_hist):
         print('CV_ImmobileFraction not found: add the diagnostic to the CO2 '

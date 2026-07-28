@@ -610,7 +610,9 @@ contains
         integer :: i, iphase, icomp, idim, iele, ipres, fields, k
         integer :: nphase,ncomp,ndim,stat,n_in_pres
         real :: auxR
-        character( len = option_path_len ) :: option_name, solid_tracer_name_dissolution, solid_tracer_name_precipitation
+        character( len = option_path_len ) :: option_name
+        character( len = option_path_len ), dimension(:), allocatable :: metal_solid_names
+        integer :: n_metal_solids, k_metal
 
         ncomp=option_count('/material_phase/is_multiphase_component')
         nphase=size(state)-ncomp
@@ -785,27 +787,13 @@ contains
           end if
         end do
 
-        ! Here we add the solid metal if metal_dissolution and/or precipitation is active
-        if ( ( have_option("/porous_media/Metal_dissolution/tracer_field_solid") ) .and. ( have_option("/porous_media/Metal_precipitation/tracer_field_solid") ) ) then
-          call get_option("/porous_media/Metal_dissolution/tracer_field_solid", solid_tracer_name_dissolution)
-          call get_option("/porous_media/Metal_dissolution/tracer_field_solid", solid_tracer_name_precipitation)
-            if (solid_tracer_name_dissolution == solid_tracer_name_precipitation) then ! call only once
-              call insert_sfield(packed_state,solid_tracer_name_dissolution,1,nphase,&
-              add_source=.false.,add_absorption=.false.)
-            else ! call for both dissolution and precipitation
-              call insert_sfield(packed_state,solid_tracer_name_dissolution,1,nphase,&
-              add_source=.false.,add_absorption=.false.)
-              call insert_sfield(packed_state,solid_tracer_name_precipitation,1,nphase,&
-              add_source=.false.,add_absorption=.false.)
-            end if
-        else if ( ( have_option("/porous_media/Metal_dissolution/tracer_field_solid") ) .and. (.not. ( have_option("/porous_media/Metal_precipitation/tracer_field_solid") )) ) then
-          call get_option("/porous_media/Metal_dissolution/tracer_field_solid", solid_tracer_name_dissolution)
-          call insert_sfield(packed_state,solid_tracer_name_dissolution,1,nphase,&
-          add_source=.false.,add_absorption=.false.)
-        else if ( ( have_option("/porous_media/Metal_precipitation/tracer_field_solid") ) .and. (.not. ( have_option("/porous_media/Metal_dissolution/tracer_field_solid") )) ) then
-          call get_option("/porous_media/Metal_precipitation/tracer_field_solid", solid_tracer_name_precipitation)
-          call insert_sfield(packed_state,solid_tracer_name_precipitation,1,nphase,&
-          add_source=.false.,add_absorption=.false.)
+        ! Here we add the solid metal tracers required by the metal exchange reactions
+        if (have_metal_reactions()) then
+          call get_unique_metal_tracer_names(metal_solid_names, n_metal_solids, want_solid=.true.)
+          do k_metal = 1, n_metal_solids
+            call insert_sfield(packed_state,trim(metal_solid_names(k_metal)),1,nphase,&
+            add_source=.false.,add_absorption=.false.)
+          end do
         end if
 
         if (option_count("/material_phase/scalar_field::Bathymetry")>0) then
@@ -1142,78 +1130,21 @@ contains
                   end if
                 end do
 
-                ! Here we add the solid metal if metal_dissolution and/or precipitation is active
-                if ( ( have_option("/porous_media/Metal_dissolution/tracer_field_solid") ) .and. ( have_option("/porous_media/Metal_precipitation/tracer_field_solid") ) ) then
-                  call get_option("/porous_media/Metal_dissolution/tracer_field_solid", solid_tracer_name_dissolution)
-                  call get_option("/porous_media/Metal_dissolution/tracer_field_solid", solid_tracer_name_precipitation)
-                    if (solid_tracer_name_dissolution == solid_tracer_name_precipitation) then ! call only once
-                      call unpack_sfield(state(i),packed_state,"Old"//trim(solid_tracer_name_dissolution),1,iphase,&
-                      check_paired(extract_scalar_field(state(i),trim(solid_tracer_name_dissolution)),&
-                      extract_scalar_field(state(i),"Old"//trim(solid_tracer_name_dissolution))))
-                      call unpack_sfield(state(i),packed_state,"Iterated"//trim(solid_tracer_name_dissolution),1,iphase,&
-                      check_paired(extract_scalar_field(state(i),trim(solid_tracer_name_dissolution)),&
-                      extract_scalar_field(state(i),"Iterated"//trim(solid_tracer_name_dissolution))))
-                      !Subfields are now only present in state as including them inside packed state generate deallocation issues
-                      ! call unpack_sfield(state(i),packed_state,trim(solid_tracer_name_dissolution)//"Source",1,iphase)!Diagnostic fields do not get along with this...
-                      ! call unpack_sfield(state(i),packed_state,trim(solid_tracer_name_dissolution)//"Absorption",1,iphase)!Diagnostic fields do not get along with this...
-                      call unpack_sfield(state(i),packed_state,trim(solid_tracer_name_dissolution),1,iphase)
-                      call insert(multi_state(1,iphase),extract_scalar_field(state(i),trim(solid_tracer_name_dissolution)),trim(solid_tracer_name_dissolution))
-                    else ! call for both dissolution and precipitation
-                      ! call for dissolution
-                      call unpack_sfield(state(i),packed_state,"Old"//trim(solid_tracer_name_dissolution),1,iphase,&
-                      check_paired(extract_scalar_field(state(i),trim(solid_tracer_name_dissolution)),&
-                      extract_scalar_field(state(i),"Old"//trim(solid_tracer_name_dissolution))))
-                      call unpack_sfield(state(i),packed_state,"Iterated"//trim(solid_tracer_name_dissolution),1,iphase,&
-                      check_paired(extract_scalar_field(state(i),trim(solid_tracer_name_dissolution)),&
-                      extract_scalar_field(state(i),"Iterated"//trim(solid_tracer_name_dissolution))))
-                      !Subfields are now only present in state as including them inside packed state generate deallocation issues
-                      ! call unpack_sfield(state(i),packed_state,trim(solid_tracer_name_dissolution)//"Source",1,iphase)!Diagnostic fields do not get along with this...
-                      ! call unpack_sfield(state(i),packed_state,trim(solid_tracer_name_dissolution)//"Absorption",1,iphase)!Diagnostic fields do not get along with this...
-                      call unpack_sfield(state(i),packed_state,trim(solid_tracer_name_dissolution),1,iphase)
-                      call insert(multi_state(1,iphase),extract_scalar_field(state(i),trim(solid_tracer_name_dissolution)),trim(solid_tracer_name_dissolution))
-                      call insert_sfield(packed_state,solid_tracer_name_precipitation,1,nphase,&
-                      add_source=.false.,add_absorption=.false.)
-                      ! call for precipitation
-                      call unpack_sfield(state(i),packed_state,"Old"//trim(solid_tracer_name_precipitation),1,iphase,&
-                      check_paired(extract_scalar_field(state(i),trim(solid_tracer_name_precipitation)),&
-                      extract_scalar_field(state(i),"Old"//trim(solid_tracer_name_precipitation))))
-                      call unpack_sfield(state(i),packed_state,"Iterated"//trim(solid_tracer_name_precipitation),1,iphase,&
-                      check_paired(extract_scalar_field(state(i),trim(solid_tracer_name_precipitation)),&
-                      extract_scalar_field(state(i),"Iterated"//trim(solid_tracer_name_precipitation))))
-                      !Subfields are now only present in state as including them inside packed state generate deallocation issues
-                      ! call unpack_sfield(state(i),packed_state,trim(solid_tracer_name_precipitation)//"Source",1,iphase)!Diagnostic fields do not get along with this...
-                      ! call unpack_sfield(state(i),packed_state,trim(solid_tracer_name_precipitation)//"Absorption",1,iphase)!Diagnostic fields do not get along with this...
-                      call unpack_sfield(state(i),packed_state,trim(solid_tracer_name_precipitation),1,iphase)
-                      call insert(multi_state(1,iphase),extract_scalar_field(state(i),trim(solid_tracer_name_precipitation)),trim(solid_tracer_name_precipitation))
-                    end if
-                else if ( ( have_option("/porous_media/Metal_dissolution/tracer_field_solid") ) .and. (.not. ( have_option("/porous_media/Metal_precipitation/tracer_field_solid") )) ) then
-                  call get_option("/porous_media/Metal_dissolution/tracer_field_solid", solid_tracer_name_dissolution)
-                  call unpack_sfield(state(i),packed_state,"Old"//trim(solid_tracer_name_dissolution),1,iphase,&
-                  check_paired(extract_scalar_field(state(i),trim(solid_tracer_name_dissolution)),&
-                  extract_scalar_field(state(i),"Old"//trim(solid_tracer_name_dissolution))))
-                  call unpack_sfield(state(i),packed_state,"Iterated"//trim(solid_tracer_name_dissolution),1,iphase,&
-                  check_paired(extract_scalar_field(state(i),trim(solid_tracer_name_dissolution)),&
-                  extract_scalar_field(state(i),"Iterated"//trim(solid_tracer_name_dissolution))))
-                  !Subfields are now only present in state as including them inside packed state generate deallocation issues
-                  ! call unpack_sfield(state(i),packed_state,trim(solid_tracer_name_dissolution)//"Source",1,iphase)!Diagnostic fields do not get along with this...
-                  ! call unpack_sfield(state(i),packed_state,trim(solid_tracer_name_dissolution)//"Absorption",1,iphase)!Diagnostic fields do not get along with this...
-                  call unpack_sfield(state(i),packed_state,trim(solid_tracer_name_dissolution),1,iphase)
-                  call insert(multi_state(1,iphase),extract_scalar_field(state(i),trim(solid_tracer_name_dissolution)),trim(solid_tracer_name_dissolution))
-                  call insert_sfield(packed_state,solid_tracer_name_precipitation,1,nphase,&
-                  add_source=.false.,add_absorption=.false.)
-                else if ( ( have_option("/porous_media/Metal_precipitation/tracer_field_solid") ) .and. (.not. ( have_option("/porous_media/Metal_dissolution/tracer_field_solid") )) ) then
-                  call get_option("/porous_media/Metal_precipitation/tracer_field_solid", solid_tracer_name_precipitation)
-                  call unpack_sfield(state(i),packed_state,"Old"//trim(solid_tracer_name_precipitation),1,iphase,&
-                  check_paired(extract_scalar_field(state(i),trim(solid_tracer_name_precipitation)),&
-                  extract_scalar_field(state(i),"Old"//trim(solid_tracer_name_precipitation))))
-                  call unpack_sfield(state(i),packed_state,"Iterated"//trim(solid_tracer_name_precipitation),1,iphase,&
-                  check_paired(extract_scalar_field(state(i),trim(solid_tracer_name_precipitation)),&
-                  extract_scalar_field(state(i),"Iterated"//trim(solid_tracer_name_precipitation))))
-                  !Subfields are now only present in state as including them inside packed state generate deallocation issues
-                  ! call unpack_sfield(state(i),packed_state,trim(solid_tracer_name_precipitation)//"Source",1,iphase)!Diagnostic fields do not get along with this...
-                  ! call unpack_sfield(state(i),packed_state,trim(solid_tracer_name_precipitation)//"Absorption",1,iphase)!Diagnostic fields do not get along with this...
-                  call unpack_sfield(state(i),packed_state,trim(solid_tracer_name_precipitation),1,iphase)
-                  call insert(multi_state(1,iphase),extract_scalar_field(state(i),trim(solid_tracer_name_precipitation)),trim(solid_tracer_name_precipitation))
+                ! Here we unpack the solid metal tracers of the metal exchange reactions
+                if (have_metal_reactions()) then
+                  call get_unique_metal_tracer_names(metal_solid_names, n_metal_solids, want_solid=.true.)
+                  do k_metal = 1, n_metal_solids
+                    call unpack_sfield(state(i),packed_state,"Old"//trim(metal_solid_names(k_metal)),1,iphase,&
+                    check_paired(extract_scalar_field(state(i),trim(metal_solid_names(k_metal))),&
+                    extract_scalar_field(state(i),"Old"//trim(metal_solid_names(k_metal)))))
+                    call unpack_sfield(state(i),packed_state,"Iterated"//trim(metal_solid_names(k_metal)),1,iphase,&
+                    check_paired(extract_scalar_field(state(i),trim(metal_solid_names(k_metal))),&
+                    extract_scalar_field(state(i),"Iterated"//trim(metal_solid_names(k_metal)))))
+                    !Subfields are now only present in state as including them inside packed state generate deallocation issues
+                    !(Source/Absorption diagnostic fields do not get along with this)
+                    call unpack_sfield(state(i),packed_state,trim(metal_solid_names(k_metal)),1,iphase)
+                    call insert(multi_state(1,iphase),extract_scalar_field(state(i),trim(metal_solid_names(k_metal))),trim(metal_solid_names(k_metal)))
+                  end do
                 end if
 
                 if(has_phase_volume_fraction) then
@@ -1269,22 +1200,12 @@ contains
           end if
         end do
 
-        ! Here we add the solid metal if metal_dissolution and/or precipitation is active
-        if ( ( have_option("/porous_media/Metal_dissolution/tracer_field_solid") ) .and. ( have_option("/porous_media/Metal_precipitation/tracer_field_solid") ) ) then
-          call get_option("/porous_media/Metal_dissolution/tracer_field_solid", solid_tracer_name_dissolution)
-          call get_option("/porous_media/Metal_dissolution/tracer_field_solid", solid_tracer_name_precipitation)
-            if (solid_tracer_name_dissolution == solid_tracer_name_precipitation) then ! call only once
-              call allocate_multiphase_scalar_bcs(packed_state,multi_state,trim(solid_tracer_name_dissolution))
-            else ! call for both dissolution and precipitation
-              call allocate_multiphase_scalar_bcs(packed_state,multi_state,trim(solid_tracer_name_dissolution))
-              call allocate_multiphase_scalar_bcs(packed_state,multi_state,trim(solid_tracer_name_precipitation))
-            end if
-        else if ( ( have_option("/porous_media/Metal_dissolution/tracer_field_solid") ) .and. (.not. ( have_option("/porous_media/Metal_precipitation/tracer_field_solid") )) ) then
-          call get_option("/porous_media/Metal_dissolution/tracer_field_solid", solid_tracer_name_dissolution)
-          call allocate_multiphase_scalar_bcs(packed_state,multi_state,trim(solid_tracer_name_dissolution))
-        else if ( ( have_option("/porous_media/Metal_precipitation/tracer_field_solid") ) .and. (.not. ( have_option("/porous_media/Metal_dissolution/tracer_field_solid") )) ) then
-          call get_option("/porous_media/Metal_precipitation/tracer_field_solid", solid_tracer_name_precipitation)
-          call allocate_multiphase_scalar_bcs(packed_state,multi_state,trim(solid_tracer_name_precipitation))
+        ! Here we allocate BCs for the solid metal tracers of the metal exchange reactions
+        if (have_metal_reactions()) then
+          call get_unique_metal_tracer_names(metal_solid_names, n_metal_solids, want_solid=.true.)
+          do k_metal = 1, n_metal_solids
+            call allocate_multiphase_scalar_bcs(packed_state,multi_state,trim(metal_solid_names(k_metal)))
+          end do
         end if
 
         call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Density")

@@ -33,6 +33,22 @@ module multi_tools
 
     implicit none
 
+    !> Describes one metal exchange reaction (fluid tracer <-> solid tracer) with its rate laws.
+    !> Populated by get_metal_reactions from /porous_media/metal_reactions.
+    type metal_reaction_type
+        character( len = OPTION_PATH_LEN ) :: fluid_name = ""  !< fluid metal tracer field name
+        character( len = OPTION_PATH_LEN ) :: solid_name = ""  !< solid metal tracer field name
+        integer :: phase = 1                                   !< carrier phase of the fluid tracer (1-based)
+        logical :: has_dissolution = .false.                   !< instantaneous partition (flash) law active
+        logical :: has_precipitation = .false.                 !< rate-controlled precipitation law active
+        character( len = OPTION_PATH_LEN ) :: K_prefix = ""    !< prefix of the 7 partition coefficient fields
+        character( len = OPTION_PATH_LEN ) :: P_prefix = ""    !< prefix of the 7 precipitation rate fields
+        logical :: has_K_salt = .false.                        !< partition law depends on a salt tracer
+        logical :: has_P_salt = .false.                        !< precipitation law depends on a salt tracer
+        character( len = OPTION_PATH_LEN ) :: K_salt_name = "" !< salt tracer name for the partition law
+        character( len = OPTION_PATH_LEN ) :: P_salt_name = "" !< salt tracer name for the precipitation law
+    end type metal_reaction_type
+
 #include "petsc_legacy.h"
 
 
@@ -1219,5 +1235,104 @@ version and using & profiling, please configure WITHOUT 'petscdebug'"
         is_PassiveTracer_field = input_name(1:min(len(input_name), 13))=="PassiveTracer"
 
     end function is_PassiveTracer_field
+
+    !>@brief: true if the generalised metal exchange is configured.
+    logical function have_metal_reactions()
+      implicit none
+      have_metal_reactions = have_option("/porous_media/metal_reactions")
+    end function have_metal_reactions
+
+    !>@brief: builds the list of metal exchange reactions from
+    !> /porous_media/metal_reactions/metal_reaction.
+    !>@param reactions (out) allocated to the number of reactions (possibly zero)
+    subroutine get_metal_reactions(reactions)
+      implicit none
+      type(metal_reaction_type), dimension(:), allocatable, intent(out) :: reactions
+      !Local variables
+      character( len = OPTION_PATH_LEN ) :: rpath
+      integer :: nre, i
+
+      nre = option_count("/porous_media/metal_reactions/metal_reaction")
+      allocate(reactions(nre))
+
+      do i = 1, nre
+        rpath = "/porous_media/metal_reactions/metal_reaction["//int2str(i-1)//"]"
+        call get_option(trim(rpath)//"/tracer_field_fluid", reactions(i)%fluid_name)
+        call get_option(trim(rpath)//"/tracer_field_solid", reactions(i)%solid_name)
+        reactions(i)%phase = 1
+        if (have_option(trim(rpath)//"/phase")) call get_option(trim(rpath)//"/phase", reactions(i)%phase)
+        reactions(i)%has_dissolution = have_option(trim(rpath)//"/dissolution")
+        if (reactions(i)%has_dissolution) then
+          call get_option(trim(rpath)//"/dissolution/coefficient_prefix", reactions(i)%K_prefix)
+          reactions(i)%has_K_salt = have_option(trim(rpath)//"/dissolution/Tracer_Salt")
+          if (reactions(i)%has_K_salt) call get_option(trim(rpath)//"/dissolution/Tracer_Salt", reactions(i)%K_salt_name)
+        end if
+        reactions(i)%has_precipitation = have_option(trim(rpath)//"/precipitation")
+        if (reactions(i)%has_precipitation) then
+          call get_option(trim(rpath)//"/precipitation/coefficient_prefix", reactions(i)%P_prefix)
+          reactions(i)%has_P_salt = have_option(trim(rpath)//"/precipitation/Tracer_Salt")
+          if (reactions(i)%has_P_salt) call get_option(trim(rpath)//"/precipitation/Tracer_Salt", reactions(i)%P_salt_name)
+        end if
+        if (.not. (reactions(i)%has_dissolution .or. reactions(i)%has_precipitation)) then
+          FLAbort("metal_reaction "//trim(rpath)//" defines neither a dissolution nor a precipitation law.")
+        end if
+      end do
+    end subroutine get_metal_reactions
+
+    !>@brief: collects the unique fluid or solid metal tracer names across all configured reactions.
+    !>@param names (out) allocated to at least n_names entries
+    !>@param n_names (out) number of unique names collected
+    !>@param want_solid if true collect solid tracer names, otherwise fluid tracer names
+    subroutine get_unique_metal_tracer_names(names, n_names, want_solid)
+      implicit none
+      character( len = OPTION_PATH_LEN ), dimension(:), allocatable, intent(out) :: names
+      integer, intent(out) :: n_names
+      logical, intent(in) :: want_solid
+      !Local variables
+      type(metal_reaction_type), dimension(:), allocatable :: reacs
+      character( len = OPTION_PATH_LEN ) :: cand
+      integer :: i, j
+      logical :: found
+
+      n_names = 0
+      call get_metal_reactions(reacs)
+      allocate(names(max(size(reacs),1)))
+      do i = 1, size(reacs)
+        if (want_solid) then
+          cand = reacs(i)%solid_name
+        else
+          cand = reacs(i)%fluid_name
+        end if
+        found = .false.
+        do j = 1, n_names
+          if (trim(names(j)) == trim(cand)) found = .true.
+        end do
+        if (.not. found) then
+          n_names = n_names + 1
+          names(n_names) = cand
+        end if
+      end do
+    end subroutine get_unique_metal_tracer_names
+
+    !>@brief: returns true if field_name is a solid metal tracer of any configured reaction.
+    !> Solid metal tracers live in the rock, so their conserved integral
+    !> is (1-phi)*rho_porous*C, NOT phi*rho*S*C: any machinery that porosity-weights tracer fields
+    !> (adapt projection scaling, weighted bounding corrections) must use this to exclude them from
+    !> the fluid weight and apply the solid weight instead.
+    !>@param field_name Name of the scalar field to test
+    logical function is_solid_metal_tracer(field_name)
+      implicit none
+      character( len = * ), intent(in) :: field_name
+      !Local variables
+      character( len = OPTION_PATH_LEN ), dimension(:), allocatable :: names
+      integer :: n, j
+
+      is_solid_metal_tracer = .false.
+      if (.not. have_metal_reactions()) return
+      call get_unique_metal_tracer_names(names, n, want_solid=.true.)
+      do j = 1, n
+        if (trim(field_name) == trim(names(j))) is_solid_metal_tracer = .true.
+      end do
+    end function is_solid_metal_tracer
 
 end module multi_tools

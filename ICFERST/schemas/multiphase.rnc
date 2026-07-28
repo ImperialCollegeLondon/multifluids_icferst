@@ -1377,270 +1377,72 @@ start =
 	           	element tracer_name{string}
 	         	)}
 		        )}?,
-            ## This parameter specifies how metal dissolves/precipitates using a partition coefficient (Jackson et al., 2017).
-            ##
-            ## The dissolution/precipitation is considered instantaneous (flash). The units are kg/kg for concentrations.
-            ##
-            ## It requires to have the following scalar fields defined:
-            ##
-            ## - a (Passive) Tracer field for the fluid metal concentration (e.g., "PassiveTracer_Metal" - name has to start with "PassiveTracer"), PassiveTracer_Metal.
-            ##
-            ## - a static field for the solid metal concentration (e.g., "Metal_solid" - name has to start with anything but "PassiveTracer").
-            ##
-            ## -  The temperature/salt coefficient fields for the partition coefficient (K_c, K_T, K_c2, K_T2, K_cT, K_const, K_A), defined as a function of salt and temperature. These coefficients are defined element-wise in porous_properties. Physical interpretation of the partition coefficient : Low partition_coef - tendency to dissolution. High partition_coef - tendency to precipitation.
-            ##
-            ## Modelling choice here: the partition coefficient is the following function of temperature (T) and salt (c),
-            ## <b> partition_coef = K_A * exp( K_const + K_c * c + K_T * T + K_c2 * c^2 + + K_T2 * T^2 + K_cT * c*T ) </b>.
-            ##
-            ## If a salt tracer field is involved, its name needs to be defined in "Tracer_Salt".
-            ##
-            ## Also, it is required to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not.
-             element Metal_dissolution {
-              (
-              ## Specify scalar field for the K_A coefficient.
-              element scalar_field {
-                 attribute name { "K_A" },
-                 (
-                    element prescribed {
-                       material_mesh_choice,
-                       prescribed_scalar_field,
-                       output_options
-                    }|
-                    element aliased {
-                       generic_aliased_field,
-                       output_options
-                    }
-                 )
-              },
-              ## Specify scalar field for the K_const coefficient.
-              element scalar_field {
-                 attribute name { "K_const" },
-                 (
-                    element prescribed {
-                       material_mesh_choice,
-                       prescribed_scalar_field,
-                       output_options
-                    }|
-                    element aliased {
-                       generic_aliased_field,
-                       output_options
-                    }
-                 )
-              },
-              ## Specify scalar field for the K_c coefficient.
-              element scalar_field {
-                 attribute name { "K_c" },
-                 (
-                    element prescribed {
-                       material_mesh_choice,
-                       prescribed_scalar_field,
-                       output_options
-                    }|
-                    element aliased {
-                       generic_aliased_field,
-                       output_options
-                    }
-                 )
-              },
-              ## Specify scalar field for the K_T coefficient.
-              element scalar_field {
-                 attribute name { "K_T" },
-                 (
-                    element prescribed {
-                       material_mesh_choice,
-                       prescribed_scalar_field,
-                       output_options
-                    }|
-                    element aliased {
-                       generic_aliased_field,
-                       output_options
-                    }
-                 )
-              },
-              ## Specify scalar field for the K_c2 coefficient.
-              element scalar_field {
-                 attribute name { "K_c2" },
-                 (
-                    element prescribed {
-                       material_mesh_choice,
-                       prescribed_scalar_field,
-                       output_options
-                    }|
-                    element aliased {
-                       generic_aliased_field,
-                       output_options
-                    }
-                 )
-              },
-              ## Specify scalar field for the K_T2 coefficient.
-              element scalar_field {
-                 attribute name { "K_T2" },
-                 (
-                    element prescribed {
-                       material_mesh_choice,
-                       prescribed_scalar_field,
-                       output_options
-                    }|
-                    element aliased {
-                       generic_aliased_field,
-                       output_options
-                    }
-                 )
-              },
-              ## Specify scalar field for the K_cT coefficient.
-              element scalar_field {
-                 attribute name { "K_cT" },
-                 (
-                    element prescribed {
-                       material_mesh_choice,
-                       prescribed_scalar_field,
-                       output_options
-                    }|
-                    element aliased {
-                       generic_aliased_field,
-                       output_options
-                    }
-                 )
-              },
-              ## Name of the salt tracer. Name is either "Concentration" (if active tracer), or else it has to start with "PassiveTracer" (if passive tracer).
-              element Tracer_Salt{string}?,
-              ## Name of the solid metal tracer (dissolves into tracer_field_fluid). /!\ Name has to start with anything but "PassiveTracer". We suggest "Metal_solid".
-              element tracer_field_solid{string},
-              ## Name of the fluid metal tracer (precipitates into tracer_field_solid). /!\ Name has to start with "PassiveTracer".
-              element tracer_field_fluid{string}
-              )}?,
-              ## This parameter specifies how metal dissolves/precipitates using a partition coefficient (Jackson et al., 2017).
+              ## Generalised metal exchange: define an arbitrary number of (fluid tracer, solid tracer)
+              ## reactions, each with its own instantaneous dissolution/partition law
+              ## and/or rate-controlled precipitation law.
               ##
-              ## The dissolution/precipitation is considered instantaneous (flash). The units are kg/kg for concentrations.
+              ## Coefficient fields: each rate law references its 7 element-wise coefficient fields by a
+              ## prefix. For a prefix "KCu_", the fields KCu_A, KCu_const, KCu_c, KCu_T, KCu_c2, KCu_T2 and
+              ## KCu_cT must be defined in the scalar_field list below.
+              ## Law: rate = [prefix]A * exp( [prefix]const + [prefix]c*c + [prefix]T*T + [prefix]c2*c^2 + [prefix]T2*T^2 + [prefix]cT*c*T ).
               ##
-              ## It requires to have the following scalar fields defined:
+              ## The fluid metal mass in a CV is weighted by porosity * S_phase * rho_phase for
+              ## the reaction's carrier phase. The solid metal mass by (1-porosity) * porous_density.
               ##
-              ## - a (Passive) Tracer field for the fluid metal concentration (e.g., "PassiveTracer_Metal" - name has to start with "PassiveTracer"), PassiveTracer_Metal.
+              ## Reactions sharing the same fluid tracer are solved SIMULTANEOUSLY: the dissolution flash
+              ## uses the closed-form multi-solid partition and competing precipitation is proportionally
+              ## limited, so results are independent of the order in which reactions are listed.
               ##
-              ## - a static field for the solid metal concentration (e.g., "Metal_solid" - name has to start with anything but "PassiveTracer").
-              ##
-              ## -  The temperature/salt coefficient fields for the precipitation rate (P_c, P_T, P_c2, P_T2, P_cT, P_const, P_A), defined as a function of salt and temperature. These coefficients are defined element-wise in porous_properties. Physical interpretation of the precipitation rate : Low precipitation rate - low tendency to precipitation. High precipitation rate - high tendency to precipitation.
-              ##
-              ## Modelling choice here: the precipitation rate is the following function of temperature (T) and salt (c),
-              ## <b> partition_coef = P_A * exp( P_const + P_c * c + P_T * T + P_c2 * c^2 + + P_T2 * T^2 + P_cT * c*T ) </b>.
-              ##
-              ## If a salt tracer field is involved, its name needs to be defined in "Tracer_Salt".
-              ##
-              ## Also, it is required to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not.
-               element Metal_precipitation {
-                (
-                ## Specify scalar field for the P_A coefficient.
-                element scalar_field {
-                   attribute name { "P_A" },
-                   (
-                      element prescribed {
-                         material_mesh_choice,
-                         prescribed_scalar_field,
-                         output_options
-                      }|
-                      element aliased {
-                         generic_aliased_field,
-                         output_options
-                      }
-                   )
-                },
-                ## Specify scalar field for the P_const coefficient.
-                element scalar_field {
-                   attribute name { "P_const" },
-                   (
-                      element prescribed {
-                         material_mesh_choice,
-                         prescribed_scalar_field,
-                         output_options
-                      }|
-                      element aliased {
-                         generic_aliased_field,
-                         output_options
-                      }
-                   )
-                },
-                ## Specify scalar field for the P_c coefficient.
-                element scalar_field {
-                   attribute name { "P_c" },
-                   (
-                      element prescribed {
-                         material_mesh_choice,
-                         prescribed_scalar_field,
-                         output_options
-                      }|
-                      element aliased {
-                         generic_aliased_field,
-                         output_options
-                      }
-                   )
-                },
-                ## Specify scalar field for the P_T coefficient.
-                element scalar_field {
-                   attribute name { "P_T" },
-                   (
-                      element prescribed {
-                         material_mesh_choice,
-                         prescribed_scalar_field,
-                         output_options
-                      }|
-                      element aliased {
-                         generic_aliased_field,
-                         output_options
-                      }
-                   )
-                },
-                ## Specify scalar field for the P_c2 coefficient.
-                element scalar_field {
-                   attribute name { "P_c2" },
-                   (
-                      element prescribed {
-                         material_mesh_choice,
-                         prescribed_scalar_field,
-                         output_options
-                      }|
-                      element aliased {
-                         generic_aliased_field,
-                         output_options
-                      }
-                   )
-                },
-                ## Specify scalar field for the P_T2 coefficient.
-                element scalar_field {
-                   attribute name { "P_T2" },
-                   (
-                      element prescribed {
-                         material_mesh_choice,
-                         prescribed_scalar_field,
-                         output_options
-                      }|
-                      element aliased {
-                         generic_aliased_field,
-                         output_options
-                      }
-                   )
-                },
-                ## Specify scalar field for the P_cT coefficient.
-                element scalar_field {
-                   attribute name { "P_cT" },
-                   (
-                      element prescribed {
-                         material_mesh_choice,
-                         prescribed_scalar_field,
-                         output_options
-                      }|
-                      element aliased {
-                         generic_aliased_field,
-                         output_options
-                      }
-                   )
-                },
-                ## Name of the salt tracer. Name is either "Concentration" (if active tracer), or else it has to start with "PassiveTracer" (if passive tracer).
-                element Tracer_Salt{string}?,
-                ## Name of the solid metal tracer (dissolves into tracer_field_fluid). /!\ Name has to start with anything but "PassiveTracer". We suggest "Metal_solid".
-                element tracer_field_solid{string},
-                ## Name of the fluid metal tracer (precipitates into tracer_field_solid). /!\ Name has to start with "PassiveTracer".
-                element tracer_field_fluid{string}
-                )}?,
+              ## It is required to define porous_properties (porous_density, porous_heat_capacity,
+              ## porous_thermal_conductivity) regardless of whether the simulation includes temperature
+              ## transport or not.
+              element metal_reactions {
+                 ## Element-wise coefficient fields referenced by the reactions. Name them
+                 ## [prefix][suffix] with suffixes A, const, c, T, c2, T2 and cT, matching the
+                 ## coefficient_prefix declared by each rate law. Names must be unique across state.
+                 element scalar_field {
+                    attribute name { xsd:string },
+                    (
+                       element prescribed {
+                          material_mesh_choice,
+                          prescribed_scalar_field,
+                          output_options
+                       }|
+                       element aliased {
+                          generic_aliased_field,
+                          output_options
+                       }
+                    )
+                 }*,
+                 ## One metal exchange reaction: fluid tracer <-> solid tracer.
+                 element metal_reaction {
+                    attribute name { xsd:string },
+                    ## Name of the fluid metal tracer. Has to be a tracer-family field (name starting with "PassiveTracer", "Tracer" or "Species").
+                    element tracer_field_fluid{string},
+                    ## Name of the solid metal tracer. /!\ Name must NOT start with "PassiveTracer", "Tracer" or "Species", and must be unique across all reactions (each solid mineral may participate in exactly one reaction).
+                    element tracer_field_solid{string},
+                    ## Carrier phase of the fluid metal tracer (1-based). Defaults to 1.
+                    ## The fluid metal mass is weighted by porosity * S_phase * rho_phase.
+                    ## All reactions sharing the same fluid tracer must declare the same phase.
+                    element phase { integer }?,
+                    ## Instantaneous dissolution/partition (flash) law.
+                    ## Where both laws are present, the flash applies at nodes where the precipitation rate is <= 0.
+                    element dissolution {
+                       ## Prefix of the 7 coefficient fields defining the partition coefficient.
+                       element coefficient_prefix{string},
+                       ## Name of the salt tracer entering the partition law. Name is either "Concentration" (if active tracer), or else it has to start with "PassiveTracer" (if passive tracer).
+                       element Tracer_Salt{string}?
+                    }?,
+                    ## Rate-controlled precipitation law.
+                    ## Where both laws are present, the rate law applies at nodes where the partition coefficient is <= 0.
+                    element precipitation {
+                       ## Prefix of the 7 coefficient fields defining the precipitation rate.
+                       element coefficient_prefix{string},
+                       ## Name of the salt tracer entering the rate law. Name is either "Concentration" (if active tracer), or else it has to start with "PassiveTracer" (if passive tracer).
+                       element Tracer_Salt{string}?
+                    }?
+                 }+
+              }?,
 	        ## Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil.
 	        ##
 	        ## This is used to initialise the porous media model, defining the initial saturation and pressure. Currently for two-phase models.
@@ -1748,9 +1550,33 @@ start =
 
          ## Advanced options that are kept for debugging purposes
          element numerical_methods {
+            ## Disable the mass-conservative adaptivity scaling for EVERYTHING it covers on the
+            ## tracer side: tracer-family fields (PassiveTracer*, Tracer*, Species*), Concentration,
+            ## solid metal tracers AND Temperature.
+            ## Scaling is active by default.
+            element disable_adapt_mass_conservation_tracers {
+               empty
+            }?,
+            ## Exclude Temperature only from the mass-conservative adaptivity scaling, KEEPING
+            ## tracer/solid-metal mass conservation active. 
+            ## Scaling is active by default.
+            element disable_adapt_mass_conservation_temperature {
+               empty
+            }?,
+            ## Disable the mass-conservative adaptivity scaling for the phase volume fraction
+            ## (saturation side). Scaling is active by default.
+            element disable_adapt_mass_conservation_saturation {
+               empty
+            }?,
             ## Apply a correction factor to conserve multiphase mass after mesh adaptation.
             ## Only active when mesh adaptivity is enabled.
             element correction_mass_sat {
+               empty
+            }?,
+            ## Disable the global mass-correction rescale applied to metal exchange tracers
+            ## (fluid and solid alike) after mesh adaptation.
+            ## Scaling is active by default.
+            element disable_correction_mass_metal {
                empty
             }?,
             ## Automatically after adapting the mesh and interpolating the fields a method to ensure boundeness of the field
@@ -1759,17 +1585,6 @@ start =
             ##
             ## This option is useful if your field is suddenly changing after adapting the mesh.
             element do_not_bound_after_adapt {
-               empty
-            }?,
-            ## Disable the mass-conservative scaling of tracers/Concentration/Temperature across
-            ## the mesh-adaptivity interpolation. On by default, this switch is a debugging aid.
-            element disable_adapt_mass_conservation_tracers {
-               empty
-            }?,
-            ## Disable the mass-conservative scaling of the phase volume fractions across the
-            ## mesh-adaptivity interpolation (and the associated per-phase pore-volume restore).
-            ## On by default, this switch is a debugging aid.
-            element disable_adapt_mass_conservation_saturation {
                empty
             }?,
             ## This disable the limiters regarless of the precision used

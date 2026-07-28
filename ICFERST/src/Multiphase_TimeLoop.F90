@@ -229,7 +229,7 @@ contains
         ! Fixed by scaling the fields by the conserved-quantity weight before the projection and unscaling after (see build_conserved_weight).
         ! The saturation scaling is only safe together with Restore_Phase_Mass_SumOne, which repairs the mass that Set_Saturation_to_sum_one moves.
         ! Both are on by default and can be disabled from /numerical_methods (set below).
-        logical :: massfix_scale_tracers, massfix_scale_saturation
+        logical :: massfix_scale_tracers, massfix_scale_saturation, massfix_scale_temperature
         real :: t_adapt_threshold
         ! Calculate_mass_delta to store the change in mass calculated over the whole domain
         real, allocatable, dimension(:,:) :: calculate_mass_delta
@@ -298,8 +298,11 @@ contains
         !We may not want to compute always the stats
         write_all_stats = .not.have_option("/io/Sync_stat_file_with_vtu")
 
-        !Mass-conservative adaptivity is on by default. The disable switches are debugging aids
+        !Mass-conservative adaptivity is on by default. Two disable switches:
+        !1) disable_adapt_mass_conservation_tracers: master switch, disables the scaling for EVERYTHING it covers (tracer-family fields, Concentration, solid metal tracers AND Temperature).
         massfix_scale_tracers = .not. have_option("/numerical_methods/disable_adapt_mass_conservation_tracers")
+        !2) disable_adapt_mass_conservation_temperature: excludes Temperature only, KEEPING tracer/solid-metal mass conservation active
+        massfix_scale_temperature = .not. have_option("/numerical_methods/disable_adapt_mass_conservation_temperature")
         massfix_scale_saturation = .not. have_option("/numerical_methods/disable_adapt_mass_conservation_saturation")
 
         ! Check wether we are using the CV_Galerkin method
@@ -1008,10 +1011,9 @@ contains
               call copy_metal_field(state, packed_state, Mdims, ndgln)
             end if
 
-            !Metal dissolution happens here
-            if (have_option("/porous_media/Metal_dissolution"))call metal_dissolution(state, packed_state, Mdims, ndgln)
-            !Metal precipitation happens here
-            if (have_option("/porous_media/Metal_precipitation"))call metal_precipitation(state, packed_state, Mdims, ndgln, dt)
+            !Metal exchange (dissolution/precipitation) happens here, for every reaction
+            !configured under /porous_media/metal_reactions.
+            if (have_metal_reactions()) call metal_reactions_exchange(state, packed_state, Mdims, ndgln, dt)
 
             !Flash dissolution happens here JUST BEFORE get_RockFluidProp
             if (have_option("/porous_media/Gas_dissolution"))call flash_gas_dissolution(state, packed_state, Mdims, ndgln)
@@ -1083,7 +1085,7 @@ contains
             call petsc_logging(2,stages,ierrr,default=.true., push_no=7)
 
             ! Call to calculate the metal total mass before adapting
-            if (have_option("/porous_media/Metal_dissolution") .or. have_option("/porous_media/Metal_precipitation")) then
+            if (have_metal_reactions()) then
               call total_mass_metal(state, packed_state, Mdims, ndgln, CV_funs, total_mass_metal_before_adapt)
             end if
 
@@ -1099,7 +1101,7 @@ contains
             end if
 
             ! Call to bound the metal concentrations to eliminate nonphysical values + apply correction factor to conserve mass
-            if (have_option("/porous_media/Metal_dissolution") .or. have_option("/porous_media/Metal_precipitation")) then
+            if (have_metal_reactions()) then
               ! Call to bound the metal concentrations to avoid any unphysical value created by adaptivity
               call bound_metal_concentrations(state, packed_state, Mdims, ndgln)
               ! Call to calculate the metal total mass after bounding
@@ -1586,6 +1588,10 @@ contains
                     rock_cp_w => extract_scalar_field( state(1), "porous_heat_capacity", w_stat )
                     have_rock_w = ( w_stat == 0 )
                 end if
+            else if ( weight_kind == 4 ) then
+                !Solid metal tracer weight (1-phi)*rho_s needs only the rock density
+                rock_den_w => extract_scalar_field( state(1), "porous_density", w_stat )
+                have_rock_w = ( w_stat == 0 )
             end if
             x_w => extract_vector_field( packed_state, "PressureCoordinate" )
             x_ndgln_w => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
@@ -1616,6 +1622,10 @@ contains
                             !(1-porosity_w) matches the rock term in cv-adv-dif
                             aux_rock_w( inod_w ) = aux_rock_w( inod_w ) + &
                                 mm_w * ( 1.0 - porosity_w%val( 1, ele_w ) ) * rock_term_w
+                        else if ( weight_kind == 4 .and. have_rock_w ) then
+                            !CV-volume-weighted rock density, same averaging as aux_phi_w
+                            aux_rock_w( inod_w ) = aux_rock_w( inod_w ) + &
+                                mm_w * rock_den_w%val( min( size( rock_den_w%val ), ele_w ) )
                         end if
                     end do
                 end do
@@ -1651,6 +1661,12 @@ contains
                                 weight( j_w, inod_w ) = weight( j_w, inod_w ) * &
                                 den_w%val( 1, min( j_w, size( den_w%val, 2 ) ), inod_w )
                         end if
+                    else if ( weight_kind == 4 ) then
+                        ! Solid metal tracer: it lives in the rock, so its conserved integral is int (1-phi) * rho_s * C dV, NOT phi * rho * S * C
+                        !  Same (1-phi)*rho_s as the metal exchange (see get_solid_metal_weight_cv / cv-adv-dif)
+                        weight( j_w, inod_w ) = ( 1.0 - aux_phi_w( jpres_w, inod_w ) / max( volsum_w( inod_w ), 1.0e-30 ) )
+                        if ( have_rock_w ) weight( j_w, inod_w ) = weight( j_w, inod_w ) * &
+                            aux_rock_w( inod_w ) / max( volsum_w( inod_w ), 1.0e-30 )
                     else
                         ! Tracers/Concentration: w = phi * rho * S (rho omitted when constant)
                         weight( j_w, inod_w ) = ( aux_phi_w( jpres_w, inod_w ) / max( volsum_w( inod_w ), 1.0e-30 ) ) * &
@@ -1665,7 +1681,8 @@ contains
             !Nodes with negligible porosity carry no pore volume: exclude them from the scaling (identity weight) instead of dividing the projected field by a near-zero weight there, which amplifies projection ringing unboundedly.
             !Weighted mass at these nodes is below 1e-8 of the local scale, so the conservation cost is of that order.
             !Temperature (kind 2) is excluded: its rock term keeps the weight finite at phi = 0.
-            if ( weight_kind /= 2 ) then
+            !Solid metal (kind 4) is excluded: its weight (1-phi)*rho_s vanishes only at phi = 1 (rock-free, no solid tracer), not at phi = 0 where the solid tracer actually lives.
+            if ( weight_kind /= 2 .and. weight_kind /= 4 ) then
                 allocate( phimax_w( size( aux_phi_w, 1 ) ) )
                 do jpres_w = 1, size( aux_phi_w, 1 )
                     phimax_w( jpres_w ) = 0.0
@@ -1699,10 +1716,11 @@ contains
         subroutine scale_conserved_fields( direction )
             integer, intent(in) :: direction
             !local
-            real, dimension(:,:), allocatable :: weight_tr, weight_te
+            real, dimension(:,:), allocatable :: weight_tr, weight_te, weight_ms
             integer :: ik_w
             character(len=OPTION_PATH_LEN) :: fname_w
             logical, save :: warned_components_w = .false.
+            logical :: built_weight_ms
 
             if ( .not. massfix_scale_tracers ) return
             !Component mass fractions are outside the conserved measures of this fix
@@ -1714,10 +1732,10 @@ contains
                 end if
             end if
             call build_conserved_weight( 1, weight_tr )
-            if ( has_temperature ) call build_conserved_weight( 2, weight_te )
+            if ( has_temperature .and. massfix_scale_temperature ) call build_conserved_weight( 2, weight_te )
 
-            !Temperature
-            if ( has_temperature ) then
+            !Temperature (skipped when disable_adapt_mass_conservation_temperature is set)
+            if ( has_temperature .and. massfix_scale_temperature ) then
                 call apply_weight_to_packed( "PackedTemperature", weight_te, direction )
                 call apply_weight_to_packed( "PackedOldTemperature", weight_te, direction )
             end if
@@ -1735,8 +1753,24 @@ contains
                 end if
             end do
 
+            !Solid metal tracers: not tracer-family names (they live in the rock), so they are not caught above
+            !Their conserved weight is (1-phi)*rho_s (weight_kind 4), built once and only when such a field exists
+            built_weight_ms = .false.
+            do ik_w = 0, option_count("/material_phase[0]/scalar_field") - 1
+                call get_option("/material_phase[0]/scalar_field["// int2str(ik_w) //"]/name", fname_w)
+                if ( is_solid_metal_tracer(fname_w) ) then
+                    if ( .not. built_weight_ms ) then
+                        call build_conserved_weight( 4, weight_ms )
+                        built_weight_ms = .true.
+                    end if
+                    call apply_weight_to_packed( "Packed"//trim(fname_w), weight_ms, direction )
+                    call apply_weight_to_packed( "PackedOld"//trim(fname_w), weight_ms, direction )
+                end if
+            end do
+
             if ( allocated( weight_tr ) ) deallocate( weight_tr )
             if ( allocated( weight_te ) ) deallocate( weight_te )
+            if ( allocated( weight_ms ) ) deallocate( weight_ms )
         end subroutine scale_conserved_fields
 
         !>@brief Fill massfix_use_rho: .true. for the phases whose saturation scaling carries
@@ -1935,7 +1969,8 @@ contains
             tracer_min_max_before = 0.0
             do ik = 1, n_tracer_sfields
               call get_option("/material_phase[0]/scalar_field["// int2str(ik - 1) //"]/name", tracer_name)
-              if (is_Tracer_field(tracer_name) .and. trim(tracer_name) /= "Concentration") then
+              if ( (is_Tracer_field(tracer_name) .and. trim(tracer_name) /= "Concentration") &
+                    .or. is_solid_metal_tracer(tracer_name) ) then
                 tracer_tmp => extract_tensor_field(packed_state, "Packed"//trim(tracer_name), tracer_stat)
                 if (tracer_stat == 0) then
                   tracer_min_max_before(ik, 1) = minval(tracer_tmp%val); call allmin(tracer_min_max_before(ik, 1))
@@ -2153,10 +2188,12 @@ contains
                 if (.not. have_option("/numerical_methods/do_not_bound_after_adapt")) then
                   if (has_temperature) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedTemperature", min_max_limits = min_max_limits_before)
                   if (has_concentration) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedConcentration" ,min_max_limits = concentration_min_max_limits_before)
-                  ! Bound tracer fields (PassiveTracer*, Tracer*, Species*) after adapt
+                  ! Bound tracer fields (PassiveTracer*, Tracer*, Species*) and solid metal tracers after adapt
+                  ! BoundedSolutionCorrections weights the redistribution  by the field's conserved measure (phi*S for tracers, (1-phi)*rho_s for solid metal - selected inside the routine from the field name)
                   do ik = 1, n_tracer_sfields
                     call get_option("/material_phase[0]/scalar_field["// int2str(ik - 1) //"]/name", tracer_name)
-                    if (is_Tracer_field(tracer_name) .and. trim(tracer_name) /= "Concentration") then
+                    if ( (is_Tracer_field(tracer_name) .and. trim(tracer_name) /= "Concentration") &
+                          .or. is_solid_metal_tracer(tracer_name) ) then
                       tracer_tmp => extract_tensor_field(packed_state, "Packed"//trim(tracer_name), tracer_stat)
                       if (tracer_stat == 0) then
                         call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, &

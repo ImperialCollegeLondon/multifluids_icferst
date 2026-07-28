@@ -3487,526 +3487,6 @@ contains
     end subroutine flash_gas_dissolution
 
     !> @author Meissam Bahlali
-    !>@brief: subroutine to dissolve metals using a partition coefficient.
-    !> Dissolve/precipitate instantaneously the amount introduced in diamond in kg/kg.
-    !> Requires to have the following scalar fields defined: a liquid metal passive tracer field (e.g., "PassiveTracer_Metal" - has to start with "PassiveTracer"), PassiveTracer_Metal, a solid metal field (e.g., "Metal_solid") the temperature/salt coefficient fields for the partition coefficient, defined as a function of salt and temperature. These coefficients are defined element-wise in porous_properties.
-    !> Requires to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not.
-    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
-    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
-    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
-    !>@param  ndgln Global to local variables
-    subroutine metal_dissolution(state, packed_state, Mdims, ndgln)
-      implicit none
-      type(state_type), dimension(:), intent (inout) :: state
-      type(state_type), intent (inout) :: packed_state
-      type(multi_dimensions), intent (in) :: Mdims
-      type(multi_ndgln), intent (in) :: ndgln
-      !Local variables
-      double precision :: partition_coefficient, log_partition_coefficient, I, rho_c_solid, rho_c_fluid
-      type(tensor_field), pointer :: tracer_field_fluid, density, temperature, Tracer_Salt, tracer_field_solid
-      type (scalar_field), pointer :: density_porous, K_const_field, K_c_field, K_T_field, K_c2_field, K_T2_field, K_cT_field, K_A_field
-      type(vector_field), pointer :: MeanPoreCV
-      integer :: cv_nod, stat, ele, cv_iloc, p_den, K_const_ele, K_c_ele, K_T_ele, K_c2_ele, K_T2_ele, K_cT_ele, K_A_ele
-      character( len = option_path_len ), save :: solid_tracer_name, fluid_tracer_name, Tracer_Salt_name
-      logical :: has_Tracer_Salt, has_Temperature
-      real, dimension (:), pointer :: mass_ele
-      type(vector_field), pointer :: vfield
-      double precision, dimension(Mdims%cv_nonods) :: K_const_cv, K_c_cv, K_T_cv, K_c2_cv, K_T2_cv, K_cT_cv, K_A_cv, porous_density_cv
-      double precision, dimension (Mdims%cv_nonods) ::  SUM_CV
-      double precision :: ref_rho
-      double precision, dimension(Mdims%cv_nonods) :: P_const_cv, P_c_cv, P_T_cv, P_c2_cv, P_T2_cv, P_cT_cv, P_A_cv
-      type (scalar_field), pointer :: P_const_field, P_c_field, P_T_field, P_c2_field, P_T2_field, P_cT_field, P_A_field
-      integer :: P_const_ele, P_c_ele, P_T_ele, P_c2_ele, P_T2_ele, P_cT_ele, P_A_ele
-      double precision :: precipitation_rate, log_precipitation_rate, delta_m, m_metal_fluid, m_metal_solid, use_density
-      logical :: has_precipitation
-
-      MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
-      density => extract_tensor_field(packed_state,"PackedDensity")
-      density_porous => extract_scalar_field( state(1), "porous_density" )
-      vfield => extract_vector_field(packed_state,"MASS_ELE")
-      mass_ele => vfield%val(1,:)
-
-      if (has_boussinesq_aprox) then
-        ref_rho=retrieve_reference_density(state, packed_state, 1, 0, Mdims%nphase)
-      end if
-
-      !Retrieve values from diamond
-
-      has_Temperature = have_option("/material_phase[0]/scalar_field::Temperature/")
-      has_Tracer_Salt = have_option("/porous_media/Metal_dissolution/Tracer_Salt")
-      has_precipitation = have_option("/porous_media/Metal_precipitation")
-
-      K_A_field => extract_scalar_field(state(1), "K_A")
-      K_c_field => extract_scalar_field(state(1), "K_c")
-      K_T_field => extract_scalar_field(state(1), "K_T")
-      K_c2_field => extract_scalar_field(state(1), "K_c2")
-      K_T2_field => extract_scalar_field(state(1), "K_T2")
-      K_cT_field => extract_scalar_field(state(1), "K_cT")
-      K_const_field => extract_scalar_field(state(1), "K_const")
-
-      if (has_precipitation) then
-        P_A_field => extract_scalar_field(state(1), "P_A")
-        P_c_field => extract_scalar_field(state(1), "P_c")
-        P_T_field => extract_scalar_field(state(1), "P_T")
-        P_c2_field => extract_scalar_field(state(1), "P_c2")
-        P_T2_field => extract_scalar_field(state(1), "P_T2")
-        P_cT_field => extract_scalar_field(state(1), "P_cT")
-        P_const_field => extract_scalar_field(state(1), "P_const")
-      end if
-
-
-      if (has_Temperature) then
-        temperature=>extract_tensor_field(packed_state,"PackedTemperature", stat)
-      end if
-
-      if (has_Tracer_Salt) then
-        call get_option("/porous_media/Metal_dissolution/Tracer_Salt", Tracer_Salt_name)
-        Tracer_Salt => extract_tensor_field( packed_state,"Packed"//trim(Tracer_Salt_name), stat)
-      end if
-
-      call get_option("/porous_media/Metal_dissolution/tracer_field_solid", solid_tracer_name)
-      call get_option("/porous_media/Metal_dissolution/tracer_field_fluid", fluid_tracer_name)
-
-      tracer_field_fluid=>extract_tensor_field(packed_state,"Packed"//trim(fluid_tracer_name), stat)
-
-      if (stat /= 0) then
-        FLAbort("To compute metal dissolution/precipitation, a PassiveTracer field is required.")
-      end if
-
-      tracer_field_solid => extract_tensor_field(packed_state,"Packed"//trim(solid_tracer_name), stat)
-
-      if (stat /= 0) then
-        FLAbort("To compute metal dissolution/precipitation, a Metal_solid field is required.")
-      end if
-      ! Calculate the partition coefficient (CV method)
-      K_const_cv = 0.0
-      K_c_cv = 0.0
-      K_T_cv = 0.0
-      K_c2_cv = 0.0
-      K_T2_cv = 0.0
-      K_cT_cv = 0.0
-      K_A_cv = 0.0
-      porous_density_cv = 0.0
-      SUM_CV = 0.0
-      DO ELE = 1, Mdims%totele
-          p_den = min(size(density_porous%val), ele)
-          K_A_ele = min(size(K_A_field%val), ele)
-          K_c_ele = min(size(K_c_field%val), ele)
-          K_T_ele = min(size(K_T_field%val), ele)
-          K_c2_ele = min(size(K_c2_field%val), ele)
-          K_T2_ele = min(size(K_T2_field%val), ele)
-          K_cT_ele = min(size(K_cT_field%val), ele)
-          K_const_ele = min(size(K_const_field%val), ele)
-        DO CV_ILOC = 1, Mdims%cv_nloc
-          cv_nod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-          SUM_CV( cv_nod ) = SUM_CV( cv_nod ) + MASS_ELE( ELE )
-          K_const_cv( cv_nod ) = K_const_cv( cv_nod ) + MASS_ELE( ELE ) * K_const_field%val(K_const_ele)
-          K_c_cv( cv_nod ) = K_c_cv( cv_nod ) + MASS_ELE( ELE ) * K_c_field%val(K_c_ele)
-          K_T_cv( cv_nod ) = K_T_cv( cv_nod ) + MASS_ELE( ELE ) * K_T_field%val(K_T_ele)
-          K_c2_cv( cv_nod ) = K_c2_cv( cv_nod ) + MASS_ELE( ELE ) * K_c2_field%val(K_c2_ele)
-          K_T2_cv( cv_nod ) = K_T2_cv( cv_nod ) + MASS_ELE( ELE ) * K_T2_field%val(K_T2_ele)
-          K_cT_cv( cv_nod ) = K_cT_cv( cv_nod ) + MASS_ELE( ELE ) * K_cT_field%val(K_cT_ele)
-          K_A_cv( cv_nod ) = K_A_cv( cv_nod ) + MASS_ELE( ELE ) * K_A_field%val(K_A_ele)
-          porous_density_cv( cv_nod ) = porous_density_cv( cv_nod ) + MASS_ELE( ELE ) * density_porous%val(p_den )
-        END DO
-      END DO
-      K_const_cv(:) = K_const_cv(:) / SUM_CV
-      K_c_cv(:) = K_c_cv(:) / SUM_CV
-      K_T_cv(:) = K_T_cv(:) / SUM_CV
-      K_c2_cv(:) = K_c2_cv(:) / SUM_CV
-      K_T2_cv(:) = K_T2_cv(:) / SUM_CV
-      K_cT_cv(:) = K_cT_cv(:) / SUM_CV
-      K_A_cv(:) = K_A_cv(:) / SUM_CV
-      porous_density_cv(:) = porous_density_cv(:) / SUM_CV
-
-      ! Calculate the precipitation rate (CV method)
-      if (has_precipitation) then
-        P_const_cv = 0.0
-        P_c_cv = 0.0
-        P_T_cv = 0.0
-        P_c2_cv = 0.0
-        P_T2_cv = 0.0
-        P_cT_cv = 0.0
-        P_A_cv = 0.0
-        DO ELE = 1, Mdims%totele
-          P_A_ele = min(size(P_A_field%val), ele)
-          P_c_ele = min(size(P_c_field%val), ele)
-          P_T_ele = min(size(P_T_field%val), ele)
-          P_c2_ele = min(size(P_c2_field%val), ele)
-          P_T2_ele = min(size(P_T2_field%val), ele)
-          P_cT_ele = min(size(P_cT_field%val), ele)
-          P_const_ele = min(size(P_const_field%val), ele)
-          DO CV_ILOC = 1, Mdims%cv_nloc
-            cv_nod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-            P_const_cv( cv_nod ) = P_const_cv( cv_nod ) + MASS_ELE( ELE ) * P_const_field%val(P_const_ele)
-            P_c_cv( cv_nod ) = P_c_cv( cv_nod ) + MASS_ELE( ELE ) * P_c_field%val(P_c_ele)
-            P_T_cv( cv_nod ) = P_T_cv( cv_nod ) + MASS_ELE( ELE ) * P_T_field%val(P_T_ele)
-            P_c2_cv( cv_nod ) = P_c2_cv( cv_nod ) + MASS_ELE( ELE ) * P_c2_field%val(P_c2_ele)
-            P_T2_cv( cv_nod ) = P_T2_cv( cv_nod ) + MASS_ELE( ELE ) * P_T2_field%val(P_T2_ele)
-            P_cT_cv( cv_nod ) = P_cT_cv( cv_nod ) + MASS_ELE( ELE ) * P_cT_field%val(P_cT_ele)
-            P_A_cv( cv_nod ) = P_A_cv( cv_nod ) + MASS_ELE( ELE ) * P_A_field%val(P_A_ele)
-          END DO
-        END DO
-        P_const_cv(:) = P_const_cv(:) / SUM_CV
-        P_c_cv(:) = P_c_cv(:) / SUM_CV
-        P_T_cv(:) = P_T_cv(:) / SUM_CV
-        P_c2_cv(:) = P_c2_cv(:) / SUM_CV
-        P_T2_cv(:) = P_T2_cv(:) / SUM_CV
-        P_cT_cv(:) = P_cT_cv(:) / SUM_CV
-        P_A_cv(:) = P_A_cv(:) / SUM_CV
-      end if
-
-
-      ! Calculate the partition coefficient (CV method)
-
-      do cv_nod=1,Mdims%cv_nonods
-        if (node_owned(tracer_field_fluid,cv_nod)) then
-
-          ! Calculate the partition coefficient
-          log_partition_coefficient = K_const_cv( cv_nod )
-
-          if (has_Tracer_Salt) then
-            log_partition_coefficient = log_partition_coefficient + K_c_cv(cv_nod)*Tracer_Salt%val(1,1,cv_nod) + K_c2_cv(cv_nod)*(Tracer_Salt%val(1,1,cv_nod))**2
-          end if
-
-          if (has_Temperature) then
-            log_partition_coefficient = log_partition_coefficient + K_T_cv(cv_nod)*temperature%val(1,1,cv_nod) + K_T2_cv(cv_nod)*(temperature%val(1,1,cv_nod))**2
-          end if
-
-          if (has_Temperature .and. has_Tracer_Salt) then
-            log_partition_coefficient = log_partition_coefficient + K_cT_cv(cv_nod)*Tracer_Salt%val(1,1,cv_nod)*temperature%val(1,1,cv_nod)
-          end if
-
-          partition_coefficient = K_A_cv(cv_nod)*exp(log_partition_coefficient)
-
-          ! Calculate the precipitation rate
-          if (has_precipitation) then
-            log_precipitation_rate = P_const_cv(cv_nod)
-
-            if (has_Tracer_Salt) then
-              log_precipitation_rate = log_precipitation_rate + P_c_cv(cv_nod)*Tracer_Salt%val(1,1,cv_nod) + P_c2_cv(cv_nod)*(Tracer_Salt%val(1,1,cv_nod))**2
-            end if
-
-            if (has_Temperature) then
-              log_precipitation_rate = log_precipitation_rate + P_T_cv(cv_nod)*temperature%val(1,1,cv_nod) + P_T2_cv(cv_nod)*(temperature%val(1,1,cv_nod))**2
-            end if
-
-            if (has_Temperature .and. has_Tracer_Salt) then
-              log_precipitation_rate = log_precipitation_rate + P_cT_cv(cv_nod)*Tracer_Salt%val(1,1,cv_nod)*temperature%val(1,1,cv_nod)
-            end if
-
-            precipitation_rate = P_A_cv(cv_nod)*exp(log_precipitation_rate)
-          end if
-
-          ! Determine the density type to use
-          if (has_boussinesq_aprox) then
-              use_density = ref_rho
-          else
-              use_density = density%val(1,1,cv_nod)
-          end if
-
-          if (partition_coefficient > 0.0) then
-              if (has_precipitation) then
-                  if (precipitation_rate <= 0.0) then
-                      ! Calculate total metal mass
-                      I = MeanPoreCV%val(1,cv_nod) * ref_rho * tracer_field_fluid%val(1,1,cv_nod) + (1.d0 - MeanPoreCV%val(1,cv_nod)) * porous_density_cv(cv_nod) * tracer_field_solid%val(1,1,cv_nod)
-                      ! Recompute the fluid metal rho*c using the partition coefficient (Jackson et al., 2017 - Eq. (20))
-                      rho_c_fluid = I / (partition_coefficient * (porous_density_cv(cv_nod)/ref_rho) + MeanPoreCV%val(1,cv_nod) * (1.d0 - partition_coefficient * (porous_density_cv(cv_nod)/ref_rho)))
-                      ! Recompute the solid metal rho*c using the partition coefficient (Jackson et al., 2017 - Eq. (20))
-                      rho_c_solid = partition_coefficient * (porous_density_cv(cv_nod)/ref_rho) * rho_c_fluid
-                      ! Recompute the fluid and solid metal concentrations
-                      tracer_field_fluid%val(1,1,cv_nod) = rho_c_fluid / ref_rho
-                      tracer_field_solid%val(1,1,cv_nod) = rho_c_solid / porous_density_cv(cv_nod)
-                  end if
-              else
-                  ! Calculate total metal mass
-                  I = MeanPoreCV%val(1,cv_nod) * use_density * tracer_field_fluid%val(1,1,cv_nod) + (1.d0 - MeanPoreCV%val(1,cv_nod)) * porous_density_cv(cv_nod) * tracer_field_solid%val(1,1,cv_nod)
-                  ! Recompute the fluid metal rho*c using the partition coefficient (Jackson et al., 2017 - Eq. (20))
-                  rho_c_fluid = I / (partition_coefficient * porous_density_cv(cv_nod)/use_density + MeanPoreCV%val(1,cv_nod) * (1.d0 - partition_coefficient * (porous_density_cv(cv_nod)/use_density)))
-                  ! Recompute the solid metal rho*c using the partition coefficient (Jackson et al., 2017 - Eq. (20))
-                  rho_c_solid = partition_coefficient * (porous_density_cv(cv_nod)/use_density) * rho_c_fluid
-                  ! Recompute the fluid and solid metal concentrations
-                  tracer_field_fluid%val(1,1,cv_nod) = rho_c_fluid / use_density
-                  tracer_field_solid%val(1,1,cv_nod) = rho_c_solid / porous_density_cv(cv_nod)
-              end if
-          end if
-        end if
-
-      end do
-
-      !Update halo communications
-      if (IsParallel()) then
-        call halo_update(tracer_field_fluid)
-        call halo_update(tracer_field_solid)
-      end if
-
-    end subroutine metal_dissolution
-
-    !> @author Meissam Bahlali
-    !>@brief: subroutine to precipitate metals using a precipitation rate.
-    !> Precipitate the amount introduced in diamond in kg/kg.
-    !> Requires to have the following scalar fields defined: a liquid metal passive tracer field (e.g., "PassiveTracer_Metal" - has to start with "PassiveTracer"), PassiveTracer_Metal, a solid metal field (e.g., "Metal_solid") the temperature/salt coefficient fields for the precipitation rate, defined as a function of salt and temperature. These coefficients are defined element-wise in porous_properties.
-    !> Requires to define porous_properties (porous_density, porous_heat_capacity, porous_thermal_conductivity) regardless of whether the simulation includes temperature transport or not.
-    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
-    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
-    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
-    !>@param  ndgln Global to local variables
-    subroutine metal_precipitation(state, packed_state, Mdims, ndgln, dt)
-      implicit none
-      type(state_type), dimension(:), intent (inout) :: state
-      type(state_type), intent (inout) :: packed_state
-      type(multi_dimensions), intent (in) :: Mdims
-      type(multi_ndgln), intent (in) :: ndgln
-      real, intent( in ) :: dt
-      !Local variables
-      double precision :: precipitation_rate, log_precipitation_rate, I, rho_c_solid, rho_c_fluid, delta_m, m_metal_fluid, m_metal_solid
-      type(tensor_field), pointer :: tracer_field_fluid, density, temperature, Tracer_Salt, tracer_field_solid
-      type (scalar_field), pointer :: density_porous, P_const_field, P_c_field, P_T_field, P_c2_field, P_T2_field, P_cT_field, P_A_field
-      type(vector_field), pointer :: MeanPoreCV, cv_volume
-      integer :: cv_nod, stat, ele, cv_iloc, p_den, P_const_ele, P_c_ele, P_T_ele, P_c2_ele, P_T2_ele, P_cT_ele, P_A_ele
-      character( len = option_path_len ), save :: solid_tracer_name, fluid_tracer_name, Tracer_Salt_name
-      logical :: has_Tracer_Salt, has_Temperature
-      double precision :: ref_rho
-      real, dimension (:), pointer :: mass_ele
-      type(vector_field), pointer :: vfield
-      double precision, dimension(Mdims%cv_nonods) :: P_const_cv, P_c_cv, P_T_cv, P_c2_cv, P_T2_cv, P_cT_cv, P_A_cv, porous_density_cv
-      double precision, dimension (Mdims%cv_nonods) ::  SUM_CV
-      type (scalar_field), pointer :: K_const_field, K_c_field, K_T_field, K_c2_field, K_T2_field, K_cT_field, K_A_field
-      integer :: K_const_ele, K_c_ele, K_T_ele, K_c2_ele, K_T2_ele, K_cT_ele, K_A_ele
-      double precision, dimension(Mdims%cv_nonods) :: K_const_cv, K_c_cv, K_T_cv, K_c2_cv, K_T2_cv, K_cT_cv, K_A_cv
-      double precision :: partition_coefficient, log_partition_coefficient, use_density
-      logical :: has_dissolution
-
-      MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
-      density => extract_tensor_field(packed_state,"PackedDensity")
-      density_porous => extract_scalar_field( state(1), "porous_density" )
-      cv_volume=> extract_vector_field(packed_state,"CVIntegral")
-      vfield => extract_vector_field(packed_state,"MASS_ELE")
-      mass_ele => vfield%val(1,:)
-
-      if (has_boussinesq_aprox) then
-        ref_rho=retrieve_reference_density(state, packed_state, 1, 0, Mdims%nphase)
-      end if
-
-      !Retrieve values from Diamond
-
-      has_Temperature = have_option("/material_phase[0]/scalar_field::Temperature/")
-      has_Tracer_Salt = have_option("/porous_media/Metal_precipitation/Tracer_Salt")
-      has_dissolution = have_option("/porous_media/Metal_dissolution")
-
-      P_A_field => extract_scalar_field(state(1), "P_A")
-      P_c_field => extract_scalar_field(state(1), "P_c")
-      P_T_field => extract_scalar_field(state(1), "P_T")
-      P_c2_field => extract_scalar_field(state(1), "P_c2")
-      P_T2_field => extract_scalar_field(state(1), "P_T2")
-      P_cT_field => extract_scalar_field(state(1), "P_cT")
-      P_const_field => extract_scalar_field(state(1), "P_const")
-
-      if (has_dissolution) then
-        K_A_field => extract_scalar_field(state(1), "K_A")
-        K_c_field => extract_scalar_field(state(1), "K_c")
-        K_T_field => extract_scalar_field(state(1), "K_T")
-        K_c2_field => extract_scalar_field(state(1), "K_c2")
-        K_T2_field => extract_scalar_field(state(1), "K_T2")
-        K_cT_field => extract_scalar_field(state(1), "K_cT")
-        K_const_field => extract_scalar_field(state(1), "K_const")
-      end if
-
-      if (has_Temperature) then
-        temperature=>extract_tensor_field(packed_state,"PackedTemperature", stat)
-      end if
-
-      if (has_Tracer_Salt) then
-        call get_option("/porous_media/Metal_precipitation/Tracer_Salt", Tracer_Salt_name)
-        Tracer_Salt => extract_tensor_field( packed_state,"Packed"//trim(Tracer_Salt_name), stat)
-      end if
-
-      call get_option("/porous_media/Metal_precipitation/tracer_field_solid", solid_tracer_name)
-      call get_option("/porous_media/Metal_precipitation/tracer_field_fluid", fluid_tracer_name)
-
-      tracer_field_fluid=>extract_tensor_field(packed_state,"Packed"//trim(fluid_tracer_name), stat)
-
-      if (stat /= 0) then
-        FLAbort("To compute metal precipitation, a PassiveTracer field is required.")
-      end if
-
-      tracer_field_solid => extract_tensor_field(packed_state,"Packed"//trim(solid_tracer_name), stat)
-
-      if (stat /= 0) then
-        FLAbort("To compute metal precipitation, a Metal_solid field is required.")
-      end if
-
-      ! Calculate the precipitation rate (CV method)
-      P_const_cv = 0.0
-      P_c_cv = 0.0
-      P_T_cv = 0.0
-      P_c2_cv = 0.0
-      P_T2_cv = 0.0
-      P_cT_cv = 0.0
-      P_A_cv = 0.0
-      porous_density_cv = 0.0
-      SUM_CV = 0.0
-      DO ELE = 1, Mdims%totele
-        p_den = min(size(density_porous%val), ele)
-        P_A_ele = min(size(P_A_field%val), ele)
-        P_c_ele = min(size(P_c_field%val), ele)
-        P_T_ele = min(size(P_T_field%val), ele)
-        P_c2_ele = min(size(P_c2_field%val), ele)
-        P_T2_ele = min(size(P_T2_field%val), ele)
-        P_cT_ele = min(size(P_cT_field%val), ele)
-        P_const_ele = min(size(P_const_field%val), ele)
-        DO CV_ILOC = 1, Mdims%cv_nloc
-          cv_nod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-          SUM_CV( cv_nod ) = SUM_CV( cv_nod ) + MASS_ELE( ELE )
-          P_const_cv( cv_nod ) = P_const_cv( cv_nod ) + MASS_ELE( ELE ) * P_const_field%val(P_const_ele)
-          P_c_cv( cv_nod ) = P_c_cv( cv_nod ) + MASS_ELE( ELE ) * P_c_field%val(P_c_ele)
-          P_T_cv( cv_nod ) = P_T_cv( cv_nod ) + MASS_ELE( ELE ) * P_T_field%val(P_T_ele)
-          P_c2_cv( cv_nod ) = P_c2_cv( cv_nod ) + MASS_ELE( ELE ) * P_c2_field%val(P_c2_ele)
-          P_T2_cv( cv_nod ) = P_T2_cv( cv_nod ) + MASS_ELE( ELE ) * P_T2_field%val(P_T2_ele)
-          P_cT_cv( cv_nod ) = P_cT_cv( cv_nod ) + MASS_ELE( ELE ) * P_cT_field%val(P_cT_ele)
-          P_A_cv( cv_nod ) = P_A_cv( cv_nod ) + MASS_ELE( ELE ) * P_A_field%val(P_A_ele)
-          porous_density_cv( cv_nod ) = porous_density_cv( cv_nod ) + MASS_ELE( ELE ) * density_porous%val(p_den )
-        END DO
-      END DO
-      P_const_cv(:) = P_const_cv(:) / SUM_CV
-      P_c_cv(:) = P_c_cv(:) / SUM_CV
-      P_T_cv(:) = P_T_cv(:) / SUM_CV
-      P_c2_cv(:) = P_c2_cv(:) / SUM_CV
-      P_T2_cv(:) = P_T2_cv(:) / SUM_CV
-      P_cT_cv(:) = P_cT_cv(:) / SUM_CV
-      P_A_cv(:) = P_A_cv(:) / SUM_CV
-      porous_density_cv(:) = porous_density_cv(:) / SUM_CV
-
-      ! Calculate the partition coefficient (CV method)
-      if (has_dissolution) then
-        K_const_cv = 0.0
-        K_c_cv = 0.0
-        K_T_cv = 0.0
-        K_c2_cv = 0.0
-        K_T2_cv = 0.0
-        K_cT_cv = 0.0
-        K_A_cv = 0.0
-        DO ELE = 1, Mdims%totele
-            K_A_ele = min(size(K_A_field%val), ele)
-            K_c_ele = min(size(K_c_field%val), ele)
-            K_T_ele = min(size(K_T_field%val), ele)
-            K_c2_ele = min(size(K_c2_field%val), ele)
-            K_T2_ele = min(size(K_T2_field%val), ele)
-            K_cT_ele = min(size(K_cT_field%val), ele)
-            K_const_ele = min(size(K_const_field%val), ele)
-          DO CV_ILOC = 1, Mdims%cv_nloc
-            cv_nod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-            K_const_cv( cv_nod ) = K_const_cv( cv_nod ) + MASS_ELE( ELE ) * K_const_field%val(K_const_ele)
-            K_c_cv( cv_nod ) = K_c_cv( cv_nod ) + MASS_ELE( ELE ) * K_c_field%val(K_c_ele)
-            K_T_cv( cv_nod ) = K_T_cv( cv_nod ) + MASS_ELE( ELE ) * K_T_field%val(K_T_ele)
-            K_c2_cv( cv_nod ) = K_c2_cv( cv_nod ) + MASS_ELE( ELE ) * K_c2_field%val(K_c2_ele)
-            K_T2_cv( cv_nod ) = K_T2_cv( cv_nod ) + MASS_ELE( ELE ) * K_T2_field%val(K_T2_ele)
-            K_cT_cv( cv_nod ) = K_cT_cv( cv_nod ) + MASS_ELE( ELE ) * K_cT_field%val(K_cT_ele)
-            K_A_cv( cv_nod ) = K_A_cv( cv_nod ) + MASS_ELE( ELE ) * K_A_field%val(K_A_ele)
-          END DO
-        END DO
-        K_const_cv(:) = K_const_cv(:) / SUM_CV
-        K_c_cv(:) = K_c_cv(:) / SUM_CV
-        K_T_cv(:) = K_T_cv(:) / SUM_CV
-        K_c2_cv(:) = K_c2_cv(:) / SUM_CV
-        K_T2_cv(:) = K_T2_cv(:) / SUM_CV
-        K_cT_cv(:) = K_cT_cv(:) / SUM_CV
-        K_A_cv(:) = K_A_cv(:) / SUM_CV
-      end if
-
-      ! Calculate the precipitation rate (CV method)
-
-      do cv_nod=1,Mdims%cv_nonods
-
-        if (node_owned(tracer_field_fluid,cv_nod)) then
-
-          ! Calculate the precipitation rate
-          log_precipitation_rate = P_const_cv(cv_nod)
-
-          if (has_Tracer_Salt) then
-            log_precipitation_rate = log_precipitation_rate + P_c_cv(cv_nod)*Tracer_Salt%val(1,1,cv_nod) + P_c2_cv(cv_nod)*(Tracer_Salt%val(1,1,cv_nod))**2
-          end if
-
-          if (has_Temperature) then
-            log_precipitation_rate = log_precipitation_rate + P_T_cv(cv_nod)*temperature%val(1,1,cv_nod) + P_T2_cv(cv_nod)*(temperature%val(1,1,cv_nod))**2
-          end if
-
-          if (has_Temperature .and. has_Tracer_Salt) then
-            log_precipitation_rate = log_precipitation_rate + P_cT_cv(cv_nod)*Tracer_Salt%val(1,1,cv_nod)*temperature%val(1,1,cv_nod)
-          end if
-
-          precipitation_rate = P_A_cv(cv_nod)*exp(log_precipitation_rate)
-
-          ! Calculate the partition coefficient
-          if (has_dissolution) then
-            log_partition_coefficient = K_const_cv( cv_nod )
-
-            if (has_Tracer_Salt) then
-              log_partition_coefficient = log_partition_coefficient + K_c_cv(cv_nod)*Tracer_Salt%val(1,1,cv_nod) + K_c2_cv(cv_nod)*(Tracer_Salt%val(1,1,cv_nod))**2
-            end if
-
-            if (has_Temperature) then
-              log_partition_coefficient = log_partition_coefficient + K_T_cv(cv_nod)*temperature%val(1,1,cv_nod) + K_T2_cv(cv_nod)*(temperature%val(1,1,cv_nod))**2
-            end if
-
-            if (has_Temperature .and. has_Tracer_Salt) then
-              log_partition_coefficient = log_partition_coefficient + K_cT_cv(cv_nod)*Tracer_Salt%val(1,1,cv_nod)*temperature%val(1,1,cv_nod)
-            end if
-
-            partition_coefficient = K_A_cv(cv_nod)*exp(log_partition_coefficient)
-          end if
-
-          ! Determine the density type to use
-          if (has_boussinesq_aprox) then
-              use_density = ref_rho
-          else
-              use_density = density%val(1,1,cv_nod)
-          end if
-
-          if ( precipitation_rate > 0.0) then
-            if ( has_dissolution ) then
-              if (partition_coefficient <= 0.0) then
-                m_metal_solid = (  1.d0 - MeanPoreCV%val(1,cv_nod) ) * porous_density_cv(cv_nod ) * tracer_field_solid%val(1,1,cv_nod) * cv_volume%val(1,cv_nod)
-                m_metal_fluid = MeanPoreCV%val(1,cv_nod) * use_density * tracer_field_fluid%val(1,1,cv_nod) * cv_volume%val(1,cv_nod)
-                ! Calculate delta_m to be added to the solid mass
-                delta_m = precipitation_rate * dt * m_metal_fluid
-                ! Ensure delta_m does not exceed the current fluid metal mass
-                delta_m = MIN(delta_m, m_metal_fluid)
-                ! Recompute the solid and fluid metal mass using the precipitation rate and to ensure mass conservation
-                m_metal_solid = m_metal_solid + delta_m
-                m_metal_fluid = m_metal_fluid - delta_m
-                ! Recompute the concentrations
-                tracer_field_fluid%val(1,1,cv_nod) = m_metal_fluid / ( use_density * MeanPoreCV%val(1,cv_nod) * cv_volume%val(1,cv_nod) )
-                tracer_field_solid%val(1,1,cv_nod) = m_metal_solid / ( porous_density_cv(cv_nod ) * (  1.d0 - MeanPoreCV%val(1,cv_nod) ) * cv_volume%val(1,cv_nod) )
-              end if
-            else
-              m_metal_solid = (  1.d0 - MeanPoreCV%val(1,cv_nod) ) * porous_density_cv(cv_nod ) * tracer_field_solid%val(1,1,cv_nod) * cv_volume%val(1,cv_nod)
-              m_metal_fluid = MeanPoreCV%val(1,cv_nod) * use_density * tracer_field_fluid%val(1,1,cv_nod) * cv_volume%val(1,cv_nod)
-              ! Calculate delta_m to be added to the solid mass
-              delta_m = precipitation_rate * dt * m_metal_fluid
-              ! Ensure delta_m does not exceed the current fluid metal mass
-              delta_m = MIN(delta_m, m_metal_fluid)
-              ! Recompute the solid and fluid metal mass using the precipitation rate and to ensure mass conservation
-              m_metal_solid = m_metal_solid + delta_m
-              m_metal_fluid = m_metal_fluid - delta_m
-              ! Recompute the concentrations
-              tracer_field_fluid%val(1,1,cv_nod) = m_metal_fluid / ( use_density * MeanPoreCV%val(1,cv_nod) * cv_volume%val(1,cv_nod) )
-              tracer_field_solid%val(1,1,cv_nod) = m_metal_solid / ( porous_density_cv(cv_nod ) * (  1.d0 - MeanPoreCV%val(1,cv_nod) ) * cv_volume%val(1,cv_nod) )
-            end if
-          end if
-        end if
-
-      end do
-
-      !Update halo communications
-      if (IsParallel()) then
-        call halo_update(tracer_field_fluid)
-        call halo_update(tracer_field_solid)
-      end if
-
-    end subroutine metal_precipitation
-
-    !> @author Meissam Bahlali
     !>@brief: subroutine to calculate the metal total mass (in kg).
     !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
     !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
@@ -4019,20 +3499,55 @@ contains
       type(multi_dimensions), intent (in) :: Mdims
       type(multi_ndgln), intent (in) :: ndgln
       type (multi_shape_funs) :: CV_funs
+      real, intent(out) :: metal_total_mass
+      !Local types
+      type tfield_ptr
+        type(tensor_field), pointer :: p => null()
+      end type tfield_ptr
       !Local variables
       type(multi_dev_shape_funs) :: DevFuns
-      type(tensor_field), pointer :: tracer_field_fluid, tracer_field_solid, density
+      type(metal_reaction_type), dimension(:), allocatable :: reacs
+      character( len = OPTION_PATH_LEN ), dimension(:), allocatable :: fluid_names, solid_names
+      integer, dimension(:), allocatable :: fluid_phase
+      type(tfield_ptr), dimension(:), allocatable :: f_fluid, f_solid
+      type(tensor_field), pointer :: density, pvf
       type (scalar_field), pointer :: density_porous
-      type(vector_field), pointer :: porosity_field
-      integer :: cv_nod, stat, ele, cv_iloc, p_den
-      character( len = option_path_len ) :: option_name
-      character( len = option_path_len ), save :: solid_tracer_name, fluid_tracer_name
-      real :: correction_factor, ref_rho
-      real, intent(out) :: metal_total_mass
-      real, dimension (:), pointer :: mass_ele
-      type(vector_field), pointer :: vfield
+      type(vector_field), pointer :: porosity_field, vfield
       type( vector_field ), pointer :: x
       integer, dimension( : ), pointer ::  x_ndgln
+      real, dimension (:), pointer :: mass_ele
+      integer :: n_fluids, n_solids, k, j, cv_nod, stat, ele, cv_iloc, p_den
+      real :: ref_rho
+      double precision :: phi, S, rho_f
+      logical :: has_pvf
+
+      metal_total_mass = 0.0
+      if (.not. have_metal_reactions()) return
+
+      call get_metal_reactions(reacs)
+      call get_unique_metal_tracer_names(fluid_names, n_fluids, want_solid=.false.)
+      call get_unique_metal_tracer_names(solid_names, n_solids, want_solid=.true.)
+
+      ! Carrier phase per unique fluid (all reactions sharing a fluid declare the same phase,
+      ! enforced in metal_reactions_exchange)
+      allocate(fluid_phase(n_fluids))
+      do k = 1, n_fluids
+        fluid_phase(k) = 1
+        do j = 1, size(reacs)
+          if (trim(reacs(j)%fluid_name) == trim(fluid_names(k))) then
+            fluid_phase(k) = reacs(j)%phase
+            exit
+          end if
+        end do
+      end do
+
+      allocate(f_fluid(n_fluids), f_solid(n_solids))
+      do k = 1, n_fluids
+        f_fluid(k)%p => extract_tensor_field(packed_state,"Packed"//trim(fluid_names(k)), stat)
+      end do
+      do k = 1, n_solids
+        f_solid(k)%p => extract_tensor_field(packed_state,"Packed"//trim(solid_names(k)), stat)
+      end do
 
       porosity_field=>extract_vector_field(packed_state,"Porosity")
       density => extract_tensor_field(packed_state,"PackedDensity")
@@ -4049,32 +3564,34 @@ contains
         ref_rho=retrieve_reference_density(state, packed_state, 1, 0, Mdims%nphase)
       end if
 
-      if (have_option("/porous_media/Metal_dissolution")) then
-        call get_option("/porous_media/Metal_dissolution/tracer_field_solid", solid_tracer_name)
-        call get_option("/porous_media/Metal_dissolution/tracer_field_fluid", fluid_tracer_name)
-      else if (have_option("/porous_media/Metal_precipitation")) then
-        call get_option("/porous_media/Metal_precipitation/tracer_field_solid", solid_tracer_name)
-        call get_option("/porous_media/Metal_precipitation/tracer_field_fluid", fluid_tracer_name)
-      end if
-
-
-      tracer_field_fluid=>extract_tensor_field(packed_state,"Packed"//trim(fluid_tracer_name), stat)
-      tracer_field_solid => extract_tensor_field(packed_state,"Packed"//trim(solid_tracer_name), stat)
-
-      metal_total_mass = 0.0
-
       do ele = 1, Mdims%totele
         call DETNLXR(ele, X%val, x_ndgln, CV_funs%cvweight, CV_funs%CVFEN, CV_funs%CVFENLX_ALL, DevFuns)
         Mass_ELE(ele) = DevFuns%volume
         p_den = min(size(density_porous%val), ele)
         do cv_iloc = 1, Mdims%cv_nloc
           cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
-          if (node_owned(tracer_field_fluid, cv_nod)) then
-            if (has_boussinesq_aprox) then
-              metal_total_mass = metal_total_mass + (porosity_field%val(1, ele) * ref_rho * tracer_field_fluid%val(1,1,cv_nod) + (1.d0 - porosity_field%val(1, ele)) * density_porous%val(p_den) * tracer_field_solid%val(1,1,cv_nod)) * (Mass_ELE(ele) / Mdims%cv_nloc)
-            else
-              metal_total_mass = metal_total_mass + (porosity_field%val(1, ele) * density%val(1,1,cv_nod) * tracer_field_fluid%val(1,1,cv_nod) + (1.d0 - porosity_field%val(1, ele)) * density_porous%val(p_den) * tracer_field_solid%val(1,1,cv_nod)) * (Mass_ELE(ele) / Mdims%cv_nloc)
-            end if
+          if (node_owned(f_fluid(1)%p, cv_nod)) then
+            phi = porosity_field%val(1, ele)
+            ! Fluid metal: phi * S_p * rho_p * C_f for each unique fluid tracer in its carrier phase
+            do k = 1, n_fluids
+              if (has_pvf) then
+                S = pvf%val(1, fluid_phase(k), cv_nod)
+              else
+                S = 1.d0
+              end if
+              if (has_boussinesq_aprox) then
+                rho_f = ref_rho
+              else
+                rho_f = density%val(1, fluid_phase(k), cv_nod)
+              end if
+              metal_total_mass = metal_total_mass + &
+                   phi * S * rho_f * f_fluid(k)%p%val(1, fluid_phase(k), cv_nod) * (Mass_ELE(ele) / Mdims%cv_nloc)
+            end do
+            ! Solid metal: (1-phi) * rho_porous * C_s for each unique solid tracer
+            do k = 1, n_solids
+              metal_total_mass = metal_total_mass + &
+                   (1.d0 - phi) * density_porous%val(p_den) * f_solid(k)%p%val(1,1,cv_nod) * (Mass_ELE(ele) / Mdims%cv_nloc)
+            end do
           end if
         end do
       end do
@@ -4096,39 +3613,38 @@ contains
       type(multi_dimensions), intent (in) :: Mdims
       type(multi_ndgln), intent (in) :: ndgln
       !Local variables
-      type(tensor_field), pointer :: tracer_field_fluid, tracer_field_solid
-      integer :: cv_nod, stat
-      character( len = option_path_len ) :: option_name
-      character( len = option_path_len ), save :: solid_tracer_name, fluid_tracer_name
+      type(tensor_field), pointer :: tracer_field
+      character( len = OPTION_PATH_LEN ), dimension(:), allocatable :: fluid_names, solid_names
+      character( len = OPTION_PATH_LEN ) :: field_name
+      integer :: n_fluids, n_solids, k, stat
       logical :: has_imposed_min_limit, has_imposed_max_limit
       real :: min_limit, max_limit
 
-      if (have_option("/porous_media/Metal_dissolution")) then
-        call get_option("/porous_media/Metal_dissolution/tracer_field_solid", solid_tracer_name)
-        call get_option("/porous_media/Metal_dissolution/tracer_field_fluid", fluid_tracer_name)
-      else if (have_option("/porous_media/Metal_precipitation")) then
-        call get_option("/porous_media/Metal_precipitation/tracer_field_solid", solid_tracer_name)
-        call get_option("/porous_media/Metal_precipitation/tracer_field_fluid", fluid_tracer_name)
-      end if
+      if (.not. have_metal_reactions()) return
 
-      tracer_field_fluid=>extract_tensor_field(packed_state,"Packed"//trim(fluid_tracer_name), stat)
-      tracer_field_solid=>extract_tensor_field(packed_state,"Packed"//trim(solid_tracer_name), stat)
+      call get_unique_metal_tracer_names(fluid_names, n_fluids, want_solid=.false.)
+      call get_unique_metal_tracer_names(solid_names, n_solids, want_solid=.true.)
 
-      ! Make sure the solid and fluid metal concentrations stay between bounds.
+      ! Make sure the metal concentrations stay between bounds, for every fluid and solid
+      ! metal tracer of every reaction. Only apply the limits that are actually configured;
+      ! otherwise min_limit/max_limit are uninitialised.
+      do k = 1, n_fluids + n_solids
+        if (k <= n_fluids) then
+          field_name = fluid_names(k)
+        else
+          field_name = solid_names(k - n_fluids)
+        end if
+        tracer_field => extract_tensor_field(packed_state,"Packed"//trim(field_name), stat)
+        if (stat /= 0) cycle
 
-      has_imposed_min_limit = have_option("/material_phase[0]/scalar_field::"//trim(fluid_tracer_name)//"/prognostic/Impose_min_max/min_limit")
-      has_imposed_max_limit = have_option("/material_phase[0]/scalar_field::"//trim(fluid_tracer_name)//"/prognostic/Impose_min_max/max_limit")
-      if (has_imposed_min_limit) call get_option("/material_phase[0]/scalar_field::"//trim(fluid_tracer_name)//"/prognostic/Impose_min_max/min_limit", min_limit)
-      if (has_imposed_max_limit) call get_option("/material_phase[0]/scalar_field::"//trim(fluid_tracer_name)//"/prognostic/Impose_min_max/max_limit", max_limit)
+        has_imposed_min_limit = have_option("/material_phase[0]/scalar_field::"//trim(field_name)//"/prognostic/Impose_min_max/min_limit")
+        has_imposed_max_limit = have_option("/material_phase[0]/scalar_field::"//trim(field_name)//"/prognostic/Impose_min_max/max_limit")
+        if (has_imposed_min_limit) call get_option("/material_phase[0]/scalar_field::"//trim(field_name)//"/prognostic/Impose_min_max/min_limit", min_limit)
+        if (has_imposed_max_limit) call get_option("/material_phase[0]/scalar_field::"//trim(field_name)//"/prognostic/Impose_min_max/max_limit", max_limit)
 
-      tracer_field_fluid%val = max(min(tracer_field_fluid%val,max_limit), min_limit)
-
-      has_imposed_min_limit = have_option("/material_phase[0]/scalar_field::"//trim(solid_tracer_name)//"/prognostic/Impose_min_max/min_limit")
-      has_imposed_max_limit = have_option("/material_phase[0]/scalar_field::"//trim(solid_tracer_name)//"/prognostic/Impose_min_max/max_limit")
-      if (has_imposed_min_limit) call get_option("/material_phase[0]/scalar_field::"//trim(solid_tracer_name)//"/prognostic/Impose_min_max/min_limit", min_limit)
-      if (has_imposed_max_limit) call get_option("/material_phase[0]/scalar_field::"//trim(solid_tracer_name)//"/prognostic/Impose_min_max/max_limit", max_limit)
-
-      tracer_field_solid%val = max(min(tracer_field_solid%val,max_limit), min_limit)
+        if (has_imposed_max_limit) tracer_field%val = min(tracer_field%val, max_limit)
+        if (has_imposed_min_limit) tracer_field%val = max(tracer_field%val, min_limit)
+      end do
 
     end subroutine bound_metal_concentrations
 
@@ -4144,19 +3660,18 @@ contains
       type(state_type), intent (inout) :: packed_state
       type(multi_dimensions), intent (in) :: Mdims
       type(multi_ndgln), intent (in) :: ndgln
-      !Local variables
-      type(tensor_field), pointer :: tracer_field_fluid, tracer_field_solid
-      integer :: cv_nod, stat
-      character( len = option_path_len ) :: option_name
-      character( len = option_path_len ), save :: solid_tracer_name, fluid_tracer_name
       real, intent(in) :: total_mass_before, total_mass_after
+      !Local variables
+      type(tensor_field), pointer :: tracer_field
+      character( len = OPTION_PATH_LEN ), dimension(:), allocatable :: fluid_names, solid_names
+      integer :: n_fluids, n_solids, k, stat
       real :: correction_factor, error
 
-      call get_option("/porous_media/Metal_precipitation/tracer_field_solid", solid_tracer_name)
-      call get_option("/porous_media/Metal_precipitation/tracer_field_fluid", fluid_tracer_name)
+      if (.not. have_metal_reactions()) return
 
-      tracer_field_fluid=>extract_tensor_field(packed_state,"Packed"//trim(fluid_tracer_name), stat)
-      tracer_field_solid=>extract_tensor_field(packed_state,"Packed"//trim(solid_tracer_name), stat)
+      ! If there is (numerically) no metal in the domain there is nothing to rescale;
+      ! avoids division by zero before any metal has been introduced
+      if (abs(total_mass_after) <= tiny(total_mass_after)) return
 
       correction_factor = total_mass_before/total_mass_after
 
@@ -4168,9 +3683,16 @@ contains
         end if
       end if
 
-      do cv_nod=1,Mdims%cv_nonods
-        tracer_field_solid%val(1,1,cv_nod) = tracer_field_solid%val(1,1,cv_nod) * correction_factor
-        tracer_field_fluid%val(1,1,cv_nod) = tracer_field_fluid%val(1,1,cv_nod) * correction_factor
+      ! Rescale every fluid and solid metal tracer of every reaction by the same global factor
+      call get_unique_metal_tracer_names(fluid_names, n_fluids, want_solid=.false.)
+      do k = 1, n_fluids
+        tracer_field => extract_tensor_field(packed_state,"Packed"//trim(fluid_names(k)), stat)
+        if (stat == 0) tracer_field%val = tracer_field%val * correction_factor
+      end do
+      call get_unique_metal_tracer_names(solid_names, n_solids, want_solid=.true.)
+      do k = 1, n_solids
+        tracer_field => extract_tensor_field(packed_state,"Packed"//trim(solid_names(k)), stat)
+        if (stat == 0) tracer_field%val = tracer_field%val * correction_factor
       end do
 
     end subroutine correction_mass_metal
@@ -4201,6 +3723,397 @@ contains
       metal_field_copied%val(:) = metal_field%val(1,1,:)
 
     end subroutine copy_metal_field
+
+    !>@brief: builds the CV-nodal weight (1-phi)*rho_porous for solid metal tracers, the solid-side
+    !> analogue of the phi*rho*S weight used for fluid tracers around the adapt projection.
+    !> Uses MeanPoreCV for the CV-nodal porosity and MASS_ELE-weighted averaging for rho_porous,
+    !> consistent with metal_dissolution/metal_precipitation. Call before adapt on the old mesh and
+    !> again after adapt (once porosity/MeanPoreCV and MASS_ELE are rebuilt) on the new mesh.
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  ndgln Global to local variables
+    !>@param  weight_cv (out) CV-nodal solid weight, size Mdims%cv_nonods
+    subroutine get_solid_metal_weight_cv(state, packed_state, Mdims, ndgln, weight_cv)
+      implicit none
+      type(state_type), dimension(:), intent (inout) :: state
+      type(state_type), intent (inout) :: packed_state
+      type(multi_dimensions), intent (in) :: Mdims
+      type(multi_ndgln), intent (in) :: ndgln
+      double precision, dimension(Mdims%cv_nonods), intent(out) :: weight_cv
+      !Local variables
+      type (scalar_field), pointer :: density_porous
+      type(vector_field), pointer :: MeanPoreCV, vfield
+      real, dimension (:), pointer :: mass_ele
+      double precision, dimension(Mdims%cv_nonods) :: porous_density_cv, SUM_CV
+      integer :: ele, cv_iloc, cv_nod, p_den
+
+      MeanPoreCV => extract_vector_field(packed_state,"MeanPoreCV")
+      density_porous => extract_scalar_field( state(1), "porous_density" )
+      vfield => extract_vector_field(packed_state,"MASS_ELE")
+      mass_ele => vfield%val(1,:)
+
+      porous_density_cv = 0.0
+      SUM_CV = 0.0
+      do ele = 1, Mdims%totele
+        p_den = min(size(density_porous%val), ele)
+        do cv_iloc = 1, Mdims%cv_nloc
+          cv_nod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+          SUM_CV( cv_nod ) = SUM_CV( cv_nod ) + MASS_ELE( ele )
+          porous_density_cv( cv_nod ) = porous_density_cv( cv_nod ) + MASS_ELE( ele ) * density_porous%val(p_den)
+        end do
+      end do
+      porous_density_cv(:) = porous_density_cv(:) / SUM_CV
+
+      do cv_nod = 1, Mdims%cv_nonods
+        weight_cv(cv_nod) = (1.d0 - MeanPoreCV%val(1,cv_nod)) * porous_density_cv(cv_nod)
+      end do
+    end subroutine get_solid_metal_weight_cv
+
+    !>@brief: metal exchange (dissolution/precipitation).
+    !> Handles an arbitrary list of (fluid tracer, solid tracer) reactions from
+    !> /porous_media/metal_reactions.
+    !>
+    !> Generalisations :
+    !> - Multiple reactions, each with its own coefficient field set (referenced by prefix).
+    !> - Multiphase: the fluid metal mass in a CV is phi*S_p*rho_p*C_f for the reaction's carrier phase p
+    !> - Reactions sharing the same fluid tracer are solved SIMULTANEOUSLY:
+    !>   * flash dissolution uses the closed-form multi-solid partition. With linear equilibria
+    !>     C_s,k = K_k * C_f the invariant I = w_f*C_f + sum_k w_s*C_s,k gives
+    !>     C_f = I / (w_f + w_s*sum_k K_k), C_s,k = K_k*C_f — exact, order-independent;
+    !>   * competing rate-controlled precipitation is proportionally limited so the total mass
+    !>     removed never exceeds the available fluid metal mass - also order-independent.
+    !>   (with w_f = phi*S*rho_f and w_s = (1-phi)*rho_porous)
+    !> - A reaction with both laws applies the flash where its precipitation rate <= 0 
+    !>   and the rate law where its partition coefficient <= 0.
+    !>
+    !> Restrictions (enforced): each solid tracer may appear in exactly one reaction, and all
+    !> reactions sharing a fluid tracer must declare the same carrier phase.
+    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
+    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
+    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
+    !>@param  ndgln Global to local variables
+    !>@param  dt Time-step size (used by the rate-controlled precipitation laws)
+    subroutine metal_reactions_exchange(state, packed_state, Mdims, ndgln, dt)
+      implicit none
+      type(state_type), dimension(:), intent (inout) :: state
+      type(state_type), intent (inout) :: packed_state
+      type(multi_dimensions), intent (in) :: Mdims
+      type(multi_ndgln), intent (in) :: ndgln
+      real, intent( in ) :: dt
+      !Local types
+      type tfield_ptr
+        type(tensor_field), pointer :: p => null()
+      end type tfield_ptr
+      !Local variables
+      type(metal_reaction_type), dimension(:), allocatable :: reacs
+      type(tfield_ptr), dimension(:), allocatable :: f_fluid, f_solid, f_Ksalt, f_Psalt
+      type(tensor_field), pointer :: density, temperature, pvf
+      type (scalar_field), pointer :: density_porous
+      type(vector_field), pointer :: MeanPoreCV, cv_volume, vfield
+      real, dimension (:), pointer :: mass_ele
+      double precision, dimension(:,:), allocatable :: K_node, P_node
+      double precision, dimension(:), allocatable :: porous_density_cv, SUM_CV, delta_m
+      logical, dimension(:), allocatable :: active_prec, active_flash
+      integer, dimension(:), allocatable :: group_id
+      double precision :: ref_rho, phi, S, rho_f, w_f, w_s, m_f, tot_delta, scale_prec
+      double precision :: I_inv, sumK, C_f, denom, Vcv
+      integer :: nre, ire, jre, ig, ip, cv_nod, stat, ele, cv_iloc, p_den
+      logical :: has_Temperature, has_pvf
+
+      call get_metal_reactions(reacs)
+      nre = size(reacs)
+      if (nre == 0) return
+
+      ! ---- enforce restrictions --------------------------------------------------------------
+      do ire = 1, nre
+        do jre = ire+1, nre
+          if (trim(reacs(ire)%solid_name) == trim(reacs(jre)%solid_name)) then
+            FLAbort("metal_reactions: solid tracer "//trim(reacs(ire)%solid_name)//" appears in more than one reaction; each solid may appear only once.")
+          end if
+          if (trim(reacs(ire)%fluid_name) == trim(reacs(jre)%fluid_name) .and. &
+              reacs(ire)%phase /= reacs(jre)%phase) then
+            FLAbort("metal_reactions: reactions sharing fluid tracer "//trim(reacs(ire)%fluid_name)//" declare different carrier phases.")
+          end if
+        end do
+      end do
+
+      ! ---- group reactions by fluid tracer (simultaneous solve per group) ---------------------
+      allocate(group_id(nre))
+      do ire = 1, nre
+        group_id(ire) = ire
+        do jre = 1, ire-1
+          if (trim(reacs(jre)%fluid_name) == trim(reacs(ire)%fluid_name)) then
+            group_id(ire) = group_id(jre)
+            exit
+          end if
+        end do
+      end do
+
+      ! ---- common fields -----------------------------------------------------------------------
+      MeanPoreCV => extract_vector_field(packed_state,"MeanPoreCV")
+      density => extract_tensor_field(packed_state,"PackedDensity")
+      density_porous => extract_scalar_field( state(1), "porous_density" )
+      cv_volume => extract_vector_field(packed_state,"CVIntegral")
+      vfield => extract_vector_field(packed_state,"MASS_ELE")
+      mass_ele => vfield%val(1,:)
+
+      pvf => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction", stat)
+      has_pvf = (stat == 0)
+
+      has_Temperature = have_option("/material_phase[0]/scalar_field::Temperature/")
+      if (has_Temperature) temperature => extract_tensor_field(packed_state,"PackedTemperature", stat)
+
+      ref_rho = 0.d0
+      if (has_boussinesq_aprox) then
+        ref_rho = retrieve_reference_density(state, packed_state, 1, 0, Mdims%nphase)
+      end if
+
+      ! ---- reaction fields ----------------------------------------------------------------------
+      allocate(f_fluid(nre), f_solid(nre), f_Ksalt(nre), f_Psalt(nre))
+      do ire = 1, nre
+        f_fluid(ire)%p => extract_tensor_field(packed_state,"Packed"//trim(reacs(ire)%fluid_name), stat)
+        if (stat /= 0) then
+          FLAbort("metal_reactions: fluid metal tracer field "//trim(reacs(ire)%fluid_name)//" not found.")
+        end if
+        f_solid(ire)%p => extract_tensor_field(packed_state,"Packed"//trim(reacs(ire)%solid_name), stat)
+        if (stat /= 0) then
+          FLAbort("metal_reactions: solid metal tracer field "//trim(reacs(ire)%solid_name)//" not found.")
+        end if
+        if (reacs(ire)%has_K_salt) then
+          f_Ksalt(ire)%p => extract_tensor_field(packed_state,"Packed"//trim(reacs(ire)%K_salt_name), stat)
+          if (stat /= 0) then
+            FLAbort("metal_reactions: salt tracer field "//trim(reacs(ire)%K_salt_name)//" not found.")
+          end if
+        end if
+        if (reacs(ire)%has_P_salt) then
+          f_Psalt(ire)%p => extract_tensor_field(packed_state,"Packed"//trim(reacs(ire)%P_salt_name), stat)
+          if (stat /= 0) then
+            FLAbort("metal_reactions: salt tracer field "//trim(reacs(ire)%P_salt_name)//" not found.")
+          end if
+        end if
+        if (reacs(ire)%phase < 1 .or. reacs(ire)%phase > Mdims%nphase) then
+          FLAbort("metal_reactions: carrier phase out of range for fluid tracer "//trim(reacs(ire)%fluid_name))
+        end if
+      end do
+
+      ! ---- CV-averaged porous density (once) ----------------------------------------------------
+      allocate(porous_density_cv(Mdims%cv_nonods), SUM_CV(Mdims%cv_nonods))
+      porous_density_cv = 0.0
+      SUM_CV = 0.0
+      do ele = 1, Mdims%totele
+        p_den = min(size(density_porous%val), ele)
+        do cv_iloc = 1, Mdims%cv_nloc
+          cv_nod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+          SUM_CV( cv_nod ) = SUM_CV( cv_nod ) + MASS_ELE( ele )
+          porous_density_cv( cv_nod ) = porous_density_cv( cv_nod ) + MASS_ELE( ele ) * density_porous%val(p_den)
+        end do
+      end do
+      porous_density_cv(:) = porous_density_cv(:) / SUM_CV
+
+      ! ---- per-reaction nodal rate-law values ----------------------------------------------------
+      allocate(K_node(nre, Mdims%cv_nonods), P_node(nre, Mdims%cv_nonods))
+      K_node = 0.d0
+      P_node = 0.d0
+      do ire = 1, nre
+        if (reacs(ire)%has_dissolution) then
+          call evaluate_metal_rate_law(reacs(ire)%K_prefix, reacs(ire)%has_K_salt, f_Ksalt(ire)%p, K_node(ire,:))
+        end if
+        if (reacs(ire)%has_precipitation) then
+          call evaluate_metal_rate_law(reacs(ire)%P_prefix, reacs(ire)%has_P_salt, f_Psalt(ire)%p, P_node(ire,:))
+        end if
+      end do
+
+      ! ---- exchange ------------------------------------------------------------------------------
+      allocate(delta_m(nre), active_prec(nre), active_flash(nre))
+
+      do cv_nod = 1, Mdims%cv_nonods
+        if (.not. node_owned(f_fluid(1)%p, cv_nod)) cycle
+        phi = MeanPoreCV%val(1,cv_nod)
+        Vcv = cv_volume%val(1,cv_nod)
+
+        do ig = 1, nre
+          if (group_id(ig) /= ig) cycle ! process each group once, at its representative
+
+          ip = reacs(ig)%phase
+          if (has_pvf) then
+            S = pvf%val(1, ip, cv_nod)
+          else
+            S = 1.d0
+          end if
+          if (has_boussinesq_aprox) then
+            rho_f = ref_rho
+          else
+            rho_f = density%val(1, ip, cv_nod)
+          end if
+          w_f = phi * S * rho_f
+          w_s = (1.d0 - phi) * porous_density_cv(cv_nod)
+
+          ! ---- rate-controlled precipitation (proportionally limited among competitors) ----------
+          ! Requires finite fluid pore mass and solid volume to renormalise into: skip otherwise
+          if (w_f > 0.d0 .and. w_s > 0.d0 .and. Vcv > 0.d0) then
+            m_f = w_f * f_fluid(ig)%p%val(1, ip, cv_nod) * Vcv
+            tot_delta = 0.d0
+            do ire = 1, nre
+              delta_m(ire) = 0.d0
+              active_prec(ire) = .false.
+              if (group_id(ire) /= ig) cycle
+              active_prec(ire) = reacs(ire)%has_precipitation .and. P_node(ire,cv_nod) > 0.d0 .and. &
+                   ( .not. reacs(ire)%has_dissolution .or. K_node(ire,cv_nod) <= 0.d0 )
+              if (active_prec(ire)) then
+                delta_m(ire) = P_node(ire,cv_nod) * dt * m_f
+                tot_delta = tot_delta + delta_m(ire)
+              end if
+            end do
+            if (tot_delta > 0.d0) then
+              scale_prec = 1.d0
+              if (tot_delta > m_f) then
+                ! Competition for the same fluid metal: limit proportionally so the total
+                ! removed never exceeds the available mass (order-independent)
+                scale_prec = m_f / tot_delta
+                tot_delta = m_f
+              end if
+              do ire = 1, nre
+                if (active_prec(ire)) then
+                  f_solid(ire)%p%val(1,1,cv_nod) = f_solid(ire)%p%val(1,1,cv_nod) + &
+                       scale_prec * delta_m(ire) / ( w_s * Vcv )
+                end if
+              end do
+              f_fluid(ig)%p%val(1, ip, cv_nod) = ( m_f - tot_delta ) / ( w_f * Vcv )
+            end if
+          end if
+
+          ! ---- instantaneous (flash) partition — simultaneous closed-form solve ------------------
+          sumK = 0.d0
+          I_inv = w_f * f_fluid(ig)%p%val(1, ip, cv_nod)
+          active_flash = .false.
+          do ire = 1, nre
+            if (group_id(ire) /= ig) cycle
+            active_flash(ire) = reacs(ire)%has_dissolution .and. K_node(ire,cv_nod) > 0.d0 .and. &
+                 ( .not. reacs(ire)%has_precipitation .or. P_node(ire,cv_nod) <= 0.d0 )
+            if (active_flash(ire)) then
+              sumK = sumK + K_node(ire,cv_nod)
+              I_inv = I_inv + w_s * f_solid(ire)%p%val(1,1,cv_nod)
+            end if
+          end do
+          if (sumK > 0.d0) then
+            denom = w_f + w_s * sumK
+            if (denom > 0.d0) then
+              C_f = I_inv / denom
+              f_fluid(ig)%p%val(1, ip, cv_nod) = C_f
+              do ire = 1, nre
+                if (active_flash(ire)) f_solid(ire)%p%val(1,1,cv_nod) = K_node(ire,cv_nod) * C_f
+              end do
+            end if
+          end if
+
+        end do
+      end do
+
+      !Update halo communications for all touched fields
+      if (IsParallel()) then
+        do ire = 1, nre
+          if (group_id(ire) == ire) call halo_update(f_fluid(ire)%p)
+          call halo_update(f_solid(ire)%p)
+        end do
+      end if
+
+      deallocate(reacs, f_fluid, f_solid, f_Ksalt, f_Psalt, group_id)
+      deallocate(K_node, P_node, porous_density_cv, SUM_CV, delta_m, active_prec, active_flash)
+
+    contains
+
+      !>@brief: evaluates rate = <prefix>A * exp( <prefix>const + c-, T-, c2-, T2-, cT- terms )
+      !> at every CV node, CV-averaging the 7 element-wise coefficient fields with MASS_ELE weights
+      !> (same discretisation as the legacy metal_dissolution/metal_precipitation routines).
+      subroutine evaluate_metal_rate_law(prefix, has_salt, salt_field, rate_node)
+        implicit none
+        character( len = * ), intent(in) :: prefix
+        logical, intent(in) :: has_salt
+        type(tensor_field), pointer :: salt_field
+        double precision, dimension(Mdims%cv_nonods), intent(out) :: rate_node
+        !Local variables
+        type (scalar_field), pointer :: cA, cconst, cc, cT, cc2, cT2, ccT
+        double precision, dimension(Mdims%cv_nonods) :: A_cv, const_cv, c_cv, T_cv, c2_cv, T2_cv, cT_cv
+        double precision :: log_rate, s_val, T_val
+        integer :: lele, lcv_iloc, lcv_nod, lstat
+        integer :: iA, iconst, ic, iT, ic2, iT2, icT
+
+        cA     => extract_scalar_field(state(1), trim(prefix)//"A", lstat)
+        if (lstat /= 0) then
+          FLAbort("metal_reactions: coefficient field "//trim(prefix)//"A not found.")
+        end if
+        cconst => extract_scalar_field(state(1), trim(prefix)//"const", lstat)
+        if (lstat /= 0) then
+          FLAbort("metal_reactions: coefficient field "//trim(prefix)//"const not found.")
+        end if
+        cc     => extract_scalar_field(state(1), trim(prefix)//"c", lstat)
+        if (lstat /= 0) then
+          FLAbort("metal_reactions: coefficient field "//trim(prefix)//"c not found.")
+        end if
+        cT     => extract_scalar_field(state(1), trim(prefix)//"T", lstat)
+        if (lstat /= 0) then
+          FLAbort("metal_reactions: coefficient field "//trim(prefix)//"T not found.")
+        end if
+        cc2    => extract_scalar_field(state(1), trim(prefix)//"c2", lstat)
+        if (lstat /= 0) then
+          FLAbort("metal_reactions: coefficient field "//trim(prefix)//"c2 not found.")
+        end if
+        cT2    => extract_scalar_field(state(1), trim(prefix)//"T2", lstat)
+        if (lstat /= 0) then
+          FLAbort("metal_reactions: coefficient field "//trim(prefix)//"T2 not found.")
+        end if
+        ccT    => extract_scalar_field(state(1), trim(prefix)//"cT", lstat)
+        if (lstat /= 0) then
+          FLAbort("metal_reactions: coefficient field "//trim(prefix)//"cT not found.")
+        end if
+
+        A_cv = 0.0; const_cv = 0.0; c_cv = 0.0; T_cv = 0.0; c2_cv = 0.0; T2_cv = 0.0; cT_cv = 0.0
+        do lele = 1, Mdims%totele
+          iA     = min(size(cA%val), lele)
+          iconst = min(size(cconst%val), lele)
+          ic     = min(size(cc%val), lele)
+          iT     = min(size(cT%val), lele)
+          ic2    = min(size(cc2%val), lele)
+          iT2    = min(size(cT2%val), lele)
+          icT    = min(size(ccT%val), lele)
+          do lcv_iloc = 1, Mdims%cv_nloc
+            lcv_nod = ndgln%cv( ( lele - 1 ) * Mdims%cv_nloc + lcv_iloc )
+            A_cv( lcv_nod )     = A_cv( lcv_nod )     + MASS_ELE( lele ) * cA%val(iA)
+            const_cv( lcv_nod ) = const_cv( lcv_nod ) + MASS_ELE( lele ) * cconst%val(iconst)
+            c_cv( lcv_nod )     = c_cv( lcv_nod )     + MASS_ELE( lele ) * cc%val(ic)
+            T_cv( lcv_nod )     = T_cv( lcv_nod )     + MASS_ELE( lele ) * cT%val(iT)
+            c2_cv( lcv_nod )    = c2_cv( lcv_nod )    + MASS_ELE( lele ) * cc2%val(ic2)
+            T2_cv( lcv_nod )    = T2_cv( lcv_nod )    + MASS_ELE( lele ) * cT2%val(iT2)
+            cT_cv( lcv_nod )    = cT_cv( lcv_nod )    + MASS_ELE( lele ) * ccT%val(icT)
+          end do
+        end do
+        A_cv(:) = A_cv(:) / SUM_CV
+        const_cv(:) = const_cv(:) / SUM_CV
+        c_cv(:) = c_cv(:) / SUM_CV
+        T_cv(:) = T_cv(:) / SUM_CV
+        c2_cv(:) = c2_cv(:) / SUM_CV
+        T2_cv(:) = T2_cv(:) / SUM_CV
+        cT_cv(:) = cT_cv(:) / SUM_CV
+
+        do lcv_nod = 1, Mdims%cv_nonods
+          log_rate = const_cv( lcv_nod )
+          if (has_salt) then
+            s_val = salt_field%val(1,1,lcv_nod)
+            log_rate = log_rate + c_cv(lcv_nod)*s_val + c2_cv(lcv_nod)*s_val**2
+          end if
+          if (has_Temperature) then
+            T_val = temperature%val(1,1,lcv_nod)
+            log_rate = log_rate + T_cv(lcv_nod)*T_val + T2_cv(lcv_nod)*T_val**2
+          end if
+          if (has_Temperature .and. has_salt) then
+            log_rate = log_rate + cT_cv(lcv_nod)*salt_field%val(1,1,lcv_nod)*temperature%val(1,1,lcv_nod)
+          end if
+          rate_node(lcv_nod) = A_cv(lcv_nod)*exp(log_rate)
+        end do
+      end subroutine evaluate_metal_rate_law
+
+    end subroutine metal_reactions_exchange
 
     !> @author Meissam Bahlali
     !>@brief: subroutine to calculate the saturation total mass (in kg).
