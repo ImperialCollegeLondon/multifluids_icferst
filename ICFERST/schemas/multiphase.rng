@@ -1889,26 +1889,17 @@ The following must be specified:
         <element name="numerical_methods">
           <a:documentation>Advanced options that are kept for debugging purposes</a:documentation>
           <optional>
-            <element name="disable_adapt_mass_conservation_tracers">
-              <a:documentation>Disable the mass-conservative adaptivity scaling for EVERYTHING it covers on the
-tracer side: tracer-family fields (PassiveTracer*, Tracer*, Species*), Concentration,
-solid metal tracers AND Temperature.
-Scaling is active by default.</a:documentation>
+            <element name="disable_all_conservative_adaptivity">
+              <a:documentation>Turn off the porosity weighting and scaling that conserves field mass across a
+mesh adapt, for all fields.
+Intended for debugging only. Porosity weighting and scaling is on by default.</a:documentation>
               <empty/>
             </element>
           </optional>
           <optional>
-            <element name="disable_adapt_mass_conservation_temperature">
-              <a:documentation>Exclude Temperature only from the mass-conservative adaptivity scaling, KEEPING
-tracer/solid-metal mass conservation active. 
-Scaling is active by default.</a:documentation>
-              <empty/>
-            </element>
-          </optional>
-          <optional>
-            <element name="disable_adapt_mass_conservation_saturation">
-              <a:documentation>Disable the mass-conservative adaptivity scaling for the phase volume fraction
-(saturation side). Scaling is active by default.</a:documentation>
+            <element name="disable_temperature_conservative_adaptivity">
+              <a:documentation>Turn off the mass conservation across a mesh adapt for Temperature only.
+Useful for, e.g., a very low heat capacity to mimic thermal non equilibrium. Porosity weighting and scaling is on by default.</a:documentation>
               <empty/>
             </element>
           </optional>
@@ -1920,10 +1911,9 @@ Only active when mesh adaptivity is enabled.</a:documentation>
             </element>
           </optional>
           <optional>
-            <element name="disable_correction_mass_metal">
-              <a:documentation>Disable the global mass-correction rescale applied to metal exchange tracers
-(fluid and solid alike) after mesh adaptation.
-Scaling is active by default.</a:documentation>
+            <element name="correction_mass_metal">
+              <a:documentation>Apply a correction factor to conserve metal tracer mass after mesh adaptation.
+Off by default.</a:documentation>
               <empty/>
             </element>
           </optional>

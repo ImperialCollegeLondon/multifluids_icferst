@@ -64,13 +64,23 @@ module interpolation_manager
 
 contains
 
-  subroutine interpolate(states_old, states_new, map, only_owned)
+  subroutine interpolate(states_old, states_new, map, only_owned, weight_A, weight_A_total)
     !! OK! We need to figure out what algorithm to use when and where.
     type(state_type), dimension(:), intent(inout) :: states_old, states_new
     !! Map from new nodes to old elements
     integer, dimension(:), optional, intent(in) :: map
     !! Only interpolate in owned nodes
     logical, optional, intent(in) :: only_owned
+    !> Piecewise constant conservation weight on the OLD mesh, one value per old element.
+    !> Fields that ask for the weighted Galerkin projection conserve the integral of
+    !> weight times field across the adapt rather than the integral of the field.
+    !> The caller owns the element numbering: it must match the old Coordinate mesh.
+    !> @author Meissam Bahlali
+    real, dimension(:), optional, intent(in) :: weight_A
+    !> Second conservation weight, the total porosity per old element. Fields whose conserved
+    !> measure carries the total rather than the effective porosity (the saturation family when
+    !> porosity_total is defined) are projected against this one instead.
+    real, dimension(:), optional, intent(in) :: weight_A_total
 
     ! The fields organised by mesh:
     type(state_type), dimension(:), allocatable :: meshes_old, meshes_new
@@ -89,10 +99,12 @@ contains
     type(tensor_field), pointer :: field_t, p_field_t
     integer :: field
 
-    character(len=255), dimension(4), parameter :: algorithms = (/&
+    character(len=255), dimension(6), parameter :: algorithms = (/&
                        & "consistent_interpolation       ", &
                        & "pseudo_consistent_interpolation", &
                        & "interpolation_galerkin         ", &
+                       & "interpolation_galerkin_weighted", &
+                       & "interpolation_galerkin_wtotal  ", &
                        & "grandy_interpolation           " /)
     integer :: alg_cnt, alg
 
@@ -413,6 +425,117 @@ contains
             call deallocate(alg_old(mesh))
             call deallocate(alg_new(mesh))
           end do
+        case("interpolation_galerkin_weighted")
+          ! Same supermesh machinery as interpolation_galerkin, but the projection is weighted so that the integral of weight times field is what survives the adapt.
+          ! Fields are excluded from the plain galerkin group, so they get their own mass matrix.
+          if(present(weight_A)) then
+            if(.not. allocated(map_BA)) then
+              allocate(map_BA(ele_count(new_pos)))
+              map_BA = intersection_finder(new_pos, old_pos)
+            end if
+
+            do mesh = 1, mesh_cnt
+              call get_option("/geometry/mesh[" // int2str(mesh - 1) // "]/name", mesh_name)
+              old_mesh => extract_mesh(states_old(1), trim(mesh_name))
+              new_mesh => extract_mesh(states_new(1), trim(mesh_name))
+              old_pos = extract_vector_field(meshes_old(mesh), "Coordinate")
+              new_pos = extract_vector_field(meshes_new(mesh), "Coordinate")
+
+              call insert(alg_old(mesh), old_mesh, "Mesh")
+              call insert(alg_new(mesh), new_mesh, "Mesh")
+              call insert(alg_old(mesh), old_pos, "Coordinate")
+              call insert(alg_new(mesh), new_pos, "Coordinate")
+            end do
+
+            call collect_fields_to_interpolate(interpolate_field_galerkin_weighted, meshes_new, meshes_old, alg_new, alg_old)
+
+            no_fields = 0
+            do mesh = 1, mesh_cnt
+              no_fields = no_fields + field_count(alg_old(mesh))
+            end do
+            if(no_fields > mesh_cnt) then ! there will always be a Coordinate per mesh
+              assert(allocated(map_BA))
+              if(size(weight_A) /= ele_count(old_pos)) then
+                ewrite(-1,*) "size(weight_A) = ", size(weight_A), " ele_count(old_pos) = ", ele_count(old_pos)
+                FLExit("The conservation weight must carry one value per old element")
+              end if
+              call interpolation_galerkin(alg_old, alg_new, map_BA = map_BA, weight_A = weight_A)
+            end if
+
+            do mesh=1,mesh_cnt
+              call deallocate(alg_old(mesh))
+              call deallocate(alg_new(mesh))
+            end do
+          else
+            ! No weight was supplied. A field that asked for this algorithm would then be interpolated by nothing at all and would silently keep uninitialised values, so check the option paths directly and stop if any field wants it.
+            no_fields = 0
+            do state = 1, state_cnt
+              do field = 1, scalar_field_count(states_old(state))
+                field_s => extract_scalar_field(states_old(state), field)
+                if(interpolate_field_galerkin_weighted(field_s%option_path)) no_fields = no_fields + 1
+              end do
+            end do
+            if(no_fields > 0) then
+              ewrite(-1,*) "Fields requesting the weighted Galerkin projection: ", no_fields
+              FLExit("A field asked for the weighted Galerkin projection but no conservation weight was supplied")
+            end if
+          end if
+        case("interpolation_galerkin_wtotal")
+          ! Same machinery as interpolation_galerkin_weighted but against the total porosity.
+          ! The saturation family lands here when porosity_total is defined, because its accumulation term in cv-adv-dif then uses the total rather than the effective porosity, and the projection must conserve the measure the equations use.
+          ! Tracers stay in the effective porosity group, matching their accumulation term.
+          if(present(weight_A_total)) then
+            if(.not. allocated(map_BA)) then
+              allocate(map_BA(ele_count(new_pos)))
+              map_BA = intersection_finder(new_pos, old_pos)
+            end if
+
+            do mesh = 1, mesh_cnt
+              call get_option("/geometry/mesh[" // int2str(mesh - 1) // "]/name", mesh_name)
+              old_mesh => extract_mesh(states_old(1), trim(mesh_name))
+              new_mesh => extract_mesh(states_new(1), trim(mesh_name))
+              old_pos = extract_vector_field(meshes_old(mesh), "Coordinate")
+              new_pos = extract_vector_field(meshes_new(mesh), "Coordinate")
+
+              call insert(alg_old(mesh), old_mesh, "Mesh")
+              call insert(alg_new(mesh), new_mesh, "Mesh")
+              call insert(alg_old(mesh), old_pos, "Coordinate")
+              call insert(alg_new(mesh), new_pos, "Coordinate")
+            end do
+
+            call collect_fields_to_interpolate(interpolate_field_galerkin_weighted_total, meshes_new, meshes_old, alg_new, alg_old)
+
+            no_fields = 0
+            do mesh = 1, mesh_cnt
+              no_fields = no_fields + field_count(alg_old(mesh))
+            end do
+            if(no_fields > mesh_cnt) then ! there will always be a Coordinate per mesh
+              assert(allocated(map_BA))
+              if(size(weight_A_total) /= ele_count(old_pos)) then
+                ewrite(-1,*) "size(weight_A_total) = ", size(weight_A_total), " ele_count(old_pos) = ", ele_count(old_pos)
+                FLExit("The total porosity weight must carry one value per old element")
+              end if
+              call interpolation_galerkin(alg_old, alg_new, map_BA = map_BA, weight_A = weight_A_total)
+            end if
+
+            do mesh=1,mesh_cnt
+              call deallocate(alg_old(mesh))
+              call deallocate(alg_new(mesh))
+            end do
+          else
+            ! No total weight was supplied: same defensive stop as the effective weight above
+            no_fields = 0
+            do state = 1, state_cnt
+              do field = 1, scalar_field_count(states_old(state))
+                field_s => extract_scalar_field(states_old(state), field)
+                if(interpolate_field_galerkin_weighted_total(field_s%option_path)) no_fields = no_fields + 1
+              end do
+            end do
+            if(no_fields > 0) then
+              ewrite(-1,*) "Fields requesting the total porosity weighted projection: ", no_fields
+              FLExit("A field asked for the total porosity weighted projection but no weight was supplied")
+            end if
+          end if
         case("grandy_interpolation")
           if(.not. allocated(map_BA)) then
             allocate(map_BA(ele_count(new_pos)))
@@ -560,10 +683,220 @@ contains
 
     base_path = trim(complete_field_path(option_path, stat = stat))
     
+    ! A field claimed by the weighted projection must not also be claimed here, otherwise it would be interpolated twice.
+    ! The two selectors are complementary by construction.
     interpolate = have_option(trim(base_path) // "/galerkin_projection") &
-      & .and. .not. have_option(trim(base_path) // "/galerkin_projection/supermesh_free")
+      & .and. .not. have_option(trim(base_path) // "/galerkin_projection/supermesh_free") &
+      & .and. .not. interpolate_field_galerkin_weighted(option_path) &
+      & .and. .not. interpolate_field_galerkin_weighted_total(option_path)
     
   end function interpolate_field_galerkin_projection
+
+  function interpolate_field_galerkin_weighted(option_path) result(interpolate)
+    !!< Selects the fields that want the weighted Galerkin projection.
+    !!< The mechanism is switched on globally, following the pattern of the other adapt mass
+    !!< conservation options, and covers the same field families that the nodal scaling covered.
+    !!< A field that matches nothing here simply receives the plain projection (a safe fallback rather than a silent loss of the field)
+    !!< @author Meissam Bahlali
+    character(len = *), intent(in) :: option_path
+
+    logical :: interpolate
+
+    character(len = OPTION_PATH_LEN) :: base_path
+    character(len = FIELD_NAME_LEN) :: field_name
+    integer :: stat
+
+    interpolate = .false.
+    if(len_trim(option_path) == 0) return
+    if(have_option("/numerical_methods/disable_all_conservative_adaptivity")) return
+    ! The weight is the porosity, so a model without porous media has nothing to carry.
+    if(.not. have_option("/porous_media/scalar_field::Porosity")) return
+
+    base_path = trim(complete_field_path(option_path, stat = stat))
+
+    ! Only the continuous supermesh projection carries the weight.
+    if(.not. have_option(trim(base_path) // "/galerkin_projection/continuous")) return
+    if(have_option(trim(base_path) // "/galerkin_projection/supermesh_free")) return
+
+    ! Well-block phases are excluded: their pore space is the pipe, not the rock.
+    if(.not. field_phase_in_first_pressure_block(option_path)) return
+
+    field_name = field_name_from_option_path(option_path)
+    interpolate = field_family_is_mass_conserved(field_name)
+
+  end function interpolate_field_galerkin_weighted
+
+  function interpolate_field_galerkin_weighted_total(option_path) result(interpolate)
+    !!< Selects the saturation family for projection against the total porosity.
+    !!< Active only when the model defines porosity_total.
+    !!< Mirrors interpolate_field_galerkin_weighted so no field is ever claimed twice.
+    !!< @author Meissam Bahlali
+    character(len = *), intent(in) :: option_path
+
+    logical :: interpolate
+
+    character(len = OPTION_PATH_LEN) :: base_path
+    character(len = FIELD_NAME_LEN) :: field_name
+    integer :: stat
+
+    interpolate = .false.
+    if(len_trim(option_path) == 0) return
+    if(have_option("/numerical_methods/disable_all_conservative_adaptivity")) return
+    if(.not. have_option("/porous_media/scalar_field::Porosity")) return
+    if(.not. sat_measure_is_total_porosity()) return
+
+    base_path = trim(complete_field_path(option_path, stat = stat))
+
+    if(.not. have_option(trim(base_path) // "/galerkin_projection/continuous")) return
+    if(have_option(trim(base_path) // "/galerkin_projection/supermesh_free")) return
+
+    if(.not. field_phase_in_first_pressure_block(option_path)) return
+
+    field_name = field_name_from_option_path(option_path)
+    if(trim(field_name) /= "PhaseVolumeFraction") return
+    interpolate = saturation_family_projected()
+
+  end function interpolate_field_galerkin_weighted_total
+
+  function phase_density_projection_safe() result(safe)
+    !!< True when the phase density is constant: incompressible or Boussinesq.
+    !!< Mirrors massfix_phase_density_constant in Multiphase_TimeLoop.
+    !!< @author Meissam Bahlali
+    logical :: safe
+    safe = have_option("/material_phase[0]/phase_properties/Density/incompressible") &
+      & .or. have_option("/material_phase[0]/phase_properties/Density/" // &
+      &                  "compressible/Boussinesq_approximation") &
+      & .or. have_option("/material_phase[0]/phase_properties/Density/" // &
+      &                  "python_state/Boussinesq_approximation")
+  end function phase_density_projection_safe
+
+  function sat_measure_is_total_porosity() result(is_total)
+    !!< True when the saturation is conserved against the total porosity.
+    !!< This is the case whenever the model defines porosity_total, matching cv-adv-dif.
+    !!< @author Meissam Bahlali
+    logical :: is_total
+    is_total = have_option("/porous_media/porous_properties/scalar_field::porosity_total")
+  end function sat_measure_is_total_porosity
+
+  function field_phase_in_first_pressure_block(option_path) result(in_first_block)
+    !!< True when the field belongs to a phase of the first (reservoir) pressure block.
+    !!< The block of phase iphase, counted from zero, is (iphase * npres) / nphase + 1.
+    !!< @author Meissam Bahlali
+    character(len = *), intent(in) :: option_path
+    logical :: in_first_block
+
+    character(len = FIELD_NAME_LEN) :: phase_name
+    integer :: i, nphase, npres
+
+    in_first_block = .true.
+    nphase = option_count("/material_phase")
+    npres = option_count("/material_phase/scalar_field::Pressure/prognostic")
+    if(nphase <= 0 .or. npres <= 0) return
+    do i = 0, nphase - 1
+      call get_option("/material_phase[" // int2str(i) // "]/name", phase_name)
+      if(index(option_path, "/material_phase::" // trim(phase_name) // "/") > 0) then
+        in_first_block = ((i * npres) / nphase == 0)
+        return
+      end if
+    end do
+
+  end function field_phase_in_first_pressure_block
+
+  function saturation_family_projected() result(projected)
+    !!< True when every reservoir PhaseVolumeFraction uses the continuous Galerkin projection.
+    !!< The family is claimed all or none, so that every phase is conserved in the same measure.
+    !!< Mirrors massfix_projection_saturation in Multiphase_TimeLoop.
+    !!< @author Meissam Bahlali
+    logical :: projected
+
+    character(len = OPTION_PATH_LEN) :: pvf_path
+    integer :: i, nphase, npres
+
+    projected = .not. have_option("/numerical_methods/disable_all_conservative_adaptivity")
+    if(.not. projected) return
+    nphase = option_count("/material_phase")
+    npres = option_count("/material_phase/scalar_field::Pressure/prognostic")
+    if(nphase <= 0 .or. npres <= 0) then
+      projected = .false.
+      return
+    end if
+    do i = 0, nphase - 1
+      if((i * npres) / nphase /= 0) cycle
+      pvf_path = "/material_phase[" // int2str(i) // "]/scalar_field::PhaseVolumeFraction/prognostic"
+      if(.not. have_option(trim(pvf_path))) cycle
+      if(.not. have_option(trim(pvf_path) // "/galerkin_projection/continuous") &
+        & .or. have_option(trim(pvf_path) // "/galerkin_projection/supermesh_free")) then
+        projected = .false.
+        return
+      end if
+    end do
+
+  end function saturation_family_projected
+
+  function field_name_from_option_path(option_path) result(field_name)
+    !!< Recovers the field name from its option path, which reads for example
+    !!< /material_phase::water/scalar_field::Concentration/prognostic
+    !!< @author Meissam Bahlali
+    character(len = *), intent(in) :: option_path
+    character(len = FIELD_NAME_LEN) :: field_name
+
+    integer :: i, j
+
+    field_name = ""
+    i = index(option_path, "scalar_field::")
+    if(i == 0) return
+    i = i + len("scalar_field::")
+    if(i > len_trim(option_path)) return
+    j = index(option_path(i:), "/")
+    if(j == 0) then
+      field_name = option_path(i:len_trim(option_path))
+    else
+      field_name = option_path(i:i + j - 2)
+    end if
+
+  end function field_name_from_option_path
+
+  function field_family_is_mass_conserved(field_name) result(conserved)
+    !!< Selects the fields the weighted projection conserves.
+    !!< Kept on the nodal scaling instead: Temperature, solid metal tracers, and tracers of
+    !!< genuinely multiphase blocks, whose conserved measures the porosity weight cannot represent.
+    !!< @author Meissam Bahlali
+    character(len = *), intent(in) :: field_name
+
+    logical :: conserved
+    integer :: n
+
+    conserved = .false.
+    n = len_trim(field_name)
+    if(n == 0) return
+
+    if(n > 6) then
+      if(field_name(n - 5:n) == "_solid") return
+    end if
+    if(trim(field_name) == "Temperature") return
+
+    if(trim(field_name) == "PhaseVolumeFraction") then
+      ! With porosity_total the saturation belongs to the total porosity group instead.
+      conserved = saturation_family_projected() .and. .not. sat_measure_is_total_porosity()
+      return
+    end if
+
+    if(have_option("/numerical_methods/disable_all_conservative_adaptivity")) return
+
+    ! The tracer measure is phi*S, which reduces to the porosity alone
+    ! only when each pressure block holds a single phase.
+    if(option_count("/material_phase") /= &
+      & option_count("/material_phase/scalar_field::Pressure/prognostic")) return
+
+    ! Tracers of a fully compressible phase keep the nodal scaling, which carries the density.
+    if(.not. phase_density_projection_safe()) return
+
+    conserved = trim(field_name) == "Concentration" &
+      & .or. field_name(1:min(n, 13)) == "PassiveTracer" &
+      & .or. field_name(1:min(n, 6)) == "Tracer" &
+      & .or. field_name(1:min(n, 7)) == "Species"
+
+  end function field_family_is_mass_conserved
 
   function interpolate_field_grandy_interpolation(option_path) result(interpolate)
     character(len = *), intent(in) :: option_path

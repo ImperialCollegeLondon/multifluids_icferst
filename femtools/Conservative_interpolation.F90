@@ -60,7 +60,7 @@ module conservative_interpolation_module
 
   subroutine galerkin_projection_inner_loop(ele_B, little_mass_matrix, detJ, local_rhs, conservation_tolerance, stat, &
                                             field_counts, old_fields, old_position, new_fields, new_position, &
-                                            map_BA, inversion_matrices_A, supermesh_shape)
+                                            map_BA, inversion_matrices_A, supermesh_shape, weight_A)
   
     integer, intent(in) :: ele_B
     real, dimension(:,:,:), intent(inout) :: little_mass_matrix
@@ -80,10 +80,22 @@ module conservative_interpolation_module
     type(ilist), dimension(:), intent(in) :: map_BA
     real, dimension(:, :, :) :: inversion_matrices_A
     type(element_type), intent(inout) :: supermesh_shape
-   
+
+    !> Optional piecewise constant weight on the OLD mesh, one value per old element.
+    !> When it is present both the target mass matrix and the right hand side are assembled
+    !> against this weight on the supermesh, so the projection conserves the weighted
+    !> integral of the field exactly rather than the unweighted one.
+    !> The weight is deliberately taken from the old mesh on both sides: the supermesh tiles
+    !> the new element exactly, so the sum of the new basis functions over it is one, which
+    !> makes the conservation identity hold without assuming that the new mesh resolves any
+    !> discontinuity in the weight.
+    !> @author Meissam Bahlali
+    real, dimension(:), intent(in), optional :: weight_A
+
     real, dimension(ele_loc(new_position, ele_B), ele_loc(new_position, ele_B)) :: inversion_matrix_B, inversion_matrix_A
     real, dimension(ele_ngi(new_position, ele_B)) :: detwei_B
     real, dimension(supermesh_shape%ngi) :: detwei_C
+    real, dimension(supermesh_shape%ngi) :: detwei_W
     type(inode), pointer :: llnode
     
     real :: vol_B, vols_C
@@ -93,7 +105,7 @@ module conservative_interpolation_module
 
     real, dimension(new_position%dim+1, supermesh_shape%ngi) :: pos_at_quad_B, pos_at_quad_A, tmp_pos_at_quad
     real, dimension(size(local_rhs, 3), supermesh_shape%ngi) :: basis_at_quad_B, basis_at_quad_A
-    real, dimension(size(local_rhs, 3),size(local_rhs, 3)) :: mat, mat_int
+    real, dimension(size(local_rhs, 3),size(local_rhs, 3)) :: mat, mat_int, mat_B
     
     real, dimension(new_position%dim, supermesh_shape%ngi) :: intersection_val_at_quad
     real, dimension(new_position%dim, new_position%dim, ele_ngi(new_position, 1)) :: invJ
@@ -129,7 +141,13 @@ module conservative_interpolation_module
       if(field_counts(mesh)>0) then
         B_shape => ele_shape(new_fields(mesh,1),1)
         nloc = B_shape%loc
-        little_mass_matrix(mesh, :nloc, :nloc) = shape_shape(B_shape, B_shape, detwei_B)
+        if (present(weight_A)) then
+          ! The weighted target mass matrix cannot be formed from detwei_B alone, because the
+          ! weight is only known per old element. It is accumulated over the supermesh below.
+          little_mass_matrix(mesh, :nloc, :nloc) = 0.0
+        else
+          little_mass_matrix(mesh, :nloc, :nloc) = shape_shape(B_shape, B_shape, detwei_B)
+        end if
       end if
     end do
 
@@ -198,7 +216,14 @@ module conservative_interpolation_module
 
         call transform_to_physical(intersection, ele_C, detwei_C)
 
+        ! The volume check stays on the unweighted measure.
         vols_C = vols_C + sum(detwei_C)
+
+        if (present(weight_A)) then
+          detwei_W = detwei_C * weight_A(ele_A)
+        else
+          detwei_W = detwei_C
+        end if
 
         do mesh = 1, mesh_count
           if(field_counts(mesh)>0) then
@@ -230,9 +255,21 @@ module conservative_interpolation_module
             mat_int = 0.0
             do j=1,ele_ngi(intersection, ele_C)
               forall (k=1:nloc,l=1:nloc)
-                mat(k, l) = mat(k, l) + detwei_C(j) * basis_at_quad_B(k, j) * basis_at_quad_A(l, j)
+                mat(k, l) = mat(k, l) + detwei_W(j) * basis_at_quad_B(k, j) * basis_at_quad_A(l, j)
               end forall
             end do
+
+            ! Weighted target mass matrix, assembled against the same weight as the right hand
+            ! side so that the two cancel and the weighted integral is conserved exactly.
+            if (present(weight_A)) then
+              mat_B = 0.0
+              do j=1,ele_ngi(intersection, ele_C)
+                forall (k=1:nloc,l=1:nloc)
+                  mat_B(k, l) = mat_B(k, l) + detwei_W(j) * basis_at_quad_B(k, j) * basis_at_quad_B(l, j)
+                end forall
+              end do
+              little_mass_matrix(mesh, :nloc, :nloc) = little_mass_matrix(mesh, :nloc, :nloc) + mat_B(:nloc, :nloc)
+            end if
     
             ! And now we apply that to the field to give the RHS contribution to the Galerkin
             ! projection.
@@ -271,7 +308,8 @@ module conservative_interpolation_module
 
   end subroutine galerkin_projection_inner_loop
 
-  subroutine interpolation_galerkin_scalars(old_fields_state, old_position, new_fields_state, new_position, map_BA, force_bounded)
+  subroutine interpolation_galerkin_scalars(old_fields_state, old_position, new_fields_state, new_position, map_BA, force_bounded, &
+                                           weight_A)
     type(state_type), dimension(:), intent(in) :: old_fields_state
     type(vector_field), intent(in) :: old_position
 
@@ -279,6 +317,10 @@ module conservative_interpolation_module
     type(vector_field), intent(in) :: new_position
     type(ilist), dimension(:), intent(in), optional, target :: map_BA
     logical, intent(in), optional :: force_bounded
+    !> Piecewise constant weight on the old mesh, one value per old element.
+    !> Passing it turns this into a weighted projection that conserves the weighted integral.
+    !> @author Meissam Bahlali
+    real, dimension(:), intent(in), optional :: weight_A
 
     integer :: ele_B
     integer :: ele_A
@@ -429,6 +471,10 @@ module conservative_interpolation_module
         end do
         
         dg(mesh) = (continuity(new_fields(mesh,1)) < 0)
+        if(dg(mesh).and.present(weight_A)) then
+          ewrite(-1,*) "Weighted Galerkin projection requested for mesh ", trim(new_fields(mesh,1)%mesh%name)
+          FLExit("Weighted Galerkin projection is only implemented for continuous fields")
+        end if
         if(dg(mesh)) then
           bounded(mesh,:) = .false. ! not possible to have a bounded or lumped dg field 
           lumped(mesh,:) = .false.  ! so just to make sure set it to false
@@ -536,7 +582,7 @@ module conservative_interpolation_module
 
         call galerkin_projection_inner_loop(ele_B, little_mass_matrix, detJ, local_rhs, conservation_tolerance, stat, &
              field_counts, old_fields, old_position, new_fields, new_position, &
-             lmap_BA, inversion_matrices_A, supermesh_shape)
+             lmap_BA, inversion_matrices_A, supermesh_shape, weight_A=weight_A)
 
         if (stat /= 0) then
           ! Uhoh! We haven't found all the mass for ele_B :-/
@@ -549,7 +595,7 @@ module conservative_interpolation_module
           call intersector_set_exactness(.true.)
           call galerkin_projection_inner_loop(ele_B, little_mass_matrix, detJ, local_rhs, conservation_tolerance, stat, &
                field_counts, old_fields, old_position, new_fields, new_position, &
-               lmap_BA, inversion_matrices_A, supermesh_shape)
+               lmap_BA, inversion_matrices_A, supermesh_shape, weight_A=weight_A)
           if(stat/=0) then
             ewrite(0,*) "Sorry, CGAL failed to fix conservation error."
           end if
@@ -913,23 +959,25 @@ module conservative_interpolation_module
     
   end subroutine interpolation_galerkin_scalars
 
-  subroutine interpolation_galerkin_single_state(old_state, new_state, map_BA)
+  subroutine interpolation_galerkin_single_state(old_state, new_state, map_BA, weight_A)
     type(state_type), intent(inout) :: old_state, new_state
     type(ilist), dimension(:), intent(in), optional :: map_BA
+    real, dimension(:), intent(in), optional :: weight_A
 
     type(state_type), dimension(1) :: old_states, new_states
     
     old_states = (/old_state/)
     new_states = (/new_state/)
-    call interpolation_galerkin(old_states, new_states, map_BA=map_BA)
+    call interpolation_galerkin(old_states, new_states, map_BA=map_BA, weight_A=weight_A)
     old_state = old_states(1)
     new_state = new_states(1)
     
   end subroutine interpolation_galerkin_single_state
 
-  subroutine interpolation_galerkin_multiple_states(old_states, new_states, map_BA)
+  subroutine interpolation_galerkin_multiple_states(old_states, new_states, map_BA, weight_A)
     type(state_type), dimension(:), intent(inout) :: old_states, new_states
     type(ilist), dimension(:), intent(in), optional :: map_BA
+    real, dimension(:), intent(in), optional :: weight_A
 
     type(state_type), dimension(size(old_states)) :: old_fields_state, new_fields_state
     type(vector_field), pointer :: old_position, new_position
@@ -943,7 +991,8 @@ module conservative_interpolation_module
     old_position => extract_vector_field(old_states(1), "Coordinate")
     new_position => extract_vector_field(new_states(1), "Coordinate")
 
-    call interpolation_galerkin_scalars(old_fields_state, old_position, new_fields_state, new_position, map_BA=map_BA)
+    call interpolation_galerkin_scalars(old_fields_state, old_position, new_fields_state, new_position, map_BA=map_BA, &
+                                       weight_A=weight_A)
 
     do i = 1, size(old_fields_state)
       call deallocate(old_fields_state(i))

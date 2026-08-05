@@ -160,8 +160,8 @@ contains
             use_nodal_density_w( j ) = ( .not. is_boussinesq_w ) .and. &
                  ( .not. have_option( trim( den_path_w ) // "incompressible" ) )
         end do
-        !Temperature uses porosity_total where defined, matching cv-adv-dif (R_PHASE vs R_PHASE_TOTAL)
-        have_phi_tot_w = is_temperature_field .and. &
+        !Temperature, saturation and solid metal weights use porosity_total where the model defines it
+        have_phi_tot_w = ( is_temperature_field .or. is_solid_metal_field .or. present_and_true( for_sat ) ) .and. &
              have_option( "/porous_media/porous_properties/scalar_field::porosity_total" )
         if ( have_phi_tot_w ) then
             porosity_w => extract_vector_field( packed_state, "porosity_total" )
@@ -984,7 +984,12 @@ contains
         logical :: any_rho_v
 
         sat_v      => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-        porosity_v => extract_vector_field( packed_state, "Porosity" )
+        !The pore volume is measured against porosity_total where the model defines it, matching the saturation equation in cv-adv-dif
+        if ( have_option( "/porous_media/porous_properties/scalar_field::porosity_total" ) ) then
+            porosity_v => extract_vector_field( packed_state, "porosity_total" )
+        else
+            porosity_v => extract_vector_field( packed_state, "Porosity" )
+        end if
         x_v        => extract_vector_field( packed_state, "PressureCoordinate" )
         x_ndgln_v  => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
         cv_ndgln_v => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
@@ -1043,7 +1048,7 @@ contains
     !> residual. Without use_rho the algorithm is identical to the volume-only path.
     !> Only for use after an adapt, where a target exists.
     !> @author Meissam Bahlali
-    subroutine Restore_Phase_Mass_SumOne( Mdims, packed_state, state, CV_funs, vol_target, sat_pre, use_rho )
+    subroutine Restore_Phase_Mass_SumOne( Mdims, packed_state, state, CV_funs, vol_target, sat_pre, use_rho, wide_fallback )
         Implicit none
         !Global variables
         type( multi_dimensions ), intent( in ) :: Mdims
@@ -1055,6 +1060,11 @@ contains
         real, dimension( :, : ), intent( in ) :: sat_pre
         !Per-phase mass measure selector, same convention as Sat_pore_volume_per_phase
         logical, dimension( : ), intent( in ), optional :: use_rho
+        !Used on the projection route only.
+        !Enables a third restore pass that spreads any leftover volume over the whole plume,
+        !needed when the snapshot band has no room left to absorb it.
+        !Without this argument the routine behaves exactly as before.
+        logical, intent( in ), optional :: wide_fallback
         !Local variables
         type( multi_dev_shape_funs ) :: DevFuns
         type( tensor_field ), pointer :: sat_r
@@ -1065,13 +1075,15 @@ contains
         real, dimension( :, : ), allocatable :: cvol_r
         logical, dimension( : ), allocatable :: rho_on_r
         integer, dimension( : ), pointer :: x_ndgln_r, cv_ndgln_r
-        integer :: ele_r, iloc_r, jloc_r, inod_r, j_r, jpres_r, ipair_r, ipass_r
+        integer :: ele_r, iloc_r, jloc_r, inod_r, j_r, jpres_r, ipair_r, ipass_r, npass_r
+        integer :: isw_r
         integer :: i1_r, i2_r, jd_r, jq_r
         !A node only receives volume back if the phase was meaningfully present there before sum-one ran:
         !trims on spurious background specks (projection ringing) are deliberately not restored. Their volume goes back into the plume band instead
         real, parameter :: plume_smin_r = 1.0e-2
         real :: mm_r, err_r, wgt_tot_r, delta_r, dn_r, moved_r, imm_sum_r
         real :: sd_r, wnod_r, wq_r, moved_p_r, moved_p_tot_r
+        real :: err_q_r, exc_r, red_r, fac_r
         logical :: down_r
 
         if ( Mdims%nphase < 2 ) return
@@ -1087,7 +1099,12 @@ contains
         if ( any( rho_on_r ) ) den_r => extract_tensor_field( packed_state, "PackedDensity" )
 
         sat_r      => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-        porosity_r => extract_vector_field( packed_state, "Porosity" )
+        !Same porosity as Sat_pore_volume_per_phase: total where the model defines it
+        if ( have_option( "/porous_media/porous_properties/scalar_field::porosity_total" ) ) then
+            porosity_r => extract_vector_field( packed_state, "porosity_total" )
+        else
+            porosity_r => extract_vector_field( packed_state, "Porosity" )
+        end if
         x_r        => extract_vector_field( packed_state, "PressureCoordinate" )
         x_ndgln_r  => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
         cv_ndgln_r => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
@@ -1137,8 +1154,13 @@ contains
 
             !Pass 1 returns the volume to the nodes sum-one took it from, weighted by the directional deficit of phase j+1 there.
             !Pass 2 places any leftover into those same nodes' remaining headroom
-            !Deliberately no wider fallback: a residual is kept and logged rather than deposited outside the damage band
-            Two_passes: do ipass_r = 1, 2
+            !On the nodal route there is no wider fallback: a residual is kept and logged.
+            !Pass 3 exists only under wide_fallback and spreads the leftover over the whole plume.
+            npass_r = 2
+            if ( present( wide_fallback ) ) then
+                if ( wide_fallback ) npass_r = 3
+            end if
+            Two_passes: do ipass_r = 1, npass_r
                 if ( abs( err_r ) <= 1.0e-30 ) exit Two_passes
 
                 !down_r: net direction is phase j down, phase j+1 up
@@ -1170,7 +1192,7 @@ contains
                         end if
                         if ( sat_pre( j_r + 1, inod_r ) - CV_Immobile_Fraction( j_r + 1, inod_r ) &
                              <= plume_smin_r ) wgt_r( inod_r ) = 0.0
-                    else
+                    else if ( ipass_r == 2 ) then
                         !Leftover into the remaining headroom of the damage band only
                         if ( down_r ) then
                             wgt_r( inod_r ) = room_r( inod_r ) * merge( 1.0, 0.0, &
@@ -1179,6 +1201,11 @@ contains
                             wgt_r( inod_r ) = room_r( inod_r ) * merge( 1.0, 0.0, &
                                  sat_r%val( 1, j_r + 1, inod_r ) - sat_pre( j_r + 1, inod_r ) > 0.0 )
                         end if
+                        if ( sat_pre( j_r + 1, inod_r ) - CV_Immobile_Fraction( j_r + 1, inod_r ) &
+                             <= plume_smin_r ) wgt_r( inod_r ) = 0.0
+                    else
+                        !Pass 3 weights by the headroom of the whole plume, with no directional gate
+                        wgt_r( inod_r ) = room_r( inod_r )
                         if ( sat_pre( j_r + 1, inod_r ) - CV_Immobile_Fraction( j_r + 1, inod_r ) &
                              <= plume_smin_r ) wgt_r( inod_r ) = 0.0
                     end if
@@ -1215,6 +1242,73 @@ contains
                 err_r = err_r + moved_r
                 moved_p_tot_r = moved_p_tot_r + moved_p_r
             end do Two_passes
+
+            !Pass 4, projection route only
+            if ( npass_r == 3 .and. j_r + 1 == i2_r ) then
+                err_q_r = 0.0
+                do inod_r = 1, Mdims%cv_nonods
+                    if ( .not. node_owned( sat_r, inod_r ) ) cycle
+                    wq_r = cvol_r( jpres_r, inod_r )
+                    if ( rho_on_r( jq_r ) ) wq_r = wq_r * den_r%val( 1, jq_r, inod_r )
+                    err_q_r = err_q_r + wq_r * sat_r%val( 1, jq_r, inod_r )
+                end do
+                call allsum( err_q_r )
+                err_q_r = err_q_r - vol_target( jq_r )
+                do isw_r = 1, 3
+                    if ( abs( err_q_r ) <= 1.0e-30 ) exit
+                    wgt_tot_r = 0.0
+                    do inod_r = 1, Mdims%cv_nonods
+                        exc_r = sum( sat_r%val( 1, i1_r:i2_r, inod_r ) ) - 1.0
+                        if ( err_q_r > 0.0 ) then
+                            !The partner must come down: consume positive excess, floor-limited
+                            wgt_r( inod_r ) = max( exc_r, 0.0 )
+                            room_r( inod_r ) = sat_r%val( 1, jq_r, inod_r ) &
+                                 - CV_Immobile_Fraction( jq_r, inod_r )
+                        else
+                            !The partner must come up: consume negative excess, ceiling-limited
+                            wgt_r( inod_r ) = max( -exc_r, 0.0 )
+                            room_r( inod_r ) = ( 1.0 - sum( CV_Immobile_Fraction( i1_r:i2_r, inod_r ) ) &
+                                 + CV_Immobile_Fraction( jq_r, inod_r ) ) - sat_r%val( 1, jq_r, inod_r )
+                        end if
+                        room_r( inod_r ) = max( min( room_r( inod_r ), wgt_r( inod_r ) ), 0.0 )
+                        if ( node_owned( sat_r, inod_r ) ) then
+                            wq_r = cvol_r( jpres_r, inod_r )
+                            if ( rho_on_r( jq_r ) ) wq_r = wq_r * den_r%val( 1, jq_r, inod_r )
+                            wgt_tot_r = wgt_tot_r + wq_r * wgt_r( inod_r )
+                        end if
+                    end do
+                    call allsum( wgt_tot_r )
+                    if ( wgt_tot_r <= 1.0e-30 ) exit
+                    fac_r = abs( err_q_r ) / wgt_tot_r
+                    red_r = 0.0
+                    do inod_r = 1, Mdims%cv_nonods
+                        dn_r = min( fac_r * wgt_r( inod_r ), room_r( inod_r ) )
+                        if ( err_q_r > 0.0 ) then
+                            sat_r%val( 1, jq_r, inod_r ) = sat_r%val( 1, jq_r, inod_r ) - dn_r
+                        else
+                            sat_r%val( 1, jq_r, inod_r ) = sat_r%val( 1, jq_r, inod_r ) + dn_r
+                        end if
+                        if ( node_owned( sat_r, inod_r ) ) then
+                            wq_r = cvol_r( jpres_r, inod_r )
+                            if ( rho_on_r( jq_r ) ) wq_r = wq_r * den_r%val( 1, jq_r, inod_r )
+                            red_r = red_r + wq_r * dn_r
+                        end if
+                    end do
+                    call allsum( red_r )
+                    if ( err_q_r > 0.0 ) then
+                        vol_now( jq_r ) = vol_now( jq_r ) - red_r
+                        err_q_r = err_q_r - red_r
+                    else
+                        vol_now( jq_r ) = vol_now( jq_r ) + red_r
+                        err_q_r = err_q_r + red_r
+                    end if
+                end do
+                if ( abs( err_q_r ) > 1.0e-12 * max( abs( vol_target( jq_r ) ), 1.0e-30 ) ) then
+                    ewrite( 1, * ) 'Restore_Phase_Mass_SumOne: residual for partner phase', jq_r, &
+                         merge( ' [mass]  ', ' [volume]', rho_on_r( jq_r ) ), ' =', err_q_r, &
+                         ' (no matching sum-one excess left)'
+                end if
+            end if
 
             !Log only a residual that is significant relative to the target (roundoff otherwise)
             if ( abs( err_r ) > 1.0e-12 * max( abs( vol_target( jd_r ) ), 1.0e-30 ) ) then

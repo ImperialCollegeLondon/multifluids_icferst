@@ -3512,13 +3512,14 @@ contains
       type(tfield_ptr), dimension(:), allocatable :: f_fluid, f_solid
       type(tensor_field), pointer :: density, pvf
       type (scalar_field), pointer :: density_porous
-      type(vector_field), pointer :: porosity_field, vfield
+      type(vector_field), pointer :: porosity_field, porosity_solid_field, vfield
       type( vector_field ), pointer :: x
       integer, dimension( : ), pointer ::  x_ndgln
       real, dimension (:), pointer :: mass_ele
       integer :: n_fluids, n_solids, k, j, cv_nod, stat, ele, cv_iloc, p_den
       real :: ref_rho
       double precision :: phi, S, rho_f
+      double precision :: phi_solid
       logical :: has_pvf
 
       metal_total_mass = 0.0
@@ -3550,6 +3551,13 @@ contains
       end do
 
       porosity_field=>extract_vector_field(packed_state,"Porosity")
+
+      !The solid metal is measured against the total porosity where the model defines it.
+      if (have_option("/porous_media/porous_properties/scalar_field::porosity_total")) then
+        porosity_solid_field => extract_vector_field(packed_state, "porosity_total")
+      else
+        porosity_solid_field => porosity_field
+      end if
       density => extract_tensor_field(packed_state,"PackedDensity")
       density_porous => extract_scalar_field( state(1), "porous_density" )
       x => extract_vector_field( packed_state, "PressureCoordinate" )
@@ -3572,6 +3580,7 @@ contains
           cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
           if (node_owned(f_fluid(1)%p, cv_nod)) then
             phi = porosity_field%val(1, ele)
+            phi_solid = porosity_solid_field%val(1, ele)
             ! Fluid metal: phi * S_p * rho_p * C_f for each unique fluid tracer in its carrier phase
             do k = 1, n_fluids
               if (has_pvf) then
@@ -3590,7 +3599,7 @@ contains
             ! Solid metal: (1-phi) * rho_porous * C_s for each unique solid tracer
             do k = 1, n_solids
               metal_total_mass = metal_total_mass + &
-                   (1.d0 - phi) * density_porous%val(p_den) * f_solid(k)%p%val(1,1,cv_nod) * (Mass_ELE(ele) / Mdims%cv_nloc)
+                   (1.d0 - phi_solid) * density_porous%val(p_den) * f_solid(k)%p%val(1,1,cv_nod) * (Mass_ELE(ele) / Mdims%cv_nloc)
             end do
           end if
         end do
@@ -3726,7 +3735,7 @@ contains
 
     !>@brief: builds the CV-nodal weight (1-phi)*rho_porous for solid metal tracers, the solid-side
     !> analogue of the phi*rho*S weight used for fluid tracers around the adapt projection.
-    !> Uses MeanPoreCV for the CV-nodal porosity and MASS_ELE-weighted averaging for rho_porous,
+    !> Uses MeanPoreCV_total for the CV porosity and MASS_ELE-weighted averaging for rho_porous,
     !> consistent with metal_dissolution/metal_precipitation. Call before adapt on the old mesh and
     !> again after adapt (once porosity/MeanPoreCV and MASS_ELE are rebuilt) on the new mesh.
     !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
@@ -3748,7 +3757,9 @@ contains
       double precision, dimension(Mdims%cv_nonods) :: porous_density_cv, SUM_CV
       integer :: ele, cv_iloc, cv_nod, p_den
 
-      MeanPoreCV => extract_vector_field(packed_state,"MeanPoreCV")
+      !The rock volume fraction is one minus the total porosity where the model defines it.
+      !MeanPoreCV_total equals MeanPoreCV otherwise, so nothing changes in that case.
+      MeanPoreCV => extract_vector_field(packed_state,"MeanPoreCV_total")
       density_porous => extract_scalar_field( state(1), "porous_density" )
       vfield => extract_vector_field(packed_state,"MASS_ELE")
       mass_ele => vfield%val(1,:)
@@ -3811,12 +3822,14 @@ contains
       type(tensor_field), pointer :: density, temperature, pvf
       type (scalar_field), pointer :: density_porous
       type(vector_field), pointer :: MeanPoreCV, cv_volume, vfield
+      type(vector_field), pointer :: MeanPoreCV_total
       real, dimension (:), pointer :: mass_ele
       double precision, dimension(:,:), allocatable :: K_node, P_node
       double precision, dimension(:), allocatable :: porous_density_cv, SUM_CV, delta_m
       logical, dimension(:), allocatable :: active_prec, active_flash
       integer, dimension(:), allocatable :: group_id
       double precision :: ref_rho, phi, S, rho_f, w_f, w_s, m_f, tot_delta, scale_prec
+      double precision :: phi_solid
       double precision :: I_inv, sumK, C_f, denom, Vcv
       integer :: nre, ire, jre, ig, ip, cv_nod, stat, ele, cv_iloc, p_den
       logical :: has_Temperature, has_pvf
@@ -3852,6 +3865,8 @@ contains
 
       ! ---- common fields -----------------------------------------------------------------------
       MeanPoreCV => extract_vector_field(packed_state,"MeanPoreCV")
+      !The rock is measured against the total porosity, as in get_solid_metal_weight_cv.
+      MeanPoreCV_total => extract_vector_field(packed_state,"MeanPoreCV_total")
       density => extract_tensor_field(packed_state,"PackedDensity")
       density_porous => extract_scalar_field( state(1), "porous_density" )
       cv_volume => extract_vector_field(packed_state,"CVIntegral")
@@ -3930,6 +3945,7 @@ contains
       do cv_nod = 1, Mdims%cv_nonods
         if (.not. node_owned(f_fluid(1)%p, cv_nod)) cycle
         phi = MeanPoreCV%val(1,cv_nod)
+        phi_solid = MeanPoreCV_total%val(1,cv_nod)
         Vcv = cv_volume%val(1,cv_nod)
 
         do ig = 1, nre
@@ -3946,8 +3962,10 @@ contains
           else
             rho_f = density%val(1, ip, cv_nod)
           end if
+          !The fluid measure uses the effective porosity, matching the tracer equations
+          !The solid measure uses "1 - total porosity", the grain fraction
           w_f = phi * S * rho_f
-          w_s = (1.d0 - phi) * porous_density_cv(cv_nod)
+          w_s = (1.d0 - phi_solid) * porous_density_cv(cv_nod)
 
           ! ---- rate-controlled precipitation (proportionally limited among competitors) ----------
           ! Requires finite fluid pore mass and solid volume to renormalise into: skip otherwise

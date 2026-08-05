@@ -230,6 +230,7 @@ contains
         ! The saturation scaling is only safe together with Restore_Phase_Mass_SumOne, which repairs the mass that Set_Saturation_to_sum_one moves.
         ! Both are on by default and can be disabled from /numerical_methods (set below).
         logical :: massfix_scale_tracers, massfix_scale_saturation, massfix_scale_temperature
+        logical :: massfix_in_projection
         real :: t_adapt_threshold
         ! Calculate_mass_delta to store the change in mass calculated over the whole domain
         real, allocatable, dimension(:,:) :: calculate_mass_delta
@@ -298,12 +299,16 @@ contains
         !We may not want to compute always the stats
         write_all_stats = .not.have_option("/io/Sync_stat_file_with_vtu")
 
-        !Mass-conservative adaptivity is on by default. Two disable switches:
-        !1) disable_adapt_mass_conservation_tracers: master switch, disables the scaling for EVERYTHING it covers (tracer-family fields, Concentration, solid metal tracers AND Temperature).
-        massfix_scale_tracers = .not. have_option("/numerical_methods/disable_adapt_mass_conservation_tracers")
-        !2) disable_adapt_mass_conservation_temperature: excludes Temperature only, KEEPING tracer/solid-metal mass conservation active
-        massfix_scale_temperature = .not. have_option("/numerical_methods/disable_adapt_mass_conservation_temperature")
-        massfix_scale_saturation = .not. have_option("/numerical_methods/disable_adapt_mass_conservation_saturation")
+        !disable_all_conservative_adaptivity switches the mass correction off for every field.
+        massfix_scale_tracers = .not. have_option("/numerical_methods/disable_all_conservative_adaptivity")
+        massfix_scale_saturation = massfix_scale_tracers
+        !disable_temperature_conservative_adaptivity switches it off for Temperature only.
+        massfix_scale_temperature = massfix_scale_tracers .and. &
+             .not. have_option("/numerical_methods/disable_temperature_conservative_adaptivity")
+        !Eligible fields are conserved inside the Galerkin projection, which carries the porosity
+        !exactly where the nodal scaling is inaccurate.
+        !This is the default mechanism.
+        massfix_in_projection = massfix_scale_tracers
 
         ! Check wether we are using the CV_Galerkin method
         numberfields_CVGalerkin_interp=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
@@ -1106,8 +1111,11 @@ contains
               call bound_metal_concentrations(state, packed_state, Mdims, ndgln)
               ! Call to calculate the metal total mass after bounding
               call total_mass_metal(state, packed_state, Mdims, ndgln, CV_funs, total_mass_metal_after_bound)
-              ! Apply correction factor if needed to conserve mass
-              call correction_mass_metal(state, packed_state, Mdims, ndgln, total_mass_metal_before_adapt, total_mass_metal_after_bound)
+              ! Applied only when requested
+              if (have_option("/numerical_methods/correction_mass_metal")) then
+                call correction_mass_metal(state, packed_state, Mdims, ndgln, &
+                     total_mass_metal_before_adapt, total_mass_metal_after_bound)
+              end if
             end if
 
             ! Call to calculate the saturation total mass after adapting
@@ -1563,8 +1571,9 @@ contains
                     call Calculate_All_Rhos( state, packed_state, Mdims )
                 end if
             end if
-            !Temperature uses porosity_total where defined, matching cv-adv-dif (R_PHASE vs R_PHASE_TOTAL)
-            have_phi_tot_w = ( weight_kind == 2 ) .and. &
+            !Temperature, saturation and solid metal weights use porosity_total where the model defines it.
+            !Tracer weights keep the effective porosity, matching the transport equations in cv-adv-dif.
+            have_phi_tot_w = ( weight_kind == 2 .or. weight_kind == 3 .or. weight_kind == 4 ) .and. &
                  have_option( "/porous_media/porous_properties/scalar_field::porosity_total" )
             if ( have_phi_tot_w ) then
                 porosity_w => extract_vector_field( packed_state, "porosity_total" )
@@ -1709,6 +1718,77 @@ contains
             deallocate( aux_phi_w, aux_rock_w, volsum_w, use_nodal_density_w )
         end subroutine build_conserved_weight
 
+        !>@brief True when mass conservation across adapts is being done inside the Galerkin
+        !> projection rather than by scaling the fields at the nodes.
+        !> The porosity test mirrors exactly the test Adapt_State uses to decide whether to hand a
+        !> conservation weight to interpolate, so the two sides can't disagree about which
+        !> mechanism is active.
+        !> @author Meissam Bahlali
+        logical function massfix_projection_active()
+            massfix_projection_active = massfix_in_projection
+            if ( massfix_projection_active ) &
+                massfix_projection_active = has_scalar_field( state( 1 ), "Porosity" )
+        end function massfix_projection_active
+
+        !>@brief True when the saturation family is conserved by the projection.
+        !> Mirrors saturation_family_projected in Interpolation_manager.
+        !> @author Meissam Bahlali
+        logical function massfix_projection_saturation()
+            character(len=OPTION_PATH_LEN) :: pvf_path_w
+            integer :: ip_w, nph_opt_w, npr_opt_w
+            massfix_projection_saturation = massfix_projection_active() .and. massfix_scale_saturation
+            if ( .not. massfix_projection_saturation ) return
+            nph_opt_w = option_count( "/material_phase" )
+            npr_opt_w = option_count( "/material_phase/scalar_field::Pressure/prognostic" )
+            if ( nph_opt_w <= 0 .or. npr_opt_w <= 0 ) then
+                massfix_projection_saturation = .false.
+                return
+            end if
+            do ip_w = 0, nph_opt_w - 1
+                if ( ( ip_w * npr_opt_w ) / nph_opt_w /= 0 ) cycle
+                pvf_path_w = "/material_phase[" // int2str( ip_w ) // &
+                     "]/scalar_field::PhaseVolumeFraction/prognostic"
+                if ( .not. have_option( trim( pvf_path_w ) ) ) cycle
+                if ( .not. have_option( trim( pvf_path_w ) // "/galerkin_projection/continuous" ) &
+                     .or. have_option( trim( pvf_path_w ) // "/galerkin_projection/supermesh_free" ) ) then
+                    massfix_projection_saturation = .false.
+                    return
+                end if
+            end do
+        end function massfix_projection_saturation
+
+        !>@brief True when the tracer of this name is conserved by the projection.
+        !> Mirrors field_family_is_mass_conserved in Interpolation_manager.
+        !> @author Meissam Bahlali
+        logical function massfix_projection_tracer( fname_in )
+            character(len=*), intent(in) :: fname_in
+            character(len=OPTION_PATH_LEN) :: tr_path_w
+            massfix_projection_tracer = massfix_projection_active() .and. massfix_scale_tracers
+            if ( .not. massfix_projection_tracer ) return
+            massfix_projection_tracer = option_count( "/material_phase" ) == &
+                 option_count( "/material_phase/scalar_field::Pressure/prognostic" )
+            if ( .not. massfix_projection_tracer ) return
+            !A fully compressible phase keeps the nodal scaling, whose weights carry the density.
+            massfix_projection_tracer = massfix_phase_density_constant()
+            if ( .not. massfix_projection_tracer ) return
+            tr_path_w = "/material_phase[0]/scalar_field::" // trim( fname_in ) // "/prognostic"
+            massfix_projection_tracer = &
+                 have_option( trim( tr_path_w ) // "/galerkin_projection/continuous" ) .and. &
+                 .not. have_option( trim( tr_path_w ) // "/galerkin_projection/supermesh_free" )
+        end function massfix_projection_tracer
+
+        !>@brief True when the phase density is constant: incompressible or Boussinesq.
+        !> Mirrors phase_density_projection_safe in Interpolation_manager.
+        !> @author Meissam Bahlali
+        logical function massfix_phase_density_constant()
+            massfix_phase_density_constant = &
+                 have_option( "/material_phase[0]/phase_properties/Density/incompressible" ) .or. &
+                 have_option( "/material_phase[0]/phase_properties/Density/" // &
+                              "compressible/Boussinesq_approximation" ) .or. &
+                 have_option( "/material_phase[0]/phase_properties/Density/" // &
+                              "python_state/Boussinesq_approximation" )
+        end function massfix_phase_density_constant
+
         !>@brief Multiply the transported fields by the weight before adapting (direction = +1)
         !> and divide by it after (-1). Covers Temperature, Concentration and every tracer,
         !> plus their Old copies.
@@ -1720,9 +1800,36 @@ contains
             integer :: ik_w
             character(len=OPTION_PATH_LEN) :: fname_w
             logical, save :: warned_components_w = .false.
+            logical, save :: warned_projection_rho_w = .false.
+            logical :: claimed_any_w
             logical :: built_weight_ms
+            logical :: built_weight_tr
 
             if ( .not. massfix_scale_tracers ) return
+            !A tracer claimed by the projection skips the nodal scaling here.
+            !Temperature and solid metal tracers always use the nodal scaling.
+            built_weight_tr = .false.
+            !Tracers of a fully compressible phase are not claimed by the projection.
+            !Their nodal weights carry the density, which the projection can't
+            if ( direction > 0 .and. .not. warned_projection_rho_w ) then
+                if ( massfix_projection_active() .and. .not. massfix_phase_density_constant() ) then
+                    claimed_any_w = has_concentration
+                    if ( .not. claimed_any_w ) then
+                        do ik_w = 0, option_count("/material_phase[0]/scalar_field") - 1
+                            call get_option("/material_phase[0]/scalar_field["// int2str(ik_w) //"]/name", fname_w)
+                            if ( is_Tracer_field(fname_w) ) then
+                                claimed_any_w = .true.
+                                exit
+                            end if
+                        end do
+                    end if
+                    if ( claimed_any_w ) then
+                        ewrite(2,*) 'Tracers stay on the nodal adapt scaling: the phase density is fully'
+                        ewrite(2,*) 'compressible and the nodal weights carry it, unlike the phi-only projection'
+                        warned_projection_rho_w = .true.
+                    end if
+                end if
+            end if
             !Component mass fractions are outside the conserved measures of this fix
             if ( direction > 0 .and. .not. warned_components_w ) then
                 if ( has_scalar_field( state( 1 ), "ComponentMassFractionPhase1" ) ) then
@@ -1731,23 +1838,31 @@ contains
                     warned_components_w = .true.
                 end if
             end if
-            call build_conserved_weight( 1, weight_tr )
-            if ( has_temperature .and. massfix_scale_temperature ) call build_conserved_weight( 2, weight_te )
 
-            !Temperature (skipped when disable_adapt_mass_conservation_temperature is set)
+            !Temperature (skipped when disable_temperature_conservative_adaptivity is set)
             if ( has_temperature .and. massfix_scale_temperature ) then
+                call build_conserved_weight( 2, weight_te )
                 call apply_weight_to_packed( "PackedTemperature", weight_te, direction )
                 call apply_weight_to_packed( "PackedOldTemperature", weight_te, direction )
             end if
             !Concentration
-            if ( has_concentration ) then
+            if ( has_concentration .and. .not. massfix_projection_tracer( "Concentration" ) ) then
+                if ( .not. built_weight_tr ) then
+                    call build_conserved_weight( 1, weight_tr )
+                    built_weight_tr = .true.
+                end if
                 call apply_weight_to_packed( "PackedConcentration", weight_tr, direction )
                 call apply_weight_to_packed( "PackedOldConcentration", weight_tr, direction )
             end if
             !Other tracer fields (PassiveTracer*, Tracer*, Species*)
             do ik_w = 0, option_count("/material_phase[0]/scalar_field") - 1
                 call get_option("/material_phase[0]/scalar_field["// int2str(ik_w) //"]/name", fname_w)
-                if ( is_Tracer_field(fname_w) .and. trim(fname_w) /= "Concentration" ) then
+                if ( is_Tracer_field(fname_w) .and. trim(fname_w) /= "Concentration" &
+                     .and. .not. massfix_projection_tracer( fname_w ) ) then
+                    if ( .not. built_weight_tr ) then
+                        call build_conserved_weight( 1, weight_tr )
+                        built_weight_tr = .true.
+                    end if
                     call apply_weight_to_packed( "Packed"//trim(fname_w), weight_tr, direction )
                     call apply_weight_to_packed( "PackedOld"//trim(fname_w), weight_tr, direction )
                 end if
@@ -1822,11 +1937,16 @@ contains
             real, dimension( :, : ), allocatable :: weight_p
             type( tensor_field ), pointer :: sat_p, tem_p, con_p
             integer :: is_p
+            logical :: t_scaled_p, c_scaled_p
             logical, save :: warned_eos_p = .false.
             if ( .not. allocated( massfix_use_rho ) ) return
             if ( .not. any( massfix_use_rho ) ) return
             if ( .not. massfix_scale_tracers ) return
-            if ( .not. ( has_temperature .or. has_concentration ) ) return
+            !The density is primed from the scaled temperature and concentration
+            !A field the projection claims is never scaled, so it must not take part here
+            t_scaled_p = has_temperature .and. massfix_scale_temperature
+            c_scaled_p = has_concentration .and. .not. massfix_projection_tracer( "Concentration" )
+            if ( .not. ( t_scaled_p .or. c_scaled_p ) ) return
             !The Picard sweep below relies on a bounded EOS (e.g. Linear_eos). An unbounded linear_in_pressure density can diverge when evaluated on the scaled fields
             if ( .not. warned_eos_p ) then
                 do is_p = 1, Mdims%nphase
@@ -1841,12 +1961,12 @@ contains
             sat_p => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
             allocate( s_snap_p( size( sat_p%val, 2 ), size( sat_p%val, 3 ) ) )
             s_snap_p = sat_p%val( 1, :, : )
-            if ( has_temperature ) then
+            if ( t_scaled_p ) then
                 tem_p => extract_tensor_field( packed_state, "PackedTemperature" )
                 allocate( t_snap_p( size( tem_p%val, 2 ), size( tem_p%val, 3 ) ) )
                 t_snap_p = tem_p%val( 1, :, : )
             end if
-            if ( has_concentration ) then
+            if ( c_scaled_p ) then
                 con_p => extract_tensor_field( packed_state, "PackedConcentration" )
                 allocate( c_snap_p( size( con_p%val, 2 ), size( con_p%val, 3 ) ) )
                 c_snap_p = con_p%val( 1, :, : )
@@ -1856,13 +1976,13 @@ contains
                 call Calculate_All_Rhos( state, packed_state, Mdims )
                 sat_p%val( 1, :, : ) = s_snap_p
                 call scale_saturation_conserved( -1 )
-                if ( has_temperature ) then
+                if ( t_scaled_p ) then
                     tem_p%val( 1, :, : ) = t_snap_p
                     call build_conserved_weight( 2, weight_p )
                     call apply_weight_to_packed( "PackedTemperature", weight_p, -1 )
                     deallocate( weight_p )
                 end if
-                if ( has_concentration ) then
+                if ( c_scaled_p ) then
                     con_p%val( 1, :, : ) = c_snap_p
                     call build_conserved_weight( 1, weight_p )
                     call apply_weight_to_packed( "PackedConcentration", weight_p, -1 )
@@ -1872,11 +1992,11 @@ contains
             !Final rho from the converged physical T,C; then put the scaled fields back untouched
             call Calculate_All_Rhos( state, packed_state, Mdims )
             sat_p%val( 1, :, : ) = s_snap_p
-            if ( has_temperature ) then
+            if ( t_scaled_p ) then
                 tem_p%val( 1, :, : ) = t_snap_p
                 deallocate( t_snap_p )
             end if
-            if ( has_concentration ) then
+            if ( c_scaled_p ) then
                 con_p%val( 1, :, : ) = c_snap_p
                 deallocate( c_snap_p )
             end if
@@ -1893,6 +2013,9 @@ contains
             !local
             real, dimension(:,:), allocatable :: weight_sa
             if ( .not. massfix_scale_saturation ) return
+            !The saturation is handled by the projection when the whole family goes through it.
+            !Otherwise it is scaled here.
+            if ( massfix_projection_saturation() ) return
             call build_conserved_weight( 3, weight_sa )
             call apply_weight_to_packed( "PackedPhaseVolumeFraction", weight_sa, direction )
             call apply_weight_to_packed( "PackedOldPhaseVolumeFraction", weight_sa, direction )
@@ -2120,6 +2243,16 @@ contains
                     mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
                 call put_CSR_spars_into_packed_state()
 
+                !On the projection route, snapshot the saturation before any post-adapt edit
+                !The mass restore then covers every change made after the projection
+                !On the nodal route the snapshot is taken later, just before sum-one
+                if ( massfix_scale_saturation .and. massfix_projection_saturation() ) then
+                    tempfield_sat => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+                    if ( allocated( sat_pre_sumone ) ) deallocate( sat_pre_sumone )
+                    allocate( sat_pre_sumone( Mdims%nphase, Mdims%cv_nonods ) )
+                    sat_pre_sumone = tempfield_sat%val( 1, :, : )
+                end if
+
                 if (is_porous_media) then
                     !defer_sat_flip: the saturation is still scaled here, so the Land-trapping flip update and cap are deferred to Apply_Land_flip_post_adapt below
                     call get_RockFluidProp(state, packed_state, Mdims, ndgln, post_adapt=.true., &
@@ -2159,8 +2292,9 @@ contains
                           if ( IsParallel() ) call halo_update( massfix_sat_f )
                       end if
                     end if
-                    if ( massfix_scale_saturation ) then
+                    if ( massfix_scale_saturation .and. .not. massfix_projection_saturation() ) then
                         !Snapshot: the restore confines its correction to the nodes sum-one changes
+                        !On the projection route the snapshot was already taken above.
                         tempfield_sat => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
                         if ( allocated( sat_pre_sumone ) ) deallocate( sat_pre_sumone )
                         allocate( sat_pre_sumone( Mdims%nphase, Mdims%cv_nonods ) )
@@ -2173,9 +2307,12 @@ contains
                         if ( allocated( sat_pore_vol_before_adapt ) ) then
                             !Density guard: on the new mesh PackedDensity is zeroed until Calculate_All_Rhos runs
                             call massfix_ensure_density()
+                            !wide_fallback enables a third restore pass over the whole plume,
+                            !for residuals the snapshot band has no room to absorb.
                             call Restore_Phase_Mass_SumOne( Mdims, packed_state, state, CV_funs, &
                                  sat_pore_vol_before_adapt, sat_pre_sumone, &
-                                 use_rho = massfix_use_rho )
+                                 use_rho = massfix_use_rho, &
+                                 wide_fallback = massfix_projection_saturation() )
                         end if
                         if ( allocated( sat_pre_sumone ) ) deallocate( sat_pre_sumone )
                     end if

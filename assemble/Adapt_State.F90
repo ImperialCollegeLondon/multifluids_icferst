@@ -1132,6 +1132,15 @@ contains
     type(detector_type), pointer :: detector => null()
     real, save :: cutoff_tol = -1
 
+    !> Conservation weight for the weighted Galerkin projection, captured on the old mesh.
+    !> @author Meissam Bahlali
+    real, dimension(:), allocatable :: weight_old
+    !> Total porosity per old element.
+    !> Captured alongside weight_old when the model defines porosity_total.
+    real, dimension(:), allocatable :: weight_total_old
+    integer :: iele_w
+    type(scalar_field), pointer :: porosity_old => null()
+
     ! Node locking variable
     type(integer_set) :: lock_faces
 
@@ -1223,6 +1232,39 @@ contains
         call select_fields_to_interpolate(states(j), interpolate_states(j), &
           & first_time_step = initialise_fields)
       end do
+
+      ! Capture the conservation weight while the states still carry old mesh fields.
+      ! Porosity is a prescribed field with no interpolation option, so it is not selected
+      ! into interpolate_states and it is recalculated on the new mesh only by
+      ! set_prescribed_field_values, which runs after interpolate has already returned.
+      ! The values are copied rather than referenced because the loop below tears the old
+      ! states down and nothing else holds a reference to them.
+      ! Only block one of the packed porosity carries real rock porosity: the well blocks are
+      ! set to one in Extract_From_State, so the P0DG scalar is the whole weight.
+      if(allocated(weight_old)) deallocate(weight_old)
+      if(allocated(weight_total_old)) deallocate(weight_total_old)
+      if(has_scalar_field(states(1), "Porosity")) then
+        porosity_old => extract_scalar_field(states(1), "Porosity")
+        ! One value per element, through node_val: a constant prescribed porosity is stored with a single value, and copying %val directly would give a length one weight
+        allocate(weight_old(ele_count(porosity_old)))
+        do iele_w = 1, ele_count(porosity_old)
+          weight_old(iele_w) = node_val(porosity_old, iele_w)
+        end do
+        ewrite(2, *) "Captured conservation weight, elements: ", size(weight_old), &
+                     " range: ", minval(weight_old), maxval(weight_old)
+        nullify(porosity_old)
+        ! The total porosity is captured the same way when the model defines it.
+        if(has_scalar_field(states(1), "porosity_total")) then
+          porosity_old => extract_scalar_field(states(1), "porosity_total")
+          allocate(weight_total_old(ele_count(porosity_old)))
+          do iele_w = 1, ele_count(porosity_old)
+            weight_total_old(iele_w) = node_val(porosity_old, iele_w)
+          end do
+          ewrite(2, *) "Captured total porosity weight, elements: ", size(weight_total_old), &
+                       " range: ", minval(weight_total_old), maxval(weight_total_old)
+          nullify(porosity_old)
+        end if
+      end if
 
       do j = 1, size(states)
         call deallocate(states(j))
@@ -1327,10 +1369,33 @@ contains
       call deallocate(new_positions)
 
       ! Interpolate fields
-      if(associated(node_ownership)) then
-        call interpolate(interpolate_states, states, map = node_ownership, only_owned=.true.)
+      ! weight_old is passed only when it exists, so a build with no porous media reaches
+      ! interpolate with the weight absent and follows exactly the original code path.
+      if(allocated(weight_old)) then
+        if(allocated(weight_total_old)) then
+          if(associated(node_ownership)) then
+            call interpolate(interpolate_states, states, map = node_ownership, only_owned=.true., &
+                             weight_A = weight_old, weight_A_total = weight_total_old)
+          else
+            call interpolate(interpolate_states, states, only_owned=.true., &
+                             weight_A = weight_old, weight_A_total = weight_total_old)
+          end if
+          deallocate(weight_total_old)
+        else
+          if(associated(node_ownership)) then
+            call interpolate(interpolate_states, states, map = node_ownership, only_owned=.true., &
+                             weight_A = weight_old)
+          else
+            call interpolate(interpolate_states, states, only_owned=.true., weight_A = weight_old)
+          end if
+        end if
+        deallocate(weight_old)
       else
-        call interpolate(interpolate_states, states, only_owned=.true.)
+        if(associated(node_ownership)) then
+          call interpolate(interpolate_states, states, map = node_ownership, only_owned=.true.)
+        else
+          call interpolate(interpolate_states, states, only_owned=.true.)
+        end if
       end if
 
       ! Deallocate the old fields used for interpolation, referenced in
