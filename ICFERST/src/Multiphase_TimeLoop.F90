@@ -237,7 +237,7 @@ contains
 
         !!-Variable to keep track of dt reduction for meeting dump_period requirements
         real, save :: stored_dt = -1
-        real :: old_acctim, nonlinear_dt
+        real :: old_acctim, nonlinear_dt, level_dt
 
         !! Variables to initialise porous media models
         logical :: exit_initialise_porous_media = .false.
@@ -984,6 +984,10 @@ contains
             call run_PHREEQC(Mdims, packed_state, phreeqc_id, concetration_phreeqc)
 #endif
 
+            !At this point Adaptive_NonLinear has already stored in the option tree the dt of the NEXT time level
+            !Use the actual dt of this time level so post-loop solves are advanced consistently with the flow fields
+            level_dt = acctim - old_acctim
+
             if (have_Passive_Tracers) then
               !We make sure to only enter here once if there are no passive tracers
               have_Passive_Tracers = .false.
@@ -1000,7 +1004,7 @@ contains
                   tracer_field=>extract_tensor_field(packed_state,"Packed"//trim(option_name))
                   call Tracer_Assemble_Solve( trim(option_name), state, packed_state, &
                     Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                    tracer_field,velocity_field,density_field, multi_absorp, dt, &
+                    tracer_field,velocity_field,density_field, multi_absorp, level_dt, &
                     suf_sig_diagten_bc, Porosity_field%val, porosity_total_field%val, &
                     !!$
                     0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
@@ -1018,7 +1022,7 @@ contains
 
             !Metal exchange (dissolution/precipitation) happens here, for every reaction
             !configured under /porous_media/metal_reactions.
-            if (have_metal_reactions()) call metal_reactions_exchange(state, packed_state, Mdims, ndgln, dt)
+            if (have_metal_reactions()) call metal_reactions_exchange(state, packed_state, Mdims, ndgln, level_dt)
 
             !Flash dissolution happens here JUST BEFORE get_RockFluidProp
             if (have_option("/porous_media/Gas_dissolution"))call flash_gas_dissolution(state, packed_state, Mdims, ndgln)
