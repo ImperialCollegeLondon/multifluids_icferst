@@ -518,7 +518,7 @@ contains
                     call get_option(trim( option_path2 ) // '/High_order/Limiter_options/limiter::CompressiveAdvection/ultra_compressive/value', Mdisopt%compoptval, default=0.0)
                 end if
             else
-                if( have_option( trim( option_path2 ) // 'upwind' ) ) &
+                if( have_option( trim( option_path2 ) // '/upwind' ) ) &
                     Mdisopt%t_disopt = 1
             end if
         end if
@@ -546,7 +546,7 @@ contains
                 end if
 
             else
-                if( have_option( trim( option_path2 ) // 'upwind' ) ) &
+                if( have_option( trim( option_path2 ) // '/upwind' ) ) &
                     Mdisopt%v_disopt = 0
             end if
         end if
@@ -3552,11 +3552,12 @@ end subroutine get_DarcyVelocity
     !>@param current_time actual time
     !>@param itime time-level in integer format
     !>@param outfluxes multi_outfluxes field containing the data required to create the output csv file
-    subroutine getTotalsAndDumpOutflux(current_time, dt, itime, outfluxes)
+    subroutine getTotalsAndDumpOutflux(current_time, dt, itime, outfluxes, packed_state)
 
         real,intent(in) :: current_time, dt
         integer, intent(in) :: itime
         type (multi_outfluxes), intent(inout) :: outfluxes
+        type( state_type ), intent( inout ) :: packed_state
         !Local variables
         integer :: ioutlet
         integer :: counter
@@ -3564,6 +3565,7 @@ end subroutine get_DarcyVelocity
         character (len=1000000) :: numbers
         integer :: iphase, ifields
         real :: outSysFactor, outSysShft
+        type (tensor_field), pointer :: avg_field
         ! Strictly speaking don't need character arrays for fluxstring and intfluxstring, could just overwrite each time (may change later)
         character (len = 100000), dimension(size(outfluxes%intflux,1)) :: fluxstring
         character (len = 100000), dimension(size(outfluxes%intflux,1)) :: intfluxstring
@@ -3573,6 +3575,20 @@ end subroutine get_DarcyVelocity
         character (len = 50) :: simulation_name, fieldName
         character(len = FIELD_NAME_LEN) :: phase_name
         character(len = OPTION_PATH_LEN) :: path
+        !Evaluate the surface averages from the stored quadrature weights and the CURRENT nodal values
+        !This ensures that fields solved after the nonlinear loop (passive tracers) are sampled at the correct time level, instead of carrying the value of the previous time level
+        if (allocated(outfluxes%avg_weights)) then
+            outfluxes%avgout = 0.
+            do ifields = 1, size(outfluxes%field_names,2)
+                avg_field => extract_tensor_field( packed_state, "Packed"//trim(outfluxes%field_names(1,ifields)) )
+                do ioutlet = 1, size(outfluxes%outlet_id)
+                    do iphase = 1, size(outfluxes%avgout,2)
+                        outfluxes%avgout(ifields, iphase, ioutlet) = &
+                            sum( outfluxes%avg_weights(iphase, :, ioutlet) * avg_field%val(1, iphase, :) )
+                    end do
+                end do
+            end do
+        end if
         !Ensure consistency for averaged fields in parallel, i.e. not saturation
         if (isparallel()) then
             do ioutlet = 1, size(outfluxes%outlet_id)
@@ -3703,7 +3719,8 @@ end subroutine get_DarcyVelocity
       real, dimension(:), intent(in) :: Vol_flux, Mass_flux
       real, intent(in) :: suf_area
       !local variables
-      integer :: iphase, iofluxes, ifields
+      !outfluxes_fields is kept in the interface for compatibility but the field sampling now happens at dump time
+      integer :: iphase, iofluxes
       if (surface_element_owned(tracer, sele)) then
         !Store total outflux; !velocity * area * density * saturation
         if (has_boussinesq_aprox) then
@@ -3737,12 +3754,11 @@ end subroutine get_DarcyVelocity
                 bcs_outfluxes_vol(iphase, CV_NODI, iofluxes) =  bcs_outfluxes_vol(iphase, CV_NODI, iofluxes) + &
                 Vol_flux(iphase)
               end do
-              !Average value over the surface
-              do ifields = 1, size(outfluxes_fields)
-                do iphase = start_phase, end_phase
-                    outfluxes%avgout(ifields, iphase, iofluxes) = outfluxes%avgout(ifields, iphase, iofluxes) + &
-                                    outfluxes_fields(ifields)%ptr%val(1,iphase,CV_NODI) * suf_area
-                end do
+              !Store the quadrature weight of this node and outlet.
+              !The surface averages are evaluated at dump time in getTotalsAndDumpOutflux from the current nodal values, so that fields solved after the nonlinear loop (passive tracers) are sampled at the correct time level
+              do iphase = start_phase, end_phase
+                  outfluxes%avg_weights(iphase, CV_NODI, iofluxes) = outfluxes%avg_weights(iphase, CV_NODI, iofluxes) + &
+                                  suf_area
               end do
             end if
           end do

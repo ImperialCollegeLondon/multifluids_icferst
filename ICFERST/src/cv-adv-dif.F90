@@ -623,6 +623,15 @@ contains
               if (allocated(outfluxes%area_outlet)) then
                 !Initialize to zero the area of the outlet surfaces
                  outfluxes%area_outlet = 0.; outfluxes%totout = 0.
+                !Quadrature weights of the outlet surfaces, stored so the surface averages can be evaluated at dump time from the current nodal values
+                if (outfluxes%calculate_flux) then
+                  if (allocated(outfluxes%avg_weights)) then
+                    if (size(outfluxes%avg_weights,2) /= Mdims%cv_nonods) deallocate(outfluxes%avg_weights)
+                  end if
+                  if (.not. allocated(outfluxes%avg_weights)) &
+                    allocate(outfluxes%avg_weights(Mdims%nphase, Mdims%cv_nonods, size(outfluxes%outlet_id)))
+                  outfluxes%avg_weights = 0.
+                end if
                 !Extract fields to be used for the outfluxes section
                 do k = 1, size(outfluxes%field_names,2)!We use the first phase as it is the one that must contain all the prognostic fields
                     outfluxes_fields(k)%ptr =>extract_tensor_field( packed_state, "Packed"//outfluxes%field_names(1,k) )

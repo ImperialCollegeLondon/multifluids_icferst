@@ -441,6 +441,8 @@ module multi_data_types
     !>@param porevolume  for outfluxes.csv to calculate the pore volume injected
     !>@param totout Total outflux for a given surface id (Mdims%nphase, size(outlet_id))
     !>@param avgout Average outflux for a given surface id(fields, Mdims%nphase, size(outlet_id))
+    !>@param avg_weights Surface quadrature weight per CV node and outlet (Mdims%nphase, cv_nonods, size(outlet_id)).
+    !> Stored during the flow assembly so the surface averages can be evaluated at dump time from the current nodal values.
     !>@param area_outlet Are of the surface id Mdins%nphase, size(outlet_id)
     !>@param field_names  Name of the field Mdins%nphase, nfields: Store with the same ordering the field names
     type multi_outfluxes
@@ -449,6 +451,7 @@ module multi_data_types
         real :: porevolume
         real, allocatable, dimension(:,:) :: totout
         real, allocatable, dimension(:,:,:) :: avgout
+        real, allocatable, dimension(:,:,:) :: avg_weights
         real, allocatable, dimension(:, :) :: area_outlet
         real, dimension(:,:),  allocatable  :: intflux
         real, allocatable, dimension(:,:) :: vol_flux
@@ -1759,6 +1762,7 @@ contains
         type (multi_outfluxes), intent(inout) :: outfluxes
 
         deallocate(outfluxes%totout, outfluxes%totout_vol, outfluxes%totout_mass, outfluxes%intflux,outfluxes%outlet_id, outfluxes%avgout, outfluxes%area_outlet, outfluxes%vol_flux, outfluxes%mass_flux )
+        if (allocated(outfluxes%avg_weights)) deallocate(outfluxes%avg_weights)
 
     end subroutine destroy_multi_outfluxes
 

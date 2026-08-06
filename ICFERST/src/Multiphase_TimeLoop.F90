@@ -1043,7 +1043,7 @@ contains
             ! If calculating boundary fluxes, dump them to outfluxes.csv
             if(outfluxes%calculate_flux .and..not.Repeat_time_step) then
                 call get_option( '/timestepping/current_time', acctim )
-                call getTotalsAndDumpOutflux(acctim,acctim-old_acctim,itime,outfluxes)  ! We calculate dt as acctim-old_acctim just in case dt has changed
+                call getTotalsAndDumpOutflux(acctim,acctim-old_acctim,itime,outfluxes,packed_state)  ! We calculate dt as acctim-old_acctim just in case dt has changed
             endif
 
             current_time = acctim
