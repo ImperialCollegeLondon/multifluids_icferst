@@ -3345,7 +3345,7 @@ This imposes the tracer to be between bounds.</a:documentation>
                   </element>
                 </choice>
               </element>
-              <element name="Dot_not_impose_min_max">
+              <element name="Do_not_impose_min_max">
                 <a:documentation>Do not impose physical constraints to the.</a:documentation>
                 <empty/>
               </element>
@@ -3453,7 +3453,7 @@ This imposes the tracer to be between bounds.</a:documentation>
                   </element>
                 </choice>
               </element>
-              <element name="Dot_not_impose_min_max">
+              <element name="Do_not_impose_min_max">
                 <a:documentation>Do not impose physical constraints to the.</a:documentation>
                 <empty/>
               </element>
@@ -3533,7 +3533,7 @@ This imposes the tracer to be between bounds.</a:documentation>
                   </element>
                 </choice>
               </element>
-              <element name="Dot_not_impose_min_max">
+              <element name="Do_not_impose_min_max">
                 <a:documentation>Do not impose physical constraints to the.</a:documentation>
                 <empty/>
               </element>
@@ -3811,7 +3811,7 @@ This imposes the tracer to be between bounds.</a:documentation>
                   </element>
                 </choice>
               </element>
-              <element name="Dot_not_impose_min_max">
+              <element name="Do_not_impose_min_max">
                 <a:documentation>Do not impose physical constraints to the.</a:documentation>
                 <empty/>
               </element>
@@ -3898,7 +3898,7 @@ This imposes the tracer to be between bounds.</a:documentation>
                   </element>
                 </choice>
               </element>
-              <element name="Dot_not_impose_min_max">
+              <element name="Do_not_impose_min_max">
                 <a:documentation>Do not impose physical constraints to the.</a:documentation>
                 <empty/>
               </element>
@@ -3991,7 +3991,7 @@ This imposes the tracer to be between bounds.</a:documentation>
                   </element>
                 </choice>
               </element>
-              <element name="Dot_not_impose_min_max">
+              <element name="Do_not_impose_min_max">
                 <a:documentation>Do not impose physical constraints to the.</a:documentation>
                 <empty/>
               </element>

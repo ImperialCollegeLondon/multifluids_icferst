@@ -216,7 +216,7 @@
     <scalar_field rank="0" name="Temperature">
       <prognostic>
         <mesh name="PressureMesh" />
-        <Dot_not_impose_min_max />
+        <Do_not_impose_min_max />
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">10</real_value>

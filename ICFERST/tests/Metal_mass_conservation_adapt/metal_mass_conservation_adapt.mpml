@@ -254,7 +254,7 @@
     <scalar_field rank="0" name="Concentration">
       <prognostic>
         <mesh name="PressureMesh"/>
-        <Dot_not_impose_min_max/>
+        <Do_not_impose_min_max/>
         <initial_condition name="WholeMesh">
           <python>
             <string_value type="code" language="python" lines="20">def val(X,t):
@@ -293,7 +293,7 @@
     <scalar_field rank="0" name="PassiveTracer_Salt">
       <prognostic>
         <mesh name="PressureMesh"/>
-        <Dot_not_impose_min_max/>
+        <Do_not_impose_min_max/>
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">1.0</real_value>
@@ -313,7 +313,7 @@
     <scalar_field rank="0" name="PassiveTracer_Cu">
       <prognostic>
         <mesh name="PressureMesh"/>
-        <Dot_not_impose_min_max/>
+        <Do_not_impose_min_max/>
         <initial_condition name="WholeMesh">
           <python>
             <string_value type="code" language="python" lines="20">def val(X,t):
@@ -353,7 +353,7 @@
     <scalar_field rank="0" name="Cu_solid">
       <prognostic>
         <mesh name="PressureMesh"/>
-        <Dot_not_impose_min_max/>
+        <Do_not_impose_min_max/>
         <initial_condition name="WholeMesh">
           <python>
             <string_value type="code" language="python" lines="20">def val(X,t):

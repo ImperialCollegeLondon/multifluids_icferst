@@ -2791,7 +2791,7 @@ scalar_field_choice =
                     element max_limit{real})
                   )}|
                   ## Do not impose physical constraints to the.
-                  element Dot_not_impose_min_max{empty}),
+                  element Do_not_impose_min_max{empty}),
                   ## Diffusivity for field (in S.I. m^2/s ).
                   element tensor_field {
                      attribute name { "Diffusivity" },
@@ -2867,7 +2867,7 @@ scalar_field_choice =
                     element max_limit{real})
                   )}|
                   ## Do not impose physical constraints to the.
-                  element Dot_not_impose_min_max{empty}),
+                  element Do_not_impose_min_max{empty}),
                   prognostic_scalar_field
                }|
                element prescribed {
@@ -2923,7 +2923,7 @@ scalar_field_choice =
                     element max_limit{real})
                   )}|
                   ## Do not impose physical constraints to the.
-                  element Dot_not_impose_min_max{empty}),
+                  element Do_not_impose_min_max{empty}),
                   ## Diffusivity for field (in S.I. m^2/s ).
                   element tensor_field {
                      attribute name { "Diffusivity" },
@@ -3139,7 +3139,7 @@ scalar_field_choice =
                     element max_limit{real})
                   )}|
                   ## Do not impose physical constraints to the.
-                  element Dot_not_impose_min_max{empty}),
+                  element Do_not_impose_min_max{empty}),
                   ## Diffusivity for field (in S.I. m^2/s ).
                   element tensor_field {
                      attribute name { "Diffusivity" },
@@ -3196,7 +3196,7 @@ scalar_field_choice =
                     element max_limit{real})
                   )}|
                   ## Do not impose physical constraints to the.
-                  element Dot_not_impose_min_max{empty}),
+                  element Do_not_impose_min_max{empty}),
                   ## Diffusivity for field (in S.I. m^2/s ).
                   element tensor_field {
                      attribute name { "Diffusivity" },
@@ -3259,7 +3259,7 @@ scalar_field_choice =
                     element max_limit{real})
                   )}|
                   ## Do not impose physical constraints to the.
-                  element Dot_not_impose_min_max{empty}),
+                  element Do_not_impose_min_max{empty}),
                   ## Diffusivity for field (in S.I. m^2/s ).
                   element tensor_field {
                      attribute name { "Diffusivity" },
