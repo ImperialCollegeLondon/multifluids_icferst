@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <n>2D_conc_passive_identical_fast</n>
+  <owner userid="mbahlali"/>
+  <tags>porous mpml transport tracers</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>../../../bin/icferst ./test2_fast.mpml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="cp_diff" language="python">from fluidity_tools import stat_parser as stat
+s = stat("2D_Temperature_Concentration_comparison_adv_diff_fast.stat")["phase1"]
+cp_diff = max(abs(s["Concentration"]["max"][-1] - s["PassiveTracer"]["max"][-1]),
+              abs(s["Concentration"]["min"][-1] - s["PassiveTracer"]["min"][-1]),
+              abs(s["Concentration"]["integral"][-1] - s["PassiveTracer"]["integral"][-1]) /
+              abs(s["Concentration"]["integral"][-1]))</variable>
+  </variables>
+  <pass_tests>
+    <test name="Concentration and PassiveTracer identical at fast quality" language="python">assert(cp_diff &lt; 0.05)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

@@ -1,0 +1,26 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <n>2D_temp_conc_passive_equivalence</n>
+  <owner userid="mbahlali"/>
+  <tags>porous mpml transport tracers</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>../../../bin/icferst ./test1_balanced.mpml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="tc_diff" language="python">from fluidity_tools import stat_parser as stat
+s = stat("2D_Temperature_Concentration_comparison_adv_diff.stat")["phase1"]
+tc_diff = max(abs(s["Temperature"]["max"][-1] - s["Concentration"]["max"][-1]),
+              abs(s["Temperature"]["min"][-1] - s["Concentration"]["min"][-1]),
+              abs(s["Temperature"]["integral"][-1] - s["Concentration"]["integral"][-1]) /
+              abs(s["Concentration"]["integral"][-1]))</variable>
+    <variable name="cp_int" language="python">from fluidity_tools import stat_parser as stat
+s = stat("2D_Temperature_Concentration_comparison_adv_diff.stat")["phase1"]
+cp_int = abs(s["Concentration"]["integral"][-1] - s["PassiveTracer"]["integral"][-1]) / \
+         abs(s["Concentration"]["integral"][-1])</variable>
+  </variables>
+  <pass_tests>
+    <test name="Temperature equals Concentration (coefficient equivalence)" language="python">assert(tc_diff &lt; 0.05)</test>
+    <test name="Concentration and PassiveTracer conserve the same mass" language="python">assert(cp_int &lt; 2.0e-3)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>
