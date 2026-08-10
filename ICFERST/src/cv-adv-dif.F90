@@ -1857,7 +1857,8 @@ contains
                                       LOC_MAT_II = LOC_MAT_II +  FTHETA_T2 * SdevFuns%DETWEI( GI ) * NDOTQNEW * ( 1. - INCOME ) * LIMD! Advection
                                       if (GOT_DIFFUS) LOC_MAT_II = LOC_MAT_II + FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
                                       if (VAD_activated) LOC_MAT_II = LOC_MAT_II + LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
-                                      if (.not.conservative_advection) LOC_MAT_II = LOC_MAT_II - FTHETA_T2 * ( ONE_M_CV_BETA ) * &
+                                      !The beta<1 correction is applied fully implicitly
+                                      if (.not.conservative_advection) LOC_MAT_II = LOC_MAT_II - ( ONE_M_CV_BETA ) * &
                                                                                     SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD
                                       if (on_domain_boundary) LOC_MAT_II = LOC_MAT_II + SdevFuns%DETWEI( GI ) * ROBIN2
 
@@ -1866,7 +1867,7 @@ contains
                                         LOC_MAT_JJ = LOC_MAT_JJ -  FTHETA_T2_J * SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME * LIMD! Advection
                                         if (GOT_DIFFUS) LOC_MAT_JJ = LOC_MAT_JJ + FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
                                         if (VAD_activated) LOC_MAT_JJ = LOC_MAT_JJ +  LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
-                                        if (.not.conservative_advection) LOC_MAT_JJ = LOC_MAT_JJ + FTHETA_T2_J * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD
+                                        if (.not.conservative_advection) LOC_MAT_JJ = LOC_MAT_JJ + ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD
                                       endif
 
                                       IF ( GET_GTHETA ) THEN
@@ -1893,11 +1894,7 @@ contains
                                       if (VAD_activated) LOC_CV_RHS_I =  LOC_CV_RHS_I &
                                           - LIMT2* SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX &  ! capillary pressure stabilization term..
                                           * ( LOC_T_J - LOC_T_I )
-                                      if (.not.conservative_advection) LOC_CV_RHS_I =  LOC_CV_RHS_I &
-                                          - FTHETA_T2 * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD * LOC_T_I &
-                                          + ( ONE_M_CV_BETA) * SdevFuns%DETWEI( GI ) &
-                                          * ( FTHETA_T2 * NDOTQNEW * LOC_T_I * LIMD  &
-                                          + ONE_M_FTHETA_T2OLD * NDOTQOLD * LIMDOLD * LOC_TOLD_I )
+                                      !With the fully implicit beta<1 correction the RHS contribution is identically zero
                                       if (on_domain_boundary) LOC_CV_RHS_I =  LOC_CV_RHS_I &
                                           + SdevFuns%DETWEI( GI ) * ROBIN1
 
@@ -1914,11 +1911,7 @@ contains
                                       if (VAD_activated) LOC_CV_RHS_J =  LOC_CV_RHS_J  &
                                           - LIMT2 * SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX & ! capillary pressure stabilization term..
                                           * ( LOC_T_I - LOC_T_J )
-                                      if (.not.conservative_advection) LOC_CV_RHS_J =  LOC_CV_RHS_J  &
-                                          + FTHETA_T2_J * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD * LOC_T_J &
-                                          - ( ONE_M_CV_BETA) * SdevFuns%DETWEI( GI ) &
-                                          * ( FTHETA_T2_J * NDOTQNEW * LOC_T_J * LIMD  &
-                                          + ONE_M_FTHETA_T2OLD_J * NDOTQOLD * LIMDOLD * LOC_TOLD_J )
+                                      !With the fully implicit beta<1 correction the RHS contribution is identically zero
 
                                   endif
                                   IF ( GET_GTHETA ) THEN
