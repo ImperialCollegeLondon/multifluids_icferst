@@ -218,7 +218,8 @@ contains
     !>@param assemble_collapsed_to_one_phase Collapses phases and solves for one single temperature. When there is thermal equilibrium
     SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, final_phase, wells_first_phase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
                   getcv_disc, getct, getNewtonType, getResidual, Mmat, Mspars, DT, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
-                  INV_SIGMA, upwnd, eles_with_pipe, thermal, CV_BETA, bcs_outfluxes, bcs_outfluxes_mass, bcs_outfluxes_vol, outfluxes, assemble_collapsed_to_one_phase, TDIFFUSION )
+                  INV_SIGMA, upwnd, eles_with_pipe, thermal, CV_BETA, bcs_outfluxes, bcs_outfluxes_mass, bcs_outfluxes_vol, outfluxes, assemble_collapsed_to_one_phase, TDIFFUSION, &
+                  tracer_vals, density_vals )
       type(state_type), intent(inout) :: packed_state
       type(state_type), dimension(:), intent(in) :: state
       type(multi_dimensions), intent(in) :: Mdims
@@ -242,6 +243,11 @@ contains
       real, dimension(:,:, :), allocatable, intent(inout):: bcs_outfluxes_vol!<= if allocated then calculate outfluxes
       type (multi_outfluxes), intent(inout) :: outfluxes
       real, dimension(:,:,:,:), optional, intent(in) :: TDIFFUSION
+      !> @author Meissam Bahlali
+      !> Optional transported field values and matching density values supplied by the caller
+      !> When present they replace the internally extracted saturation and packed density in every value read
+      !> This keeps the one dimensional pipe advection consistent with the equation being assembled
+      real, dimension( :, : ), optional, target, intent( in ) :: tracer_vals, density_vals
       ! Local variables
       INTEGER :: CV_NODI, CV_NODJ, IPHASE, COUNT, CV_SILOC, SELE, cv_iloc, cv_jloc, jphase, assembly_phase
       INTEGER :: cv_ncorner, cv_lnloc, u_lnloc, ele, cv_gi, iloop, ICORNER, NPIPES, i
@@ -289,6 +295,9 @@ contains
       type(vector_field), pointer :: X
       !Logical to check if we using a conservative method or not, to save cpu time
       logical :: conservative_advection
+      !Accessors for the transported field values and the density values used by this assembly.
+      !They point at the caller supplied arrays when present and at the internal extractions otherwise.
+      real, dimension( :, : ), pointer :: tvals, dvals
       logical :: GOT_DIFFUS
       real :: DIFF_COEF_1D ! effective 1D diffusion coef at a pipe face
       real :: DIFF_K_GI ! interpolated diffusivity projected onto pipe axis direction at face
@@ -493,6 +502,14 @@ contains
           only_den_all => extract_tensor_field( packed_state, "PackedDensity" )
       end if
 
+      !Bind the value accessors for this assembly
+      !The internally extracted fields are correct for the saturation continuity call and for the thermal call
+      !Tracer calls must supply their own transported field and density so that the one dimensional pipe advection is weighted consistently with the storage term of the equation being assembled
+      tvals => T_ALL%val( 1, :, : )
+      dvals => DEN_ALL%val( 1, :, : )
+      if ( present( tracer_vals ) ) tvals => tracer_vals
+      if ( present( density_vals ) ) dvals => density_vals
+
       DO CV_NODI = 1, Mdims%cv_nonods
           IF ( PIPE_DIAMETER%VAL(CV_NODI) > RM8 ) THEN
               do count = Mspars%small_acv%fin(cv_nodi), Mspars%small_acv%fin(cv_nodi+1)-1
@@ -502,13 +519,13 @@ contains
                       global_phase = iphase + (Mdims%npres - 1)*Mdims%n_in_pres
                       compact_phase = iphase + (Mdims%npres - 1)*final_phase
                         TMAX_ALL( compact_phase, CV_NODI ) = max( TMAX_ALL( compact_phase, CV_NODI ), &
-                                                            T_ALL%val( 1, global_phase, cv_nodj ) )
+                                                            tvals( global_phase, cv_nodj ) )
                         TMIN_ALL( compact_phase, CV_NODI ) = min( TMIN_ALL( compact_phase, CV_NODI ),&
-                                                            T_ALL%val( 1, global_phase, cv_nodj ) )
+                                                            tvals( global_phase, cv_nodj ) )
                         DENMAX_ALL( compact_phase, CV_NODI ) = max( DENMAX_ALL( compact_phase, CV_NODI ),&
-                                                            DEN_ALL%val( 1, global_phase, cv_nodj ) )
+                                                            dvals( global_phase, cv_nodj ) )
                         DENMIN_ALL( compact_phase, CV_NODI ) = min( DENMIN_ALL( compact_phase, CV_NODI ),&
-                                                            DEN_ALL%val( 1, global_phase, cv_nodj ) )
+                                                            dvals( global_phase, cv_nodj ) )
                     END DO
                   END IF
               END DO
@@ -744,23 +761,23 @@ contains
                             compact_phase = iphase + (Mdims%npres - 1)*final_phase
                         ! DO IPHASE = n_in_pres+1, final_phase
                             ! CV incomming T:
-                            IF ( T_ALL%val( 1, global_phase, CV_NODI ) > T_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
+                            IF ( tvals( global_phase, CV_NODI ) > tvals( global_phase, CV_NODJ ) ) THEN
                                 TUPWIND_OUT( compact_phase ) = TMAX_ALL( compact_phase, CV_NODI )
                             ELSE
                                 TUPWIND_OUT( compact_phase ) = TMIN_ALL( compact_phase, CV_NODI )
                             END IF
-                            IF ( DEN_ALL%val( 1, global_phase, CV_NODI ) > DEN_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
+                            IF ( dvals( global_phase, CV_NODI ) > dvals( global_phase, CV_NODJ ) ) THEN
                                 DUPWIND_OUT( compact_phase ) = DENMAX_ALL( compact_phase, CV_NODI )
                             ELSE
                                 DUPWIND_OUT( compact_phase ) = DENMIN_ALL( compact_phase, CV_NODI )
                             END IF
                             ! CV outgoing T:
-                            IF ( T_ALL%val( 1, global_phase, CV_NODI ) < T_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
+                            IF ( tvals( global_phase, CV_NODI ) < tvals( global_phase, CV_NODJ ) ) THEN
                                 TUPWIND_IN( compact_phase ) = TMAX_ALL( compact_phase, CV_NODJ )
                             ELSE
                                 TUPWIND_IN( compact_phase ) = TMIN_ALL( compact_phase, CV_NODJ )
                             END IF
-                            IF ( DEN_ALL%val( 1, global_phase, CV_NODI ) < DEN_ALL%val( 1, global_phase, CV_NODJ ) ) THEN
+                            IF ( dvals( global_phase, CV_NODI ) < dvals( global_phase, CV_NODJ ) ) THEN
                                 DUPWIND_IN( compact_phase ) = DENMAX_ALL( compact_phase, CV_NODJ )
                             ELSE
                                 DUPWIND_IN( compact_phase ) = DENMIN_ALL( compact_phase, CV_NODJ )
@@ -796,19 +813,19 @@ contains
                             global_phase = iphase + (Mdims%npres - 1)*Mdims%n_in_pres
                             compact_phase = iphase + (Mdims%npres - 1)*final_phase
                             FEMTGI(compact_phase) = FEMTGI(compact_phase) + &
-                                    CVN_FEM(CV_LJLOC,BGI) * T_ALL%val( 1, global_phase, CV_KNOD)
+                                    CVN_FEM(CV_LJLOC,BGI) * tvals( global_phase, CV_KNOD)
                             FEMDGI(compact_phase) = FEMDGI(compact_phase) + &
-                                    CVN_FEM(CV_LJLOC,BGI) * DEN_ALL%val( 1, global_phase, CV_KNOD)
+                                    CVN_FEM(CV_LJLOC,BGI) * dvals( global_phase, CV_KNOD)
                           end do
                       END DO
                       FEMDGI = max( 0.0,FEMDGI )
                       DO IPHASE=1, final_phase
                         global_phase = iphase + (Mdims%npres - 1)*Mdims%n_in_pres
                         compact_phase = iphase + (Mdims%npres - 1)*final_phase
-                        T_CV_NODI(compact_phase) = T_ALL%val( 1, global_phase, CV_NODI)
-                        T_CV_NODJ(compact_phase) = T_ALL%val( 1, global_phase, CV_NODJ)
-                        D_CV_NODI(compact_phase) = DEN_ALL%val( 1, global_phase, CV_NODI)
-                        D_CV_NODJ(compact_phase) = DEN_ALL%val( 1, global_phase, CV_NODJ)
+                        T_CV_NODI(compact_phase) = tvals( global_phase, CV_NODI)
+                        T_CV_NODJ(compact_phase) = tvals( global_phase, CV_NODJ)
+                        D_CV_NODI(compact_phase) = dvals( global_phase, CV_NODI)
+                        D_CV_NODJ(compact_phase) = dvals( global_phase, CV_NODJ)
                       end do
                       IF ( UPWIND_PIPES ) THEN ! Used for testing...
                           LIMT = T_CV_NODI*(1.0-INCOME) + T_CV_NODJ*INCOME
@@ -963,9 +980,9 @@ contains
                     compact_phase = iphase + (Mdims%npres - 1)*final_phase
                     global_phase = iphase + (Mdims%npres - 1)*Mdims%n_in_pres
                     IF ( WIC_T_BC_ALL_NODS( compact_phase, JCV_NOD ) == WIC_T_BC_DIRICHLET ) THEN
-                        LIMT(compact_phase)=T_ALL%val(1,global_phase,JCV_NOD)*(1.0-INCOME(compact_phase)) + SUF_T_BC_ALL_NODS(compact_phase,JCV_NOD)*INCOME(compact_phase)
+                        LIMT(compact_phase)=tvals( global_phase,JCV_NOD)*(1.0-INCOME(compact_phase)) + SUF_T_BC_ALL_NODS(compact_phase,JCV_NOD)*INCOME(compact_phase)
                     ELSE
-                        LIMT(compact_phase)=T_ALL%val(1,global_phase,JCV_NOD)
+                        LIMT(compact_phase)=tvals( global_phase,JCV_NOD)
                     END IF
                     FVT(compact_phase) = LIMT(compact_phase)
                   END DO
@@ -973,9 +990,9 @@ contains
                     compact_phase = iphase + (Mdims%npres - 1)*final_phase
                     global_phase = iphase + (Mdims%npres - 1)*Mdims%n_in_pres
                     IF ( WIC_D_BC_ALL_NODS( compact_phase, JCV_NOD ) == WIC_D_BC_DIRICHLET ) THEN
-                        LIMD(compact_phase)=DEN_ALL%val(1,global_phase,JCV_NOD)*(1.0-INCOME(compact_phase)) + SUF_D_BC_ALL_NODS(compact_phase,JCV_NOD)*INCOME(compact_phase)
+                        LIMD(compact_phase)=dvals( global_phase,JCV_NOD)*(1.0-INCOME(compact_phase)) + SUF_D_BC_ALL_NODS(compact_phase,JCV_NOD)*INCOME(compact_phase)
                     ELSE
-                        LIMD(compact_phase)=DEN_ALL%val(1,global_phase,JCV_NOD)
+                        LIMD(compact_phase)=dvals( global_phase,JCV_NOD)
                     END IF
                   END DO
                   LIMDT = LIMD * LIMT
@@ -989,7 +1006,7 @@ contains
                   suf_area = 0.25*PI*(PIPE_DIAM_END*PIPE_DIAM_END) * ELE_ANGLE / ( 2.0 * PI )
                   IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqations plus RHS on the boundary...
                       DO IDIM = 1, Mdims%ndim
-                          CT_CON(IDIM,:) = LIMDT * suf_area * DIRECTION_NORM(IDIM) * INV_SIGMA_GI / DEN_ALL%val(1,:,JCV_NOD)
+                          CT_CON(IDIM,:) = LIMDT * suf_area * DIRECTION_NORM(IDIM) * INV_SIGMA_GI / dvals( :,JCV_NOD)
                       END DO
                       ! Put into Mmat%CT matrix...
                       COUNT2=0
@@ -1024,8 +1041,8 @@ contains
                           if (.not.conservative_advection)  then
                             global_phase = iphase + (Mdims%npres - 1)*Mdims%n_in_pres
                             LOC_CV_RHS_I( compact_phase ) = LOC_CV_RHS_I( compact_phase ) &
-                                - suf_area * NDOTQ(compact_phase) * LIMD(compact_phase) * T_ALL%val(1,global_phase,JCV_NOD) &
-                                + suf_area * NDOTQ(compact_phase) * LIMD(compact_phase) * T_ALL%val(1,global_phase,JCV_NOD)
+                                - suf_area * NDOTQ(compact_phase) * LIMD(compact_phase) * tvals( global_phase,JCV_NOD) &
+                                + suf_area * NDOTQ(compact_phase) * LIMD(compact_phase) * tvals( global_phase,JCV_NOD)
                           end if
                       end do
                       ! Put into matrix...
@@ -1038,9 +1055,9 @@ contains
                         !For the RHS collapsing to assemble into phase 2 can be done just here
                         if (assemble_collapsed_to_one_phase) assembly_phase = 2
                         if (getNewtonType) then
-                          if (getResidual) call addto(Mmat%CV_RHS,assembly_phase, JCV_NOD,LOC_MAT_II(iphase)*T_ALL%val(1,iphase,JCV_NOD)-LOC_CV_RHS_I(IPHASE))
+                          if (getResidual) call addto(Mmat%CV_RHS,assembly_phase, JCV_NOD,LOC_MAT_II(iphase)*tvals( iphase,JCV_NOD)-LOC_CV_RHS_I(IPHASE))
                           !Introduce the information into the petsc_ACV matrix
-                          call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,JCV_NOD,JCV_NOD, LOC_MAT_II(iphase))!*T_ALL%val(1,iphase,JCV_NOD)
+                          call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,JCV_NOD,JCV_NOD, LOC_MAT_II(iphase))!*tvals( iphase,JCV_NOD)
                         else
                           call addto(Mmat%CV_RHS,assembly_phase, JCV_NOD,LOC_CV_RHS_I(IPHASE))
                           !Introduce the information into the petsc_ACV matrix
@@ -1075,7 +1092,7 @@ contains
                       i_indx = Mmat%petsc_ACV%row_numbering%gnn2unn( cv_nodi, assembly_phase )
                       j_indx = Mmat%petsc_ACV%column_numbering%gnn2unn( cv_nodj, assembly_phase )
                       ! if (getNewtonType) then
-                      !   petsc_dummy_val = T_ALL%val(1,iphase,cv_nodi)
+                      !   petsc_dummy_val = tvals( iphase,cv_nodi)
                       ! else
                         petsc_dummy_val = 1.0
                       ! end if
@@ -1354,9 +1371,18 @@ contains
       end if
 
       MASS_PIPE_FOR_COUP = 0.
-      CALL MOD_1D_CT_AND_ADV( state, packed_state, final_phase, wells_first_phase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
-          getcv_disc, getct, getNewtonType, getResidual, Mmat, Mspars, DT, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_PIPE2CVFEM, pipes_aux%MASS_CVFEM2PIPE_TRUE, pipes_aux%MASS_PIPE, MASS_PIPE_FOR_COUP, &
-          SIGMA_INV_APPROX, upwnd, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, bcs_outfluxes_mass, bcs_outfluxes_vol, outfluxes, assemble_collapsed_to_one_phase, TDIFFUSION=TDIFFUSION)
+      !For tracer calls the one dimensional pipe assembly must advect the transported field itself and weight the fluxes with the density convention of the calling equation, which cv-adv-dif supplies through den_all
+      !The saturation continuity call and the thermal call keep the historical internal extractions untouched
+      if ( ( .not. THERMAL ) .and. trim( tracer%name ) /= "PackedPhaseVolumeFraction" ) then
+          CALL MOD_1D_CT_AND_ADV( state, packed_state, final_phase, wells_first_phase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
+              getcv_disc, getct, getNewtonType, getResidual, Mmat, Mspars, DT, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_PIPE2CVFEM, pipes_aux%MASS_CVFEM2PIPE_TRUE, pipes_aux%MASS_PIPE, MASS_PIPE_FOR_COUP, &
+              SIGMA_INV_APPROX, upwnd, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, bcs_outfluxes_mass, bcs_outfluxes_vol, outfluxes, assemble_collapsed_to_one_phase, TDIFFUSION=TDIFFUSION, &
+              tracer_vals=T_ALL, density_vals=den_all)
+      else
+          CALL MOD_1D_CT_AND_ADV( state, packed_state, final_phase, wells_first_phase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
+              getcv_disc, getct, getNewtonType, getResidual, Mmat, Mspars, DT, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_PIPE2CVFEM, pipes_aux%MASS_CVFEM2PIPE_TRUE, pipes_aux%MASS_PIPE, MASS_PIPE_FOR_COUP, &
+              SIGMA_INV_APPROX, upwnd, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, bcs_outfluxes_mass, bcs_outfluxes_vol, outfluxes, assemble_collapsed_to_one_phase, TDIFFUSION=TDIFFUSION)
+      end if
 
       GAMMA_PRES_ABS2 = 0.0
       !A_GAMMA_PRES_ABS only for compressible flow? sprint_to_do DO WE NEED TO DO THIS FOR Incompressible FLOW??
