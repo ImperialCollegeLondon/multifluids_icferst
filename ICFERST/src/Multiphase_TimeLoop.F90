@@ -304,7 +304,8 @@ contains
         massfix_scale_saturation = massfix_scale_tracers
         !disable_temperature_conservative_adaptivity switches it off for Temperature only.
         massfix_scale_temperature = massfix_scale_tracers .and. &
-             .not. have_option("/numerical_methods/disable_temperature_conservative_adaptivity")
+             .not. have_option("/numerical_methods/disable_temperature_conservative_adaptivity") .and. &
+             .not. massfix_temperature_couples_eos()
         !Eligible fields are conserved inside the Galerkin projection, which carries the porosity
         !exactly where the nodal scaling is inaccurate.
         !This is the default mechanism.
@@ -1764,6 +1765,31 @@ contains
         !>@brief True when the tracer of this name is conserved by the projection.
         !> Mirrors field_family_is_mass_conserved in Interpolation_manager.
         !> @author Meissam Bahlali
+        !> True when any compressible non Boussinesq phase has a temperature coupled equation of state.
+        !> Linear_eos with a beta coefficient and BW_eos couple explicitly, python_state is treated as
+        !> coupled because its dependence cannot be inspected.
+        logical function massfix_temperature_couples_eos()
+            integer :: jp_te
+            character( len = OPTION_PATH_LEN ) :: base_te
+            massfix_temperature_couples_eos = .false.
+            do jp_te = 1, option_count( "/material_phase" )
+                base_te = "/material_phase[" // int2str( jp_te - 1 ) // "]/phase_properties/Density"
+                if ( have_option( trim( base_te ) // "/compressible" ) .and. &
+                     .not. have_option( trim( base_te ) // "/compressible/Boussinesq_approximation" ) ) then
+                    if ( have_option( trim( base_te ) // "/compressible/Linear_eos/beta" ) .or. &
+                         have_option( trim( base_te ) // "/compressible/BW_eos" ) ) then
+                        massfix_temperature_couples_eos = .true.
+                        return
+                    end if
+                end if
+                if ( have_option( trim( base_te ) // "/python_state" ) .and. &
+                     .not. have_option( trim( base_te ) // "/python_state/Boussinesq_approximation" ) ) then
+                    massfix_temperature_couples_eos = .true.
+                    return
+                end if
+            end do
+        end function massfix_temperature_couples_eos
+
         logical function massfix_projection_tracer( fname_in )
             character(len=*), intent(in) :: fname_in
             character(len=OPTION_PATH_LEN) :: tr_path_w
@@ -1807,6 +1833,7 @@ contains
             logical, save :: warned_projection_rho_w = .false.
             logical :: claimed_any_w
             logical :: built_weight_ms
+            logical, save :: warned_tcouple_w = .false.
             logical :: built_weight_tr
 
             if ( .not. massfix_scale_tracers ) return
@@ -1843,7 +1870,7 @@ contains
                 end if
             end if
 
-            !Temperature (skipped when disable_temperature_conservative_adaptivity is set)
+            !Temperature (skipped when disable_temperature_conservative_adaptivity is set, or automatically when the temperature couples a compressible equation of state)
             if ( has_temperature .and. massfix_scale_temperature ) then
                 call build_conserved_weight( 2, weight_te )
                 call apply_weight_to_packed( "PackedTemperature", weight_te, direction )
@@ -1942,6 +1969,13 @@ contains
             type( tensor_field ), pointer :: sat_p, tem_p, con_p
             integer :: is_p
             logical :: t_scaled_p, c_scaled_p
+            !Convergence control of the Picard sweep
+            !The first sweep starts from the clamped density of the scaled fields
+            type( tensor_field ), pointer :: den_pr_p
+            real, dimension( :, : ), allocatable :: den_prev_p
+            real :: prime_resid_p
+            integer, parameter :: PRIME_MAX_SWEEPS = 25
+            real, parameter :: PRIME_RTOL = 1.0e-12
             logical, save :: warned_eos_p = .false.
             if ( .not. allocated( massfix_use_rho ) ) return
             if ( .not. any( massfix_use_rho ) ) return
@@ -1975,9 +2009,16 @@ contains
                 allocate( c_snap_p( size( con_p%val, 2 ), size( con_p%val, 3 ) ) )
                 c_snap_p = con_p%val( 1, :, : )
             end if
-            do is_p = 1, 3
-                !rho from the current T,C: sweep 1 reads the scaled values (the Picard start), later sweeps the previous trial unscale
+            den_pr_p => extract_tensor_field( packed_state, "PackedDensity" )
+            allocate( den_prev_p( size( den_pr_p%val, 2 ), size( den_pr_p%val, 3 ) ) )
+            den_prev_p = den_pr_p%val( 1, :, : )
+            prime_resid_p = huge( 0.0 )
+            do is_p = 1, PRIME_MAX_SWEEPS
+                !rho from the current fields: sweep 1 reads the scaled values, later sweeps the previous trial unscale
                 call Calculate_All_Rhos( state, packed_state, Mdims )
+                !Largest relative density change of this sweep, used as the convergence measure of the fixed point
+                prime_resid_p = maxval( abs( den_pr_p%val( 1, :, : ) - den_prev_p ) ) / 1000.0
+                den_prev_p = den_pr_p%val( 1, :, : )
                 sat_p%val( 1, :, : ) = s_snap_p
                 call scale_saturation_conserved( -1 )
                 if ( t_scaled_p ) then
@@ -1992,8 +2033,15 @@ contains
                     call apply_weight_to_packed( "PackedConcentration", weight_p, -1 )
                     deallocate( weight_p )
                 end if
+                !Two sweeps minimum, then exit once the density fixed point is machine converged
+                if ( is_p >= 2 .and. prime_resid_p <= PRIME_RTOL ) exit
             end do
-            !Final rho from the converged physical T,C; then put the scaled fields back untouched
+            ewrite(2,*) 'Adapt density priming converged, sweeps and residual:', min( is_p, PRIME_MAX_SWEEPS ), prime_resid_p
+            if ( prime_resid_p > PRIME_RTOL * 1.0e3 ) then
+                ewrite(1,*) 'WARNING: the adapt density priming stopped above its tolerance, residual:', prime_resid_p
+            end if
+            deallocate( den_prev_p )
+            !Final rho from the converged physical fields; then put the scaled fields back untouched
             call Calculate_All_Rhos( state, packed_state, Mdims )
             sat_p%val( 1, :, : ) = s_snap_p
             if ( t_scaled_p ) then

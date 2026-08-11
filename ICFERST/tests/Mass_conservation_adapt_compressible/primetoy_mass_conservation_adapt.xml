@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testproblem>
+  <name>primetoy_mass_conservation_adapt</name>
+  <owner userid="mbahlali"/>
+  <tags>flml icferst adaptivity</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>../../../bin/icferst z_primetoy_box_compressible_rhoC.mpml &amp;&amp; ../../../bin/icferst z_primetoy_box_compressible_rhoCT.mpml &amp;&amp; ../../../bin/icferst z_primetoy_box_compressible_rhoC_disabled.mpml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="ledgers" language="python">
+import primetoy_ci
+ledgers = primetoy_ci.all_ledgers()
+    </variable>
+  </variables>
+  <pass_tests>
+    <test name="scaled Concentration ledger exact on the single field toy" language="python">
+assert ledgers['rhoC']['Concentration']['lump'] &lt;= 1.0e-8
+    </test>
+    <test name="scaled Concentration ledger exact with temperature present" language="python">
+assert ledgers['rhoCT']['Concentration']['lump'] &lt;= 1.0e-8
+    </test>
+    <test name="temperature bounded at interpolation order under coupled EOS" language="python">
+assert ledgers['rhoCT']['Temperature']['dF'] &lt;= 1.0e-6 and ledgers['rhoCT']['Temperature']['lump'] &lt;= 5.0e-3
+    </test>
+    <test name="machinery does the conserving, the disable arm loses the ledger" language="python">
+assert ledgers['rhoC_disabled']['Concentration']['lump'] &gt;= 1.0e-5
+    </test>
+  </pass_tests>
+</testproblem>
