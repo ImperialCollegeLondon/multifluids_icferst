@@ -875,9 +875,6 @@ contains
                                     ! subtract 1st order adv. soln.
                                   + suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMD(IPHASE) * FVT(IPHASE) &
                                   - suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMDT(IPHASE) ! hi order adv
-                              if (.not.conservative_advection)  LOC_CV_RHS_I( IPHASE ) = LOC_CV_RHS_I( IPHASE ) &
-                                  - suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMD(IPHASE) * T_CV_NODI(IPHASE) &
-                                  + suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMD(IPHASE) * T_CV_NODI(IPHASE)
                           end do
                           ! Put into matrix...
                           do iphase = wells_first_phase, final_phase*2
@@ -1038,12 +1035,6 @@ contains
                             ! subtract 1st order adv. soln.
                             + suf_area  * NDOTQ(compact_phase) * ( 1. - INCOME(compact_phase) ) * LIMD(compact_phase) * FVT(compact_phase)  &
                             - suf_area * NDOTQ(compact_phase) * LIMDT(compact_phase) ! hi order adv
-                          if (.not.conservative_advection)  then
-                            global_phase = iphase + (Mdims%npres - 1)*Mdims%n_in_pres
-                            LOC_CV_RHS_I( compact_phase ) = LOC_CV_RHS_I( compact_phase ) &
-                                - suf_area * NDOTQ(compact_phase) * LIMD(compact_phase) * tvals( global_phase,JCV_NOD) &
-                                + suf_area * NDOTQ(compact_phase) * LIMD(compact_phase) * tvals( global_phase,JCV_NOD)
-                          end if
                       end do
                       ! Put into matrix...
                       do iphase = wells_first_phase, final_phase*2
