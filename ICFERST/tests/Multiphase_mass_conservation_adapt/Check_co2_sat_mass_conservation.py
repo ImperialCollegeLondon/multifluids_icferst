@@ -27,8 +27,8 @@ if not hasattr(np, "bool"):
 # Measured with the fix chain: <= ~1e-11 relative per adapt event (toys).
 # Fail thresholds 2-3 orders above measured, still 5+ orders below the pre-fix
 # defect (O(1e-3..1e-2) relative per adapt on this contrast).
-Tolerance_per_event = 1.0e-6    # per phase: |d int(phi V S)| / M0_phase per dump
-Tolerance_total     = 1.0e-6    # per phase: |M_end - M_0| / M0_phase
+Tolerance_per_event = 1.0e-9    # per phase: |d int(phi V S)| / M0_phase per dump
+Tolerance_total     = 1.0e-9    # per phase: |M_end - M_0| / M0_phase
 Tolerance_sum_one   = 1.0e-8    # max |1 - sum_p S_p| over nodes, every dump
 Bounds_slack        = 1.0e-12   # S must stay in [0-eps, 1+eps]
 Far_radius          = 75.0      # [m] from the blob centre. Blob r=35 + ~2

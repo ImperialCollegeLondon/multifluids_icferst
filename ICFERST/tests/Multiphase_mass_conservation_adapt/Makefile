@@ -1,5 +1,4 @@
 input:
-	gmsh -3 -format msh2 -o three_layer_box.msh three_layer_box.geo
 
 clean:
 	rm -f *.vtu *.pvtu *.stat log *.log *.halo *.err matrixdump* \
