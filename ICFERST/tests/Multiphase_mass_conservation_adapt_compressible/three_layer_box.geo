@@ -1,33 +1,98 @@
-// Three-layer box for the saturation conservation-across-adapt test.
-//
-// Generate with (gmsh v2 format):
-//   gmsh -3 -format msh2 -o three_layer_box.msh three_layer_box.geo
+Point(1) = {0, 0, 0, 30};
+Point(2) = {200, 0, 0, 30};
+Point(3) = {200, 200, 0, 30};
+Point(4) = {0, 200, 0, 30};
+Point(5) = {0, 0, 60, 30};
+Point(6) = {200, 0, 60, 30};
+Point(7) = {200, 200, 60, 30};
+Point(8) = {0, 200, 60, 30};
+Point(9) = {0, 0, 80, 30};
+Point(10) = {200, 0, 80, 30};
+Point(11) = {200, 200, 80, 30};
+Point(12) = {0, 200, 80, 30};
+Point(13) = {0, 0, 120, 30};
+Point(14) = {200, 0, 120, 30};
+Point(15) = {200, 200, 120, 30};
+Point(16) = {0, 200, 120, 30};
 
-SetFactory("OpenCASCADE");
+Line(1000) = {1, 2};
+Line(1001) = {2, 3};
+Line(1002) = {3, 4};
+Line(1003) = {4, 1};
+Line(1004) = {5, 6};
+Line(1005) = {6, 7};
+Line(1006) = {7, 8};
+Line(1007) = {8, 5};
+Line(1008) = {9, 10};
+Line(1009) = {10, 11};
+Line(1010) = {11, 12};
+Line(1011) = {12, 9};
+Line(1012) = {13, 14};
+Line(1013) = {14, 15};
+Line(1014) = {15, 16};
+Line(1015) = {16, 13};
+Line(2000) = {1, 5};
+Line(2001) = {2, 6};
+Line(2002) = {3, 7};
+Line(2003) = {4, 8};
+Line(2004) = {5, 9};
+Line(2005) = {6, 10};
+Line(2006) = {7, 11};
+Line(2007) = {8, 12};
+Line(2008) = {9, 13};
+Line(2009) = {10, 14};
+Line(2010) = {11, 15};
+Line(2011) = {12, 16};
 
-Box(1) = {0, 0,  0, 200, 200, 60};   // bottom
-Box(2) = {0, 0, 60, 200, 200, 20};   // barrier
-Box(3) = {0, 0, 80, 200, 200, 40};   // top
+Line Loop(4000) = {1000, 1001, 1002, 1003};
+Plane Surface(3000) = {4000};
+Line Loop(4001) = {1004, 1005, 1006, 1007};
+Plane Surface(3001) = {4001};
+Line Loop(4002) = {1008, 1009, 1010, 1011};
+Plane Surface(3002) = {4002};
+Line Loop(4003) = {1012, 1013, 1014, 1015};
+Plane Surface(3003) = {4003};
+Line Loop(6000) = {1000, 2001, -1004, -2000};
+Plane Surface(5000) = {6000};
+Line Loop(6001) = {1001, 2002, -1005, -2001};
+Plane Surface(5001) = {6001};
+Line Loop(6002) = {1002, 2003, -1006, -2002};
+Plane Surface(5002) = {6002};
+Line Loop(6003) = {1003, 2000, -1007, -2003};
+Plane Surface(5003) = {6003};
+Line Loop(6004) = {1004, 2005, -1008, -2004};
+Plane Surface(5004) = {6004};
+Line Loop(6005) = {1005, 2006, -1009, -2005};
+Plane Surface(5005) = {6005};
+Line Loop(6006) = {1006, 2007, -1010, -2006};
+Plane Surface(5006) = {6006};
+Line Loop(6007) = {1007, 2004, -1011, -2007};
+Plane Surface(5007) = {6007};
+Line Loop(6008) = {1008, 2009, -1012, -2008};
+Plane Surface(5008) = {6008};
+Line Loop(6009) = {1009, 2010, -1013, -2009};
+Plane Surface(5009) = {6009};
+Line Loop(6010) = {1010, 2011, -1014, -2010};
+Plane Surface(5010) = {6010};
+Line Loop(6011) = {1011, 2008, -1015, -2011};
+Plane Surface(5011) = {6011};
 
-Coherence;
+Surface Loop(7000) = {3000, 3001, 5000, 5001, 5002, 5003};
+Volume(1) = {7000};
+Surface Loop(7001) = {3001, 3002, 5004, 5005, 5006, 5007};
+Volume(2) = {7001};
+Surface Loop(7002) = {3002, 3003, 5008, 5009, 5010, 5011};
+Volume(3) = {7002};
 
 Physical Volume(1) = {1};
 Physical Volume(2) = {2};
 Physical Volume(3) = {3};
-
-xmin() = Surface In BoundingBox{ -0.1, -1, -1,    0.1, 201, 121};
-xmax() = Surface In BoundingBox{199.9, -1, -1,  200.1, 201, 121};
-ymin() = Surface In BoundingBox{ -1,  -0.1, -1,  201,   0.1, 121};
-ymax() = Surface In BoundingBox{ -1, 199.9, -1,  201, 200.1, 121};
-top()  = Surface In BoundingBox{ -1, -1, 119.9,  201, 201, 120.1};
-bot()  = Surface In BoundingBox{ -1, -1,  -0.1,  201, 201,   0.1};
-
-Physical Surface(1) = {xmin()};  // side x = 0
-Physical Surface(2) = {xmax()};  // side x = 200
-Physical Surface(3) = {ymin()};  // side y = 0
-Physical Surface(4) = {ymax()};  // side y = 200
-Physical Surface(5) = {top()};   // top    z = 120
-Physical Surface(6) = {bot()};   // bottom z = 0
+Physical Surface(1) = {5003, 5007, 5011};
+Physical Surface(2) = {5001, 5005, 5009};
+Physical Surface(3) = {5000, 5004, 5008};
+Physical Surface(4) = {5002, 5006, 5010};
+Physical Surface(5) = {3003};
+Physical Surface(6) = {3000};
 
 Mesh.CharacteristicLengthMin = 20;
 Mesh.CharacteristicLengthMax = 30;

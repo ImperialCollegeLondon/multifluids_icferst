@@ -1,34 +1,73 @@
-// Two-region box for the phi*V*C conservation-across-adapt test.
-//
-// Generate with (gmsh v2 format):
-//   gmsh -3 -format msh2 -o two_region_box.msh two_region_box.geo
+Point(1) = {-50, -50, -100, 15};
+Point(2) = {50, -50, -100, 15};
+Point(3) = {50, 50, -100, 15};
+Point(4) = {-50, 50, -100, 15};
+Point(5) = {-50, -50, -50, 15};
+Point(6) = {50, -50, -50, 15};
+Point(7) = {50, 50, -50, 15};
+Point(8) = {-50, 50, -50, 15};
+Point(9) = {-50, -50, 0, 15};
+Point(10) = {50, -50, 0, 15};
+Point(11) = {50, 50, 0, 15};
+Point(12) = {-50, 50, 0, 15};
 
-SetFactory("OpenCASCADE");
+Line(1000) = {1, 2};
+Line(1001) = {2, 3};
+Line(1002) = {3, 4};
+Line(1003) = {4, 1};
+Line(1004) = {5, 6};
+Line(1005) = {6, 7};
+Line(1006) = {7, 8};
+Line(1007) = {8, 5};
+Line(1008) = {9, 10};
+Line(1009) = {10, 11};
+Line(1010) = {11, 12};
+Line(1011) = {12, 9};
+Line(2000) = {1, 5};
+Line(2001) = {2, 6};
+Line(2002) = {3, 7};
+Line(2003) = {4, 8};
+Line(2004) = {5, 9};
+Line(2005) = {6, 10};
+Line(2006) = {7, 11};
+Line(2007) = {8, 12};
 
-Box(1) = {-50, -50, -50,  100, 100, 50};   // top half
-Box(2) = {-50, -50, -100, 100, 100, 50};   // bottom half
+Line Loop(4000) = {1000, 1001, 1002, 1003};
+Plane Surface(3000) = {4000};
+Line Loop(4001) = {1004, 1005, 1006, 1007};
+Plane Surface(3001) = {4001};
+Line Loop(4002) = {1008, 1009, 1010, 1011};
+Plane Surface(3002) = {4002};
+Line Loop(6000) = {1000, 2001, -1004, -2000};
+Plane Surface(5000) = {6000};
+Line Loop(6001) = {1001, 2002, -1005, -2001};
+Plane Surface(5001) = {6001};
+Line Loop(6002) = {1002, 2003, -1006, -2002};
+Plane Surface(5002) = {6002};
+Line Loop(6003) = {1003, 2000, -1007, -2003};
+Plane Surface(5003) = {6003};
+Line Loop(6004) = {1004, 2005, -1008, -2004};
+Plane Surface(5004) = {6004};
+Line Loop(6005) = {1005, 2006, -1009, -2005};
+Plane Surface(5005) = {6005};
+Line Loop(6006) = {1006, 2007, -1010, -2006};
+Plane Surface(5006) = {6006};
+Line Loop(6007) = {1007, 2004, -1011, -2007};
+Plane Surface(5007) = {6007};
 
-// Make the two boxes conforming and share the interface surface
-Coherence;
+Surface Loop(7000) = {3000, 3001, 5000, 5001, 5002, 5003};
+Volume(1) = {7000};
+Surface Loop(7001) = {3001, 3002, 5004, 5005, 5006, 5007};
+Volume(2) = {7001};
 
-// Volumes
-Physical Volume(1) = {1};
-Physical Volume(2) = {2};
-
-// Outer surfaces
-top()  = Surface In BoundingBox{-51, -51,   -0.1, 51, 51,   0.1};
-bot()  = Surface In BoundingBox{-51, -51, -100.1, 51, 51, -99.9};
-xmin() = Surface In BoundingBox{-50.1, -51, -101, -49.9, 51, 1};
-xmax() = Surface In BoundingBox{ 49.9, -51, -101,  50.1, 51, 1};
-ymin() = Surface In BoundingBox{-51, -50.1, -101, 51, -49.9, 1};
-ymax() = Surface In BoundingBox{-51,  49.9, -101, 51,  50.1, 1};
-
-Physical Surface(1) = {top()};   // top     (z =    0)
-Physical Surface(2) = {bot()};   // bottom  (z = -100)
-Physical Surface(3) = {xmin()};  // side x = -50
-Physical Surface(4) = {xmax()};  // side x = +50
-Physical Surface(5) = {ymin()};  // side y = -50
-Physical Surface(6) = {ymax()};  // side y = +50
+Physical Volume(2) = {1};
+Physical Volume(1) = {2};
+Physical Surface(3) = {5003, 5007};
+Physical Surface(4) = {5001, 5005};
+Physical Surface(5) = {5000, 5004};
+Physical Surface(6) = {5002, 5006};
+Physical Surface(1) = {3002};
+Physical Surface(2) = {3000};
 
 Mesh.CharacteristicLengthMin = 8;
 Mesh.CharacteristicLengthMax = 15;

@@ -1,6 +1,3 @@
-// Box geometry for the priming toy z_primetoy_box_compressible_rhoC.
-// 100 m cube, coarse initial mesh, physical surface ids 1..6 and volume id 1.
-// Generate the mesh with: gmsh -3 -format msh2 box.geo -o box.msh
 lc = 12.0;
 Point(1) = {0,   0,   0,   lc};
 Point(2) = {100, 0,   0,   lc};

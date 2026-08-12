@@ -1875,6 +1875,11 @@ contains
                 call build_conserved_weight( 2, weight_te )
                 call apply_weight_to_packed( "PackedTemperature", weight_te, direction )
                 call apply_weight_to_packed( "PackedOldTemperature", weight_te, direction )
+            else if ( has_temperature .and. massfix_scale_tracers .and. direction == 1 .and. &
+                 .not. have_option("/numerical_methods/disable_temperature_conservative_adaptivity") ) then
+                if ( .not. warned_tcouple_w ) then
+                    warned_tcouple_w = .true.
+                end if
             end if
             !Concentration
             if ( has_concentration .and. .not. massfix_projection_tracer( "Concentration" ) ) then
