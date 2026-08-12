@@ -7,10 +7,24 @@ and a fresh vtk reader per file.
 """
 import glob, re
 import numpy as np
+if not hasattr(np, "bool"):
+    np.bool = bool
 import vtk
 from vtk.util.numpy_support import vtk_to_numpy
 
 FIELDS = ['Concentration', 'Temperature']
+
+
+def _tet_connectivity(g):
+    ncells = g.GetNumberOfCells()
+    ca = g.GetCells()
+    if hasattr(ca, 'GetConnectivityArray'):
+        return vtk_to_numpy(ca.GetConnectivityArray()).reshape(ncells, 4)
+    conn = np.empty((ncells, 4), dtype=np.int64)
+    for i in range(ncells):
+        ids = g.GetCell(i).GetPointIds()
+        conn[i] = [ids.GetId(0), ids.GetId(1), ids.GetId(2), ids.GetId(3)]
+    return conn
 
 
 def _read(path):
@@ -21,7 +35,7 @@ def _read(path):
     pd = g.GetPointData()
     names = [pd.GetArrayName(i) for i in range(pd.GetNumberOfArrays())]
     pts = vtk_to_numpy(g.GetPoints().GetData()).astype(float)
-    conn = vtk_to_numpy(g.GetCells().GetConnectivityArray()).reshape(g.GetNumberOfCells(), 4)
+    conn = _tet_connectivity(g)
     a = pts[conn[:, 0]]
     vol = np.abs(np.einsum('ij,ij->i',
                            np.cross(pts[conn[:, 1]] - a, pts[conn[:, 2]] - a),
