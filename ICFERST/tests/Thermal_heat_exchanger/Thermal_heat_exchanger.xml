@@ -14,7 +14,7 @@ min_temp = stat("thermal_porous.stat")["phase1"]["Temperature"]["min"][-1]</vari
   </variables>
   <pass_tests>
     <test name="Assert final max temperature" language="python">assert(abs((max_temp - 80.)/80.) &lt; 0.01)</test>
-    <test name="Assert final min temperature" language="python">assert(abs((min_temp - 51.41)/51.41) &lt; 0.01)</test>
+    <test name="Assert final min temperature" language="python">assert(abs((min_temp - 50.32)/50.32) &lt; 0.01)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>

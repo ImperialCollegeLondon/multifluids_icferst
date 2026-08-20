@@ -479,6 +479,7 @@ contains
           real, dimension( final_phase ) :: rdum_nphase_1, rdum_nphase_2, rdum_nphase_3
           real, dimension( final_phase ) :: THETA_VEL
           real, dimension( final_phase) :: LOC_CV_RHS_I, LOC_CV_RHS_J, LOC_MAT_II, LOC_MAT_JJ, LOC_MAT_IJ, LOC_MAT_JI
+          logical :: clamp_pipe_theta, pipe_face, vad_pipe_gate
           REAL, DIMENSION( final_phase ) :: FEMTGI_IPHA, NDOTQ_TILDE, NDOTQ_INT, DT_J, abs_tilde, NDOTQ2, DT_I, LIMT3
           REAL, DIMENSION ( Mdims%ndim,final_phase ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV
           type( vector_field ), pointer :: MeanPoreCV, MeanPoreCV_total
@@ -679,6 +680,8 @@ contains
           !cv_beta == 1 means conservative, meaning that everything multiplied by one_m_cv_beta can be ignored
           one_m_cv_beta = 1.0 - cv_beta
           conservative_advection = abs(one_m_cv_beta) <= RM8
+          clamp_pipe_theta = Mdims%npres > 1
+          vad_pipe_gate = clamp_pipe_theta .and. trim(tracer%name) /= "PackedPhaseVolumeFraction"
           QUAD_OVER_WHOLE_ELE=.FALSE.
           ! Allocate memory for the control volume surface shape functions, etc.
           IF(GETCT) THEN
@@ -1692,6 +1695,10 @@ contains
                               !     call sum_saturation_to_unity(mdims%nphase, Imble_frac, LIMTOLD)
                               ! endif
 
+                              if ( pipe_face ) then
+                                  LIMT = LOC_T_I*(1.0-INCOME) + LOC_T_J*INCOME
+                                  LIMTOLD = LOC_TOLD_I*(1.0-INCOMEOLD) + LOC_TOLD_J*INCOMEOLD
+                              end if
                               LIMDT=LIMD*LIMT
                               LIMDTOLD=LIMDOLD*LIMTOLD
                               ! LIMDTT2=LIMD*LIMT*LIMT2
@@ -1752,6 +1759,16 @@ contains
                                       endif
                                   END IF
                               END IF
+                              pipe_face = .false.
+                              if ( clamp_pipe_theta .and. ( .not. on_domain_boundary ) ) then
+                                  pipe_face = pipes_aux%MASS_PIPE(CV_NODI) > 0.0 .or. pipes_aux%MASS_PIPE(CV_NODJ) > 0.0
+                              end if
+                              if ( pipe_face ) then
+                                  FTHETA_T2 = LIMT2
+                                  ONE_M_FTHETA_T2OLD = 0.0
+                                  FTHETA_T2_J = LIMT2
+                                  ONE_M_FTHETA_T2OLD_J = 0.0
+                              end if
                               !====================== ACV AND RHS ASSEMBLY ===================
                               Conditional_GETCT2: IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqations plus RHS
                                   IF ( got_free_surf ) THEN
@@ -1834,12 +1851,14 @@ contains
                                         !Assemble off-diagonal cv_nodi-cv_nodj
                                         LOC_MAT_IJ = LOC_MAT_IJ + FTHETA_T2 * SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME * LIMD! Advection
                                         if (GOT_DIFFUS) LOC_MAT_IJ = LOC_MAT_IJ - FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                        if (VAD_activated) LOC_MAT_IJ = LOC_MAT_IJ - LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
+                                        if (VAD_activated .and. .not. ( pipe_face .and. vad_pipe_gate )) &
+                                          LOC_MAT_IJ = LOC_MAT_IJ - LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
                                         !Assemble off-diagonal cv_nodj-cv_nodi, integrate the other CV side contribution (the sign is changed)...
                                         if(integrate_other_side_and_not_boundary) then
                                           LOC_MAT_JI = LOC_MAT_JI - FTHETA_T2_J * SdevFuns%DETWEI( GI ) * NDOTQNEW * (1. - INCOME) * LIMD! Advection
                                           if (GOT_DIFFUS) LOC_MAT_JI = LOC_MAT_JI - FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                          if (VAD_activated) LOC_MAT_JI = LOC_MAT_JI - LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
+                                          if (VAD_activated .and. .not. ( pipe_face .and. vad_pipe_gate )) &
+                                          LOC_MAT_JI = LOC_MAT_JI - LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
                                         end if
 
                                           IF ( GET_GTHETA ) THEN
@@ -1856,7 +1875,8 @@ contains
                                       !Assemble diagonal of the matrix of node cv_nodi
                                       LOC_MAT_II = LOC_MAT_II +  FTHETA_T2 * SdevFuns%DETWEI( GI ) * NDOTQNEW * ( 1. - INCOME ) * LIMD! Advection
                                       if (GOT_DIFFUS) LOC_MAT_II = LOC_MAT_II + FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                      if (VAD_activated) LOC_MAT_II = LOC_MAT_II + LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
+                                      if (VAD_activated .and. .not. ( pipe_face .and. vad_pipe_gate )) &
+                                          LOC_MAT_II = LOC_MAT_II + LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
                                       !The beta<1 correction is applied fully implicitly
                                       if (.not.conservative_advection) LOC_MAT_II = LOC_MAT_II - ( ONE_M_CV_BETA ) * &
                                                                                     SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD
@@ -1866,7 +1886,8 @@ contains
                                       if(integrate_other_side_and_not_boundary) then
                                         LOC_MAT_JJ = LOC_MAT_JJ -  FTHETA_T2_J * SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME * LIMD! Advection
                                         if (GOT_DIFFUS) LOC_MAT_JJ = LOC_MAT_JJ + FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                        if (VAD_activated) LOC_MAT_JJ = LOC_MAT_JJ +  LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
+                                        if (VAD_activated .and. .not. ( pipe_face .and. vad_pipe_gate )) &
+                                          LOC_MAT_JJ = LOC_MAT_JJ +  LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
                                         if (.not.conservative_advection) LOC_MAT_JJ = LOC_MAT_JJ + ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD
                                       endif
 
@@ -1891,7 +1912,8 @@ contains
                                       if (GOT_DIFFUS) LOC_CV_RHS_I =  LOC_CV_RHS_I &
                                           + ONE_M_FTHETA_T2OLD * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX &
                                           * ( LOC_TOLD_J - LOC_TOLD_I )
-                                      if (VAD_activated) LOC_CV_RHS_I =  LOC_CV_RHS_I &
+                                      if (VAD_activated .and. .not. ( pipe_face .and. vad_pipe_gate )) &
+                                          LOC_CV_RHS_I =  LOC_CV_RHS_I &
                                           - LIMT2* SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX &  ! capillary pressure stabilization term..
                                           * ( LOC_T_J - LOC_T_I )
                                       !With the fully implicit beta<1 correction the RHS contribution is identically zero
@@ -1908,7 +1930,8 @@ contains
                                       if (GOT_DIFFUS) LOC_CV_RHS_J =  LOC_CV_RHS_J  &
                                           + ONE_M_FTHETA_T2OLD_J * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX &
                                           * ( LOC_TOLD_I - LOC_TOLD_J )
-                                      if (VAD_activated) LOC_CV_RHS_J =  LOC_CV_RHS_J  &
+                                      if (VAD_activated .and. .not. ( pipe_face .and. vad_pipe_gate )) &
+                                          LOC_CV_RHS_J =  LOC_CV_RHS_J  &
                                           - LIMT2 * SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX & ! capillary pressure stabilization term..
                                           * ( LOC_T_I - LOC_T_J )
                                       !With the fully implicit beta<1 correction the RHS contribution is identically zero
