@@ -386,8 +386,6 @@ AC_SUBST([HAVE_PYTHON])
 dnl ---- end Python embedding ----
 
 dnl Paths for optional components
-#AC_ARG_WITH([vtk],
-#  [AS_HELP_STRING([--with-vtk=DIR],[Path to VTKConfig.cmake (e.g. /usr/lib/x86_64-linux-gnu/cmake/vtk-9.1)])])
 
 AC_ARG_WITH([zoltan],
   [AS_HELP_STRING([--with-zoltan=DIR],[Trilinos/Zoltan install prefix containing include/ and lib/])])
@@ -536,8 +534,9 @@ PKG_CHECK_MODULES([LAPACK],[lapack],[
   have_blaslapack=yes
 ],[ : ])
 AS_IF([test "x$have_blaslapack" = "xno"], [
-  AC_CHECK_LIB([lapack],[dgesv],[],[AC_MSG_ERROR([LAPACK not found])])
-  AC_CHECK_LIB([blas],[dgemm],[],[AC_MSG_ERROR([BLAS not found])])
+  AX_BLAS([],[AC_MSG_ERROR([BLAS not found])])
+  AX_LAPACK([],[AC_MSG_ERROR([LAPACK not found])])
+  LIBS="$LIBS $LAPACK_LIBS $BLAS_LIBS"
 ])
 
 dnl -------- HDF5 (prefer parallel) --------
@@ -897,10 +896,27 @@ AC_ARG_ENABLE([vtk],
 
 AC_ARG_WITH([vtk],
   [AS_HELP_STRING([--with-vtk=DIR],
-                  [Path to VTKConfig.cmake (e.g. /usr/lib/x86_64-linux-gnu/cmake/vtk-9.1)])])
+                  [Path to VTKConfig.cmake or VTK installation prefix])])
 
+AC_ARG_VAR([VTK_INSTALL_PREFIX],[VTK installation prefix])
+AC_ARG_VAR([VTK_INCLUDE],[VTK include directory])
+AC_ARG_VAR([VTK_LIBS],[VTK library directory or linker flags])
+
+VTK_LIB_DIR="${VTK_LIBS:-}"
 VTK_CFLAGS=""
 VTK_LIBS=""
+VTK_VERSION_MAJOR=""
+VTK_VERSION_MINOR=""
+
+AS_IF([test -z "$with_vtk" -a -n "$VTK_INSTALL_PREFIX"], [
+  with_vtk="$VTK_INSTALL_PREFIX"
+])
+AS_IF([test -z "$VTK_INCLUDE" -a -n "$VTK_INSTALL_PREFIX"], [
+  VTK_INCLUDE="$VTK_INSTALL_PREFIX/include"
+])
+AS_IF([test -z "$VTK_LIB_DIR" -a -n "$VTK_INSTALL_PREFIX"], [
+  VTK_LIB_DIR="$VTK_INSTALL_PREFIX/lib"
+])
 
 AS_IF([test "x$enable_vtk" != "xno"], [
   AC_PATH_PROG([CMAKE],[cmake],[])
@@ -931,28 +947,48 @@ AS_IF([test "x$enable_vtk" != "xno"], [
   AS_IF([test $rc -ne 0 || echo "$VTK_LIBS" | grep -qi 'not found'], [VTK_LIBS=""])
   AC_MSG_RESULT([${VTK_LIBS:-"(none from CMake)"}])
 
-  dnl -------- fallback include path for Ubuntu 24.04 VTK 9.1 --------
+  dnl -------- fallback include path and version detection --------
   AS_IF([test -z "$VTK_CFLAGS"], [
-    for inc in /usr/include/vtk-9.1 /usr/local/include/vtk-9.1 ; do
-      if test -d "$inc" ; then
+    for inc in "$VTK_INCLUDE" "$VTK_INSTALL_PREFIX"/include/vtk-* \
+               /usr/include/vtk-* /usr/local/include/vtk-* ; do
+      if test -f "$inc/vtkVersion.h" -o -f "$inc/vtkVersionMacros.h" ; then
         VTK_CFLAGS="-I$inc"
+        VTK_INCLUDE="$inc"
         break
+      fi
+    done
+  ])
+
+  AS_IF([test -n "$VTK_INCLUDE"], [
+    for version_file in vtkVersionQuick.h vtkVersionMacros.h vtkConfigure.h ; do
+      if test -r "$VTK_INCLUDE/$version_file" ; then
+        VTK_VERSION_MAJOR=`awk '/^#define VTK_MAJOR_VERSION / {print $3; exit}' "$VTK_INCLUDE/$version_file"`
+        VTK_VERSION_MINOR=`awk '/^#define VTK_MINOR_VERSION / {print $3; exit}' "$VTK_INCLUDE/$version_file"`
+        test -n "$VTK_VERSION_MAJOR" && break
       fi
     done
   ])
 
   dnl If still nothing, stop now (don’t leak text into flags)
   AS_IF([test -z "$VTK_CFLAGS"], [
-    AC_MSG_ERROR([Could not determine VTK headers. Install libvtk9-dev or pass --with-vtk=/path/to/vtk-9.1 CMake dir])
+    AC_MSG_ERROR([Could not determine VTK headers. Set VTK_INCLUDE or pass --with-vtk=/path/to/VTK])
   ])
   AS_IF([test -z "$VTK_LIBS"], [
+    AS_IF([test -z "$VTK_VERSION_MAJOR" -a -n "$VTK_INCLUDE"], [
+      VTK_VERSION_MAJOR=`echo "$VTK_INCLUDE" | sed -n 's/.*vtk-\([0-9][0-9]*\)\..*/\1/p'`
+      VTK_VERSION_MINOR=`echo "$VTK_INCLUDE" | sed -n 's/.*vtk-[0-9][0-9]*\.\([0-9][0-9]*\).*/\1/p'`
+    ])
+    AS_IF([test -z "$VTK_VERSION_MAJOR"], [
+      AC_MSG_ERROR([Could not determine VTK version from headers in $VTK_INCLUDE])
+    ])
+    AS_IF([test -z "$VTK_LIB_DIR"], [VTK_LIB_DIR="/usr/lib"])
     VTK_LIBS_ARRAY=""
     for lib in vtkCommonCore vtkCommonDataModel vtkCommonExecutionModel vtkFiltersCore vtkFiltersGeneral \
                 vtkFiltersVerdict vtkIOCore vtkIOXML vtkIOGeometry vtkIOLegacy vtkIOParallelXML \
                 vtkParallelMPI vtkIOXMLParser vtkCommonSystem vtkCommonMisc vtkCommonMath vtksys; do
-      VTK_LIBS_ARRAY="$VTK_LIBS_ARRAY -l$lib-9.1"
+      VTK_LIBS_ARRAY="$VTK_LIBS_ARRAY -l$lib-${VTK_VERSION_MAJOR}.${VTK_VERSION_MINOR}"
     done
-    VTK_LIBS="$VTK_LIBS_ARRAY"
+    VTK_LIBS="-L$VTK_LIB_DIR $VTK_LIBS_ARRAY"
   ])
 
   AC_SUBST([VTK_CFLAGS])
@@ -1022,6 +1058,7 @@ AS_IF([test -d libadaptivity],[
   test "x$enable_dp" = "xno" && dpflag="--enable-dp=no"
   ( cd libadaptivity && \
     FC="${saved_FC}" CC="${saved_CC}" CXX="${saved_CXX}" \
+    LIBS="" LDFLAGS="" \
     FFLAGS="${PIC_FLAG} ${PROFILING_FLAG}" FCFLAGS="${PIC_FLAG} ${PROFILING_FLAG}" \
     CFLAGS="${PIC_FLAG} ${PROFILING_FLAG}"  CXXFLAGS="${PIC_FLAG} ${PROFILING_FLAG}" \
     CPPFLAGS="" ./configure ${dpflag} ) || AC_MSG_ERROR([libadaptivity configure failed])
@@ -1135,7 +1172,7 @@ AS_IF([test -n "$with_spatialindex_root"],[
   AS_IF([test -d "$SPATIALINDEXDIR"],[
     AC_MSG_NOTICE([Configuring spatialindex])
     ( cd "$SPATIALINDEXDIR" && \
-      CC="${saved_CC}" CXX="${saved_CXX}" CFLAGS="" CXXFLAGS="" CPPFLAGS="-D_GNU_SOURCE" \
+      CC="${saved_CC}" CXX="${saved_CXX}" CFLAGS="" CXXFLAGS="" CPPFLAGS="-D_GNU_SOURCE" LIBS="" \
       ./configure --prefix="$(pwd)/../" --disable-shared --with-pic \
       --disable-maintainer-mode ) || AC_MSG_ERROR([spatialindex configure failed])
     LIBSPATIALINDEX="${PWD}/lib/libspatialindex.a"

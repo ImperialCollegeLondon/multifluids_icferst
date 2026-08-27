@@ -154,6 +154,33 @@ AC_LANG_PUSH([C++])
 AC_ARG_ENABLE(vtk,[AC_HELP_STRING([--enable-vtk],
             [Enable VTK support to build and run test cases (default: no).])])
 if test "x$enable_vtk" != "xno" ; then
+    search_for_vtk=yes
+    vtk_include_dir=""
+    vtk_version_file=""
+
+    dnl Prefer an explicitly supplied VTK prefix.  Modern VTK installs headers
+    dnl below prefix/include/vtk-X.Y and libraries below prefix/lib.
+    if test -n "$VTK_INSTALL_PREFIX"; then
+        for i in "$VTK_INSTALL_PREFIX"/include/vtk* "$VTK_INSTALL_PREFIX"/include "$VTK_INCLUDE"; do
+            if test -r "$i/vtkVersionMacros.h"; then
+                vtk_include_dir="$i"
+                vtk_version_file="vtkVersionMacros.h"
+                break
+            elif test -r "$i/vtkVersion.h"; then
+                vtk_include_dir="$i"
+                vtk_version_file="vtkVersion.h"
+                break
+            fi
+        done
+    fi
+
+    if test -n "$vtk_include_dir"; then
+        CPPFLAGS="$CPPFLAGS -I$vtk_include_dir -DHAVE_VTK=1"
+        VTK=yes
+        search_for_vtk=no
+        VTK_LIBS="${VTK_LIBS:-$VTK_INSTALL_PREFIX/lib}"
+        AC_MSG_NOTICE([Using VTK installation at $VTK_INSTALL_PREFIX])
+    else
     AC_MSG_NOTICE([Checking for VTK automagic.])
     VTK_FLAGS=`cmake --find-package -DNAME=VTK -DCOMPILER_ID=gcc -DLANGUAGE=Fortran -DMODE=COMPILE`
     VTK_LIBS=`cmake --find-package -DNAME=VTK -DCOMPILER_ID=gcc -DLANGUAGE=Fortran -DMODE=LINK`
@@ -198,7 +225,7 @@ if test "x$enable_vtk" != "xno" ; then
         vtk_version=0
         vtk_include_dir=""
         vtk_version_file=""
-        for i in $(ls -d $VTK_INSTALL_PREFIX/vtk*) $VTK_INCLUDE; do
+        for i in $VTK_INSTALL_PREFIX/include/vtk* $VTK_INCLUDE; do
             # VTK 6 has a version macros file
             if test -r $i/vtkVersionMacros.h; then
                 # Get the version number from the macros file
@@ -258,7 +285,7 @@ if test "x$enable_vtk" != "xno" ; then
             AC_CHECK_LIB(vtkIO, main)
             
             # check at the usual places:
-            for i in $(ls -d /usr/include/vtk*) $VTK_INCLUDE; do
+            for i in /usr/include/vtk* $VTK_INCLUDE; do
                 if test -r $i/vtkCellData.h; then
                     CPPFLAGS="-I$i $CPPFLAGS"
                 fi
@@ -300,6 +327,7 @@ if test "x$enable_vtk" != "xno" ; then
             AC_CHECK_LIB(vtkIOCore, main)
             AC_CHECK_LIB(vtkCommonDataModel, main)
         fi
+    fi
     fi
 fi
 cat > include/vtk.h <<EOF
