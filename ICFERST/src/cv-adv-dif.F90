@@ -479,6 +479,7 @@ contains
           real, dimension( final_phase ) :: rdum_nphase_1, rdum_nphase_2, rdum_nphase_3
           real, dimension( final_phase ) :: THETA_VEL
           real, dimension( final_phase) :: LOC_CV_RHS_I, LOC_CV_RHS_J, LOC_MAT_II, LOC_MAT_JJ, LOC_MAT_IJ, LOC_MAT_JI
+          real :: bc_den, bc_denold
           logical :: clamp_pipe_theta, pipe_face, vad_pipe_gate
           REAL, DIMENSION( final_phase ) :: FEMTGI_IPHA, NDOTQ_TILDE, NDOTQ_INT, DT_J, abs_tilde, NDOTQ2, DT_I, LIMT3
           REAL, DIMENSION ( Mdims%ndim,final_phase ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV
@@ -1663,8 +1664,17 @@ contains
                                       LIMD(iphase) = LOC_DEN_I(iphase)
                                       LIMDOLD(iphase) = LOC_DENOLD_I(iphase)
                                     ELSE
-                                      LIMD(iphase) = LOC_DEN_I(iphase) * (1.0-INCOME(iphase)) + INCOME(iphase)* SUF_D_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
-                                      LIMTOLD(iphase) = LOC_DENOLD_I(iphase) * (1.0-INCOMEOLD(iphase)) + INCOMEOLD(iphase)* SUF_D_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                      bc_den = SUF_D_BC_ALL( 1, iphase, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                      bc_denold = bc_den
+                                      if ( thermal ) then
+                                          if ( abs( density%val( 1, iphase, CV_NODI ) ) > RM8 ) then
+                                              bc_den = bc_den * LOC_DEN_I(iphase) / density%val( 1, iphase, CV_NODI )
+                                              bc_denold = bc_denold * LOC_DENOLD_I(iphase) / density%val( 1, iphase, CV_NODI )
+                                          end if
+                                      end if
+                                      LIMD(iphase) = LOC_DEN_I(iphase) * (1.0-INCOME(iphase)) + INCOME(iphase)* bc_den
+                                      LIMDOLD(iphase) = LOC_DENOLD_I(iphase) * (1.0-INCOMEOLD(iphase)) + &
+                                          INCOMEOLD(iphase)* bc_denold
                                     END if
                                     !Saturation
                                     if (use_volume_frac_T2) then

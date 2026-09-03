@@ -267,6 +267,7 @@ contains
       INTEGER, dimension(Mdims%cv_nonods):: WIC_B_BC_ALL_NODS
       INTEGER, dimension(final_phase*2,Mdims%cv_nonods):: WIC_T_BC_ALL_NODS, WIC_D_BC_ALL_NODS, WIC_U_BC_ALL_NODS
       real, dimension(final_phase*2,Mdims%cv_nonods):: SUF_T_BC_ALL_NODS, SUF_D_BC_ALL_NODS, RVEC_SUM_T, RVEC_SUM_D, RVEC_SUM_U
+      real :: bc_den
       real, dimension(Mdims%ndim, final_phase*2) :: MEAN_U
       real, dimension(Mdims%ndim,final_phase*2,Mdims%cv_nonods):: SUF_U_BC_ALL_NODS
 
@@ -987,7 +988,12 @@ contains
                     compact_phase = iphase + (Mdims%npres - 1)*final_phase
                     global_phase = iphase + (Mdims%npres - 1)*Mdims%n_in_pres
                     IF ( WIC_D_BC_ALL_NODS( compact_phase, JCV_NOD ) == WIC_D_BC_DIRICHLET ) THEN
-                        LIMD(compact_phase)=dvals( global_phase,JCV_NOD)*(1.0-INCOME(compact_phase)) + SUF_D_BC_ALL_NODS(compact_phase,JCV_NOD)*INCOME(compact_phase)
+                        bc_den = SUF_D_BC_ALL_NODS(compact_phase,JCV_NOD)
+                        if ( THERMAL ) then
+                            if ( abs( only_den_all%val( 1, global_phase, JCV_NOD ) ) > RM8 ) bc_den = bc_den * &
+                                dvals( global_phase, JCV_NOD ) / only_den_all%val( 1, global_phase, JCV_NOD )
+                        end if
+                        LIMD(compact_phase)=dvals( global_phase,JCV_NOD)*(1.0-INCOME(compact_phase)) + bc_den*INCOME(compact_phase)
                     ELSE
                         LIMD(compact_phase)=dvals( global_phase,JCV_NOD)
                     END IF
