@@ -1282,6 +1282,7 @@ contains
       integer :: assembly_phase, assembly_phase_2
       !Logical to check if we using a conservative method or not, to save cpu time
       logical :: conservative_advection, have_absorption
+      integer :: up_side
       !Parameters of the simulation
       real, parameter :: INFINY=1.0E+20
       integer, parameter :: WIC_B_BC_DIRICHLET = 1
@@ -1446,11 +1447,14 @@ contains
                           GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = pipes_aux%GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
                               cc * LOC_SAT_I(IPHASE) * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
                               / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                          up_side = IPHASE
                       ELSE
                           GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = pipes_aux%GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
                               cc * LOC_SAT_I(JPHASE) * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
                               / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                          up_side = JPHASE
                       END IF
+                      IF ( GETCT ) pipes_aux%coup_upstream( IPHASE, JPHASE, CV_NODI ) = up_side
                   END IF ! IF ( IPRES /= JPRES ) THEN
               END DO
           END DO
@@ -1516,15 +1520,21 @@ contains
                         DO jphase=1, final_phase
                             jphase_jpres = jphase + (jpres - 1)*final_phase
                             IF ( LOC_PRES_I(iphase_ipres) < LOC_PRES_I(jphase_jpres)  ) THEN
+                                !Side recorded by the pressure pass; fall back to the current sign before any pressure pass has run
+                                up_side = pipes_aux%coup_upstream( iphase_ipres, jphase_jpres, CV_NODI )
+                                if ( up_side < 1 ) then
+                                  up_side = jphase_jpres
+                                  if ( LOC_PRES_I(iphase_ipres) >= LOC_PRES_I(jphase_jpres) ) up_side = iphase_ipres
+                                end if
                                 DeltaP = LOC_PRES_I(iphase_ipres) - LOC_PRES_I(jphase_jpres)
                                 !Add coupling in a non_conservative manner (mass conservative anyway is just the formulation)
                                 PIPE_ABS( iphase_ipres, jphase_jpres, CV_NODI ) = PIPE_ABS( iphase_ipres, jphase_jpres, CV_NODI ) +&
                                     DeltaP * pipes_aux%GAMMA_PRES_ABS( iphase + (ipres - 1)*Mdims%n_in_pres, jphase + (jpres - 1)*Mdims%n_in_pres, CV_NODI ) * Loc_DEN_I( jphase_jpres ) * &
-                                    cc * 2.0 * SIGMA_INV_APPROX( jphase_jpres, CV_NODI ) &
+                                    cc * 2.0 * SIGMA_INV_APPROX( up_side, CV_NODI ) &
                                     / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                                PIPE_ABS( iphase_ipres, iphase_ipres, CV_NODI ) = PIPE_ABS( iphase_ipres, iphase_ipres, CV_NODI ) - &!notice the negative sign
                                    DeltaP * pipes_aux%GAMMA_PRES_ABS( jphase + (jpres - 1)*Mdims%n_in_pres, iphase + (ipres - 1)*Mdims%n_in_pres, CV_NODI ) * Loc_DEN_I( jphase_jpres ) * &
-                                   cc * 2.0 * SIGMA_INV_APPROX( jphase_jpres, CV_NODI ) &
+                                   cc * 2.0 * SIGMA_INV_APPROX( up_side, CV_NODI ) &
                                    / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                                  END IF
                            END DO
@@ -1540,17 +1550,23 @@ contains
                           iphase_ipres = iphase + (ipres - 1)*final_phase
                           DO jphase=1, final_phase
                               jphase_jpres = jphase + (jpres - 1)*final_phase
+                                !Side recorded by the pressure pass; fall back to the current sign before any pressure pass has run
+                                up_side = pipes_aux%coup_upstream( iphase_ipres, jphase_jpres, CV_NODI )
+                                if ( up_side < 1 ) then
+                                  up_side = jphase_jpres
+                                  if ( LOC_PRES_I(iphase_ipres) >= LOC_PRES_I(jphase_jpres) ) up_side = iphase_ipres
+                                end if
                                 DeltaP = LOC_PRES_I(iphase_ipres) - LOC_PRES_I(jphase + (jpres - 1)*final_phase)
                                 ! We do NOT divide by r**2 here because we have not multiplied by r**2 in the pipes_aux%MASS_CVFEM2PIPE matrix (in MOD_1D_CT_AND_ADV)
                                 IF ( LOC_PRES_I(iphase_ipres) >= LOC_PRES_I(jphase_jpres) ) THEN
                                     PIPE_ABS( iphase_ipres, iphase_ipres, CV_NODI ) = PIPE_ABS( iphase_ipres, iphase_ipres, CV_NODI ) + &
                                         DeltaP * pipes_aux%GAMMA_PRES_ABS( iphase + (ipres - 1)*Mdims%n_in_pres, jphase + (jpres - 1)*Mdims%n_in_pres, CV_NODI ) * Loc_DEN_I( iphase_ipres ) * &
-                                        cc * 2.0 * SIGMA_INV_APPROX( iphase_ipres, CV_NODI ) &
+                                        cc * 2.0 * SIGMA_INV_APPROX( up_side, CV_NODI ) &
                                         / (log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin)
                                 ELSE
                                     PIPE_ABS( iphase_ipres, jphase_jpres, CV_NODI ) = PIPE_ABS( iphase_ipres, jphase_jpres, CV_NODI ) +&
                                         DeltaP * pipes_aux%GAMMA_PRES_ABS( iphase + (ipres - 1)*Mdims%n_in_pres, jphase + (jpres - 1)*Mdims%n_in_pres, CV_NODI ) * Loc_DEN_I( jphase_jpres ) * &
-                                        cc * 2.0 * SIGMA_INV_APPROX( jphase_jpres, CV_NODI ) &
+                                        cc * 2.0 * SIGMA_INV_APPROX( up_side, CV_NODI ) &
                                         / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                                 END IF
                           END DO

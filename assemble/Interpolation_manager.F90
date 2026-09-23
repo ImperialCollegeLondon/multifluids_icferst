@@ -99,13 +99,15 @@ contains
     type(tensor_field), pointer :: field_t, p_field_t
     integer :: field
 
-    character(len=255), dimension(6), parameter :: algorithms = (/&
+    character(len=255), dimension(7), parameter :: algorithms = (/&
                        & "consistent_interpolation       ", &
                        & "pseudo_consistent_interpolation", &
                        & "interpolation_galerkin         ", &
                        & "interpolation_galerkin_weighted", &
                        & "interpolation_galerkin_wtotal  ", &
+                       & "interpolation_galerkin_wthermal", &
                        & "grandy_interpolation           " /)
+    real, dimension(:), allocatable :: weight_thermal
     integer :: alg_cnt, alg
 
     type(mesh_type), pointer :: old_mesh, new_mesh
@@ -536,6 +538,46 @@ contains
               FLExit("A field asked for the total porosity weighted projection but no weight was supplied")
             end if
           end if
+        case("interpolation_galerkin_wthermal")
+          if(.not. allocated(map_BA)) then
+            allocate(map_BA(ele_count(new_pos)))
+            map_BA = intersection_finder(new_pos, old_pos)
+          end if
+
+          do mesh = 1, mesh_cnt
+            call get_option("/geometry/mesh[" // int2str(mesh - 1) // "]/name", mesh_name)
+            old_mesh => extract_mesh(states_old(1), trim(mesh_name))
+            new_mesh => extract_mesh(states_new(1), trim(mesh_name))
+            old_pos = extract_vector_field(meshes_old(mesh), "Coordinate")
+            new_pos = extract_vector_field(meshes_new(mesh), "Coordinate")
+
+            call insert(alg_old(mesh), old_mesh, "Mesh")
+            call insert(alg_new(mesh), new_mesh, "Mesh")
+            call insert(alg_old(mesh), old_pos, "Coordinate")
+            call insert(alg_new(mesh), new_pos, "Coordinate")
+          end do
+
+          call collect_fields_to_interpolate(interpolate_field_galerkin_weighted_thermal, meshes_new, meshes_old, alg_new, alg_old)
+
+          no_fields = 0
+          do mesh = 1, mesh_cnt
+            no_fields = no_fields + field_count(alg_old(mesh))
+          end do
+          if(no_fields > mesh_cnt) then ! there will always be a Coordinate per mesh
+            assert(allocated(map_BA))
+            call build_thermal_weight(states_old(1), old_pos, weight_thermal)
+            if(size(weight_thermal) /= ele_count(old_pos)) then
+              ewrite(-1,*) "size(weight_thermal) = ", size(weight_thermal), " ele_count(old_pos) = ", ele_count(old_pos)
+              FLExit("The thermal weight must carry one value per old element")
+            end if
+            call interpolation_galerkin(alg_old, alg_new, map_BA = map_BA, weight_A = weight_thermal)
+            deallocate(weight_thermal)
+          end if
+
+          do mesh=1,mesh_cnt
+            call deallocate(alg_old(mesh))
+            call deallocate(alg_new(mesh))
+          end do
         case("grandy_interpolation")
           if(.not. allocated(map_BA)) then
             allocate(map_BA(ele_count(new_pos)))
@@ -688,7 +730,8 @@ contains
     interpolate = have_option(trim(base_path) // "/galerkin_projection") &
       & .and. .not. have_option(trim(base_path) // "/galerkin_projection/supermesh_free") &
       & .and. .not. interpolate_field_galerkin_weighted(option_path) &
-      & .and. .not. interpolate_field_galerkin_weighted_total(option_path)
+      & .and. .not. interpolate_field_galerkin_weighted_total(option_path) &
+      & .and. .not. interpolate_field_galerkin_weighted_thermal(option_path)
     
   end function interpolate_field_galerkin_projection
 
@@ -757,6 +800,139 @@ contains
     interpolate = saturation_family_projected()
 
   end function interpolate_field_galerkin_weighted_total
+
+  logical function temperature_couples_eos()
+    !!< True when any phase has a compressible density that depends on temperature and is not Boussinesq.
+    !!< Mirrors massfix_temperature_couples_eos in Multiphase_TimeLoop so the projection and the nodal path agree.
+    !!< @author Meissam Bahlali
+    integer :: jp
+    character(len = OPTION_PATH_LEN) :: base_te
+    temperature_couples_eos = .false.
+    do jp = 1, option_count("/material_phase")
+      base_te = "/material_phase[" // int2str(jp - 1) // "]/phase_properties/Density"
+      if(have_option(trim(base_te) // "/compressible") .and. &
+         .not. have_option(trim(base_te) // "/compressible/Boussinesq_approximation")) then
+        if(have_option(trim(base_te) // "/compressible/Linear_eos/beta") .or. &
+           have_option(trim(base_te) // "/compressible/BW_eos")) then
+          temperature_couples_eos = .true.
+          return
+        end if
+      end if
+      if(have_option(trim(base_te) // "/python_state") .and. &
+         .not. have_option(trim(base_te) // "/python_state/Boussinesq_approximation")) then
+        temperature_couples_eos = .true.
+        return
+      end if
+    end do
+  end function temperature_couples_eos
+
+  function interpolate_field_galerkin_weighted_thermal(option_path) result(interpolate)
+    !!< Selects the Temperature of the reservoir phase for projection against the bulk volumetric heat capacity.
+    character(len = *), intent(in) :: option_path
+
+    logical :: interpolate
+
+    character(len = OPTION_PATH_LEN) :: base_path
+    character(len = FIELD_NAME_LEN) :: field_name
+    integer :: stat
+
+    interpolate = .false.
+    if(len_trim(option_path) == 0) return
+    if(have_option("/numerical_methods/disable_all_conservative_adaptivity")) return
+    if(have_option("/numerical_methods/disable_temperature_conservative_adaptivity")) return
+    if(.not. have_option("/porous_media/scalar_field::Porosity")) return
+    ! Compressible phases are included: the weight below carries the phase density element by element.
+    ! Exception: when the density depends on temperature (Linear_eos beta, BW_eos, or a python state that is not Boussinesq), weighting temperature by rho(T) is not a heat integral and would bound a non-monotone product. Such a phase keeps the plain projection
+    if(temperature_couples_eos()) return
+
+    base_path = trim(complete_field_path(option_path, stat = stat))
+
+    if(.not. have_option(trim(base_path) // "/galerkin_projection/continuous")) return
+    if(have_option(trim(base_path) // "/galerkin_projection/supermesh_free")) return
+
+    ! Well-block phases are excluded: their volume is the pipe, not the rock.
+    if(.not. field_phase_in_first_pressure_block(option_path)) return
+
+    field_name = field_name_from_option_path(option_path)
+    interpolate = trim(field_name) == "Temperature"
+
+  end function interpolate_field_galerkin_weighted_thermal
+
+  subroutine build_thermal_weight(state_old, old_pos, weight)
+    !!< Bulk volumetric heat capacity per old element: phi rho_f cp_f + (1 - phi) rho_r cp_r.
+    !!< rho_f is the phase Density field on the old mesh, so a compressible phase carries its current density.
+    !!< Rock density and heat capacity are read as the transport equations read them: wet values already
+    !!< include the fluid share and are converted to dry values first, so the same element weight results
+    !!< whichever way the model declares them (see the porous heat coefficient in multi_dyncore_dg).
+    !!< Fields missing from the state fall back to the fluid term alone with a warning, never to a zero weight.
+    !!< @author Meissam Bahlali
+    type(state_type), intent(in) :: state_old
+    type(vector_field), intent(in) :: old_pos
+    real, dimension(:), allocatable, intent(out) :: weight
+
+    type(scalar_field), pointer :: porosity, rock_den, rock_cp, fluid_den, fluid_cp
+    integer :: ele, stat_phi, stat_rd, stat_rc, stat_fd, stat_fc
+    logical :: cp_wet, den_wet, have_rock
+    real :: phi, rho_f, cp_f, rho_r, cp_r, rho_dry, cp_dry, one_m_phi
+    logical, save :: warned = .false.
+
+    allocate(weight(ele_count(old_pos)))
+    porosity => extract_scalar_field(state_old, "Porosity", stat_phi)
+    rock_den => extract_scalar_field(state_old, "porous_density", stat_rd)
+    rock_cp => extract_scalar_field(state_old, "porous_heat_capacity", stat_rc)
+    fluid_den => extract_scalar_field(state_old, "Density", stat_fd)
+    fluid_cp => extract_scalar_field(state_old, "TemperatureHeatCapacity", stat_fc)
+    if(stat_fc /= 0) fluid_cp => extract_scalar_field(state_old, "HeatCapacity", stat_fc)
+    have_rock = (stat_rd == 0 .and. stat_rc == 0)
+    cp_wet = have_option("/porous_media/porous_properties/scalar_field::porous_heat_capacity/wet_value")
+    den_wet = have_option("/porous_media/porous_properties/scalar_field::porous_density/wet_value")
+    if((.not. have_rock .or. stat_fd /= 0 .or. stat_fc /= 0) .and. .not. warned) then
+      ewrite(0,*) "WARNING: thermal projection weight built without", &
+        & merge(" rock", "     ", .not. have_rock), merge(" fluid density", "              ", stat_fd /= 0), &
+        & merge(" fluid heat capacity", "                    ", stat_fc /= 0)
+      warned = .true.
+    end if
+
+    do ele = 1, ele_count(old_pos)
+      phi = 1.0
+      if(stat_phi == 0) phi = ele_mean(porosity, ele)
+      rho_f = 1000.0
+      if(stat_fd == 0) rho_f = ele_mean(fluid_den, ele)
+      cp_f = 1.0
+      if(stat_fc == 0) cp_f = ele_mean(fluid_cp, ele)
+      weight(ele) = phi * rho_f * cp_f
+      if(have_rock) then
+        one_m_phi = max(1.0 - phi, 1.0e-10)
+        rho_r = ele_mean(rock_den, ele)
+        cp_r = ele_mean(rock_cp, ele)
+        rho_dry = rho_r
+        if(den_wet) rho_dry = (rho_r - phi * rho_f) / one_m_phi
+        cp_dry = cp_r
+        if(cp_wet) then
+          ! the wet heat capacity is per unit mass of the wet mixture, whose density is the wet density
+          if(den_wet) then
+            cp_dry = (rho_r * cp_r - phi * rho_f * cp_f) / max(rho_dry * one_m_phi, 1.0e-30)
+          else
+            cp_dry = ((phi * rho_f + one_m_phi * rho_r) * cp_r - phi * rho_f * cp_f) / max(rho_r * one_m_phi, 1.0e-30)
+          end if
+        end if
+        weight(ele) = weight(ele) + one_m_phi * rho_dry * cp_dry
+      end if
+      weight(ele) = max(weight(ele), 1.0e-30)
+    end do
+
+  contains
+
+    function ele_mean(field, ele) result(mean)
+      type(scalar_field), intent(in) :: field
+      integer, intent(in) :: ele
+      real :: mean
+      real, dimension(ele_loc(field, ele)) :: vals
+      vals = ele_val(field, ele)
+      mean = sum(vals) / max(size(vals), 1)
+    end function ele_mean
+
+  end subroutine build_thermal_weight
 
   function phase_density_projection_safe() result(safe)
     !!< True when the phase density is constant: incompressible or Boussinesq.

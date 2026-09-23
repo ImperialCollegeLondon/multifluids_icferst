@@ -427,6 +427,7 @@ module multi_data_types
     !>@param impose_strongBCs This flag is used to trigger the imposition of strong BCs for P0DG for wells, only necessary if gamma=0 at the BC
     type multi_pipe_package
         real, dimension( :, :, : ), pointer  :: gamma_pres_abs=> null()
+        integer, dimension( :, :, : ), pointer :: coup_upstream=> null()
         real, dimension( : ), pointer        :: mass_pipe=> null()
         real, dimension( : ), pointer        :: mass_cvfem2pipe=> null()
         real, dimension( : ), pointer        :: mass_pipe2cvfem=> null()
@@ -1632,6 +1633,10 @@ contains
 
         if (Mdims%npres > 1) then
             if (.not.associated(pipes%gamma_pres_abs))        allocate( pipes%gamma_pres_abs( mdims%nphase,mdims%nphase,mdims%cv_nonods ))
+            if (.not.associated(pipes%coup_upstream)) then
+                allocate( pipes%coup_upstream( mdims%nphase,mdims%nphase,mdims%cv_nonods ))
+                pipes%coup_upstream = 0
+            end if
             if (.not.associated(pipes%mass_pipe))             allocate( pipes%mass_pipe( mdims%cv_nonods ))
             if (.not.associated(pipes%mass_cvfem2pipe))       allocate(pipes%mass_cvfem2pipe( mspars%cmc%ncol ))
             if (.not.associated(pipes%mass_pipe2cvfem))       allocate( pipes%mass_pipe2cvfem( mspars%cmc%ncol ))
@@ -1652,6 +1657,9 @@ contains
 
         if (associated(pipes%gamma_pres_abs)) then
             deallocate( pipes%gamma_pres_abs); nullify(pipes%gamma_pres_abs)
+        end if
+        if (associated(pipes%coup_upstream)) then
+            deallocate( pipes%coup_upstream); nullify(pipes%coup_upstream)
         end if
         if (associated(pipes%mass_pipe)) then
             deallocate(pipes%mass_pipe); nullify(pipes%mass_pipe)

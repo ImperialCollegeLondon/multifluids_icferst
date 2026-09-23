@@ -302,14 +302,15 @@ contains
         !disable_all_conservative_adaptivity switches the mass correction off for every field.
         massfix_scale_tracers = .not. have_option("/numerical_methods/disable_all_conservative_adaptivity")
         massfix_scale_saturation = massfix_scale_tracers
-        !disable_temperature_conservative_adaptivity switches it off for Temperature only.
-        massfix_scale_temperature = massfix_scale_tracers .and. &
-             .not. have_option("/numerical_methods/disable_temperature_conservative_adaptivity") .and. &
-             .not. massfix_temperature_couples_eos()
         !Eligible fields are conserved inside the Galerkin projection, which carries the porosity
         !exactly where the nodal scaling is inaccurate.
         !This is the default mechanism.
         massfix_in_projection = massfix_scale_tracers
+        !disable_temperature_conservative_adaptivity switches it off for Temperature only.
+        massfix_scale_temperature = massfix_scale_tracers .and. &
+             .not. have_option("/numerical_methods/disable_temperature_conservative_adaptivity") .and. &
+             .not. massfix_temperature_couples_eos() .and. &
+             .not. massfix_projection_temperature()
 
         ! Check wether we are using the CV_Galerkin method
         numberfields_CVGalerkin_interp=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
@@ -1789,6 +1790,21 @@ contains
                 end if
             end do
         end function massfix_temperature_couples_eos
+
+        !>@brief True when the reservoir Temperature is conserved inside the Galerkin projection.
+        !> Mirrors interpolate_field_galerkin_weighted_thermal in Interpolation_manager so the two sides agree.
+        logical function massfix_projection_temperature()
+            character( len = OPTION_PATH_LEN ) :: te_path
+            massfix_projection_temperature = massfix_projection_active()
+            if ( .not. massfix_projection_temperature ) return
+            massfix_projection_temperature = &
+                 .not. have_option( "/numerical_methods/disable_temperature_conservative_adaptivity" )
+            if ( .not. massfix_projection_temperature ) return
+            te_path = "/material_phase[0]/scalar_field::Temperature/prognostic"
+            massfix_projection_temperature = &
+                 have_option( trim( te_path ) // "/galerkin_projection/continuous" ) .and. &
+                 .not. have_option( trim( te_path ) // "/galerkin_projection/supermesh_free" )
+        end function massfix_projection_temperature
 
         logical function massfix_projection_tracer( fname_in )
             character(len=*), intent(in) :: fname_in
