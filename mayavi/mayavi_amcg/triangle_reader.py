@@ -92,7 +92,9 @@ class TriangleReader(FileDataSource):
             self._read_ele_file()
 
         self.outputs = [self._assign_attribute.output]
-        self.name = "Triangle file ({}{})".format(path.basename(self._basename), extension)
+        self.name = "Triangle file ({}{})".format(
+            path.basename(self._basename), extension
+        )
 
     ########################################
     # File reading methods.

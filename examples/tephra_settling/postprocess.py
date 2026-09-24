@@ -30,4 +30,3 @@ if("tephra_settling.stat" in dir_list):
    print "Data plotted and saved in tephra_velocity.pdf"
 else:
    print "No .stat file found - cannot plot data."
-

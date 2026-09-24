@@ -60,4 +60,3 @@ def gage_error_integral(detector_filename):
   error_integral[2]+=0.5*abs(gauges[2])*timestep
 
   return error_integral
-

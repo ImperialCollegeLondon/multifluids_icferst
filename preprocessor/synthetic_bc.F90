@@ -584,4 +584,3 @@ contains
 
 
    end module synthetic_bc
-

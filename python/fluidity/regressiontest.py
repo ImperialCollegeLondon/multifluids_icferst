@@ -239,7 +239,9 @@ class TestProblem:
             except:
                 self.log("failure.")
                 self.pass_status.append("F")
-                tc = TestCase(self.name, "{}.{}".format(self.length, self.filename[:-4]))
+                tc = TestCase(
+                    self.name, "{}.{}".format(self.length, self.filename[:-4])
+                )
                 tc.add_failure_info("Failure")
                 self.xml_reports.append(tc)
                 return self.pass_status
@@ -257,7 +259,9 @@ class TestProblem:
                 original_stdout = sys.stdout
                 sys.stdout = log
                 status = test.run(varsdict)
-                tc = TestCase(test.name, "{}.{}".format(self.length, self.filename[:-4]))
+                tc = TestCase(
+                    test.name, "{}.{}".format(self.length, self.filename[:-4])
+                )
                 if status == True:
                     self.log("success.")
                     self.pass_status.append("P")

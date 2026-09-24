@@ -18,7 +18,6 @@
 Some mathematical routines
 """
 
-
 import copy
 import math
 import unittest
@@ -1115,9 +1114,7 @@ class calcUnittests(unittest.TestCase):
         return
 
     def testBilinearlyInterpolate(self):
-        self.assertAlmostEqual(
-            BilinearlyInterpolate(0.0, 2.0, 0.0, 2.0, 0.6, 0.6), 1.2
-        )
+        self.assertAlmostEqual(BilinearlyInterpolate(0.0, 2.0, 0.0, 2.0, 0.6, 0.6), 1.2)
 
         return
 

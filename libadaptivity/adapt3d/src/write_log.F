@@ -56,4 +56,3 @@ C     Decide where to send output based on the level of the error.
       cdl = level
       end subroutine set_debug_level
       end module write_log
-

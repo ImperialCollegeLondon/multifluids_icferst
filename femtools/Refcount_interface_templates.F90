@@ -13,4 +13,3 @@
   interface has_references
      module procedure has_references_REFCOUNT_TYPE
   end interface
-

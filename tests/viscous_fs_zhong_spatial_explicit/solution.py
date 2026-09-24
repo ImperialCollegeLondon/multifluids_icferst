@@ -159,975 +159,49 @@ def nond_F(x, t):
     alphag = nond_factor() * alpha * T0
     rhog = nond_factor()  # use this as a proxy for the nondimensional factorisation
     return (
-            -0.5
-            * (
-                exp(
-                    -delta_rho
-                    * rhog
-                    * t
-                    * sinh(k) ** 2
-                    / (
-                        (delta_rho * k - k * rhog) * sinh(k) * cosh(k)
-                        + delta_rho * k**2
-                        - k**2 * rhog
-                        - sqrt(
-                            (delta_rho**2 + 2 * delta_rho * rhog + rhog**2)
-                            * sinh(k) ** 4
-                            + delta_rho**2 * k**2
-                            - 2 * delta_rho * k**2 * rhog
-                            + k**2 * rhog**2
-                            + 2
-                            * (
-                                delta_rho**2 * k
-                                - 2 * delta_rho * k * rhog
-                                + k * rhog**2
-                            )
-                            * sinh(k)
-                            * cosh(k)
-                            - (
-                                4 * delta_rho * k**2 * rhog
-                                - delta_rho**2
-                                + 2 * delta_rho * rhog
-                                - rhog**2
-                            )
-                            * sinh(k) ** 2
-                        )
-                        * k
-                    )
-                )
-                / (
-                    (
-                        k * rhog * sinh(k) ** 2 * cosh(k)
-                        - k * rhog * cosh(k) ** 3
-                        + rhog * sinh(k) ** 3
-                        - rhog * sinh(k) * cosh(k) ** 2
-                    )
-                    / (
-                        (delta_rho + rhog) * sinh(k) * cosh(k)
-                        - (delta_rho * k + k * rhog) * sinh(k) ** 2
-                        + (delta_rho * k + k * rhog) * cosh(k) ** 2
-                        - sqrt(
-                            delta_rho**2 * k**2 * sinh(k) ** 4
-                            - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            + delta_rho**2 * k**2 * cosh(k) ** 4
-                            + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
-                            - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
-                            + k**2 * rhog**2 * sinh(k) ** 4
-                            - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            + k**2 * rhog**2 * cosh(k) ** 4
-                            - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
-                            + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
-                            + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
-                            - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
-                            - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
-                            + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
-                            + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            + 4 * delta_rho * rhog * sinh(k) ** 4
-                            - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
-                            + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                        )
-                    )
-                    - (
-                        k * rhog * sinh(k) ** 2 * cosh(k)
-                        - k * rhog * cosh(k) ** 3
-                        + rhog * sinh(k) ** 3
-                        - rhog * sinh(k) * cosh(k) ** 2
-                    )
-                    / (
-                        (delta_rho + rhog) * sinh(k) * cosh(k)
-                        - (delta_rho * k + k * rhog) * sinh(k) ** 2
-                        + (delta_rho * k + k * rhog) * cosh(k) ** 2
-                        + sqrt(
-                            delta_rho**2 * k**2 * sinh(k) ** 4
-                            - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            + delta_rho**2 * k**2 * cosh(k) ** 4
-                            + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
-                            - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
-                            + k**2 * rhog**2 * sinh(k) ** 4
-                            - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            + k**2 * rhog**2 * cosh(k) ** 4
-                            - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
-                            + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
-                            + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
-                            - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
-                            - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
-                            + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
-                            + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            + 4 * delta_rho * rhog * sinh(k) ** 4
-                            - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
-                            + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                        )
-                    )
-                )
-                - exp(
-                    -delta_rho
-                    * rhog
-                    * t
-                    * sinh(k) ** 2
-                    / (
-                        (delta_rho * k - k * rhog) * sinh(k) * cosh(k)
-                        + delta_rho * k**2
-                        - k**2 * rhog
-                        + sqrt(
-                            (delta_rho**2 + 2 * delta_rho * rhog + rhog**2)
-                            * sinh(k) ** 4
-                            + delta_rho**2 * k**2
-                            - 2 * delta_rho * k**2 * rhog
-                            + k**2 * rhog**2
-                            + 2
-                            * (
-                                delta_rho**2 * k
-                                - 2 * delta_rho * k * rhog
-                                + k * rhog**2
-                            )
-                            * sinh(k)
-                            * cosh(k)
-                            - (
-                                4 * delta_rho * k**2 * rhog
-                                - delta_rho**2
-                                + 2 * delta_rho * rhog
-                                - rhog**2
-                            )
-                            * sinh(k) ** 2
-                        )
-                        * k
-                    )
-                )
-                / (
-                    (
-                        k * rhog * sinh(k) ** 2 * cosh(k)
-                        - k * rhog * cosh(k) ** 3
-                        + rhog * sinh(k) ** 3
-                        - rhog * sinh(k) * cosh(k) ** 2
-                    )
-                    / (
-                        (delta_rho + rhog) * sinh(k) * cosh(k)
-                        - (delta_rho * k + k * rhog) * sinh(k) ** 2
-                        + (delta_rho * k + k * rhog) * cosh(k) ** 2
-                        - sqrt(
-                            delta_rho**2 * k**2 * sinh(k) ** 4
-                            - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            + delta_rho**2 * k**2 * cosh(k) ** 4
-                            + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
-                            - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
-                            + k**2 * rhog**2 * sinh(k) ** 4
-                            - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            + k**2 * rhog**2 * cosh(k) ** 4
-                            - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
-                            + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
-                            + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
-                            - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
-                            - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
-                            + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
-                            + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            + 4 * delta_rho * rhog * sinh(k) ** 4
-                            - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
-                            + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                        )
-                    )
-                    - (
-                        k * rhog * sinh(k) ** 2 * cosh(k)
-                        - k * rhog * cosh(k) ** 3
-                        + rhog * sinh(k) ** 3
-                        - rhog * sinh(k) * cosh(k) ** 2
-                    )
-                    / (
-                        (delta_rho + rhog) * sinh(k) * cosh(k)
-                        - (delta_rho * k + k * rhog) * sinh(k) ** 2
-                        + (delta_rho * k + k * rhog) * cosh(k) ** 2
-                        + sqrt(
-                            delta_rho**2 * k**2 * sinh(k) ** 4
-                            - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            + delta_rho**2 * k**2 * cosh(k) ** 4
-                            + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
-                            - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
-                            + k**2 * rhog**2 * sinh(k) ** 4
-                            - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            + k**2 * rhog**2 * cosh(k) ** 4
-                            - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
-                            + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
-                            + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
-                            - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
-                            - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
-                            + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
-                            + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            + 4 * delta_rho * rhog * sinh(k) ** 4
-                            - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
-                            + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                        )
-                    )
-                )
-            )
-            * (
-                G0
-                + (
-                    alphag * k * sinh(k * zprime) * cosh(k)
-                    - (
-                        alphag * k * zprime * cosh(k * zprime)
-                        - alphag * sinh(k * zprime)
-                    )
-                    * sinh(k)
-                )
-                / (T0 * delta_rho * sinh(k) ** 2)
-            )
-            + (
-                F0
-                - (
-                    (alphag * k * zprime * cosh(k * zprime) - alphag * sinh(k * zprime))
-                    * sinh(k)
-                    * cosh(k)
-                    - (
-                        alphag * k * zprime * sinh(k * zprime)
-                        - alphag * cosh(k * zprime)
-                    )
-                    * sinh(k) ** 2
-                    - alphag * k * sinh(k * zprime)
-                )
-                / (T0 * rhog * sinh(k) ** 2)
-            )
-            * (
-                (
-                    (
-                        k * rhog * sinh(k) ** 2 * cosh(k)
-                        - k * rhog * cosh(k) ** 3
-                        + rhog * sinh(k) ** 3
-                        - rhog * sinh(k) * cosh(k) ** 2
-                    )
-                    / (
-                        (
-                            (
-                                k * rhog * sinh(k) ** 2 * cosh(k)
-                                - k * rhog * cosh(k) ** 3
-                                + rhog * sinh(k) ** 3
-                                - rhog * sinh(k) * cosh(k) ** 2
-                            )
-                            / (
-                                (delta_rho + rhog) * sinh(k) * cosh(k)
-                                - (delta_rho * k + k * rhog) * sinh(k) ** 2
-                                + (delta_rho * k + k * rhog) * cosh(k) ** 2
-                                - sqrt(
-                                    delta_rho**2 * k**2 * sinh(k) ** 4
-                                    - 2
-                                    * delta_rho**2
-                                    * k**2
-                                    * sinh(k) ** 2
-                                    * cosh(k) ** 2
-                                    + delta_rho**2 * k**2 * cosh(k) ** 4
-                                    + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
-                                    - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
-                                    + k**2 * rhog**2 * sinh(k) ** 4
-                                    - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                    + k**2 * rhog**2 * cosh(k) ** 4
-                                    - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
-                                    + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
-                                    + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
-                                    - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
-                                    - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
-                                    + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
-                                    + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                    + 4 * delta_rho * rhog * sinh(k) ** 4
-                                    - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
-                                    + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                )
-                            )
-                            - (
-                                k * rhog * sinh(k) ** 2 * cosh(k)
-                                - k * rhog * cosh(k) ** 3
-                                + rhog * sinh(k) ** 3
-                                - rhog * sinh(k) * cosh(k) ** 2
-                            )
-                            / (
-                                (delta_rho + rhog) * sinh(k) * cosh(k)
-                                - (delta_rho * k + k * rhog) * sinh(k) ** 2
-                                + (delta_rho * k + k * rhog) * cosh(k) ** 2
-                                + sqrt(
-                                    delta_rho**2 * k**2 * sinh(k) ** 4
-                                    - 2
-                                    * delta_rho**2
-                                    * k**2
-                                    * sinh(k) ** 2
-                                    * cosh(k) ** 2
-                                    + delta_rho**2 * k**2 * cosh(k) ** 4
-                                    + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
-                                    - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
-                                    + k**2 * rhog**2 * sinh(k) ** 4
-                                    - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                    + k**2 * rhog**2 * cosh(k) ** 4
-                                    - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
-                                    + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
-                                    + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
-                                    - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
-                                    - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
-                                    + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
-                                    + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                    + 4 * delta_rho * rhog * sinh(k) ** 4
-                                    - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
-                                    + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                )
-                            )
-                        )
-                        * (
-                            (delta_rho + rhog) * sinh(k) * cosh(k)
-                            - (delta_rho * k + k * rhog) * sinh(k) ** 2
-                            + (delta_rho * k + k * rhog) * cosh(k) ** 2
-                            + sqrt(
-                                delta_rho**2 * k**2 * sinh(k) ** 4
-                                - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + delta_rho**2 * k**2 * cosh(k) ** 4
-                                + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
-                                - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
-                                + k**2 * rhog**2 * sinh(k) ** 4
-                                - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + k**2 * rhog**2 * cosh(k) ** 4
-                                - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
-                                + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
-                                + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
-                                - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
-                                - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
-                                + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
-                                + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + 4 * delta_rho * rhog * sinh(k) ** 4
-                                - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
-                                + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            )
-                        )
-                    )
-                    + 1
-                )
-                * exp(
-                    -delta_rho
-                    * rhog
-                    * t
-                    * sinh(k) ** 2
-                    / (
-                        (delta_rho * k - k * rhog) * sinh(k) * cosh(k)
-                        + delta_rho * k**2
-                        - k**2 * rhog
-                        + sqrt(
-                            (delta_rho**2 + 2 * delta_rho * rhog + rhog**2)
-                            * sinh(k) ** 4
-                            + delta_rho**2 * k**2
-                            - 2 * delta_rho * k**2 * rhog
-                            + k**2 * rhog**2
-                            + 2
-                            * (
-                                delta_rho**2 * k
-                                - 2 * delta_rho * k * rhog
-                                + k * rhog**2
-                            )
-                            * sinh(k)
-                            * cosh(k)
-                            - (
-                                4 * delta_rho * k**2 * rhog
-                                - delta_rho**2
-                                + 2 * delta_rho * rhog
-                                - rhog**2
-                            )
-                            * sinh(k) ** 2
-                        )
-                        * k
-                    )
-                )
-                - (
-                    k * rhog * sinh(k) ** 2 * cosh(k)
-                    - k * rhog * cosh(k) ** 3
-                    + rhog * sinh(k) ** 3
-                    - rhog * sinh(k) * cosh(k) ** 2
-                )
-                * exp(
-                    -delta_rho
-                    * rhog
-                    * t
-                    * sinh(k) ** 2
-                    / (
-                        (delta_rho * k - k * rhog) * sinh(k) * cosh(k)
-                        + delta_rho * k**2
-                        - k**2 * rhog
-                        - sqrt(
-                            (delta_rho**2 + 2 * delta_rho * rhog + rhog**2)
-                            * sinh(k) ** 4
-                            + delta_rho**2 * k**2
-                            - 2 * delta_rho * k**2 * rhog
-                            + k**2 * rhog**2
-                            + 2
-                            * (
-                                delta_rho**2 * k
-                                - 2 * delta_rho * k * rhog
-                                + k * rhog**2
-                            )
-                            * sinh(k)
-                            * cosh(k)
-                            - (
-                                4 * delta_rho * k**2 * rhog
-                                - delta_rho**2
-                                + 2 * delta_rho * rhog
-                                - rhog**2
-                            )
-                            * sinh(k) ** 2
-                        )
-                        * k
-                    )
-                )
-                / (
-                    (
-                        (
-                            k * rhog * sinh(k) ** 2 * cosh(k)
-                            - k * rhog * cosh(k) ** 3
-                            + rhog * sinh(k) ** 3
-                            - rhog * sinh(k) * cosh(k) ** 2
-                        )
-                        / (
-                            (delta_rho + rhog) * sinh(k) * cosh(k)
-                            - (delta_rho * k + k * rhog) * sinh(k) ** 2
-                            + (delta_rho * k + k * rhog) * cosh(k) ** 2
-                            - sqrt(
-                                delta_rho**2 * k**2 * sinh(k) ** 4
-                                - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + delta_rho**2 * k**2 * cosh(k) ** 4
-                                + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
-                                - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
-                                + k**2 * rhog**2 * sinh(k) ** 4
-                                - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + k**2 * rhog**2 * cosh(k) ** 4
-                                - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
-                                + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
-                                + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
-                                - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
-                                - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
-                                + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
-                                + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + 4 * delta_rho * rhog * sinh(k) ** 4
-                                - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
-                                + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            )
-                        )
-                        - (
-                            k * rhog * sinh(k) ** 2 * cosh(k)
-                            - k * rhog * cosh(k) ** 3
-                            + rhog * sinh(k) ** 3
-                            - rhog * sinh(k) * cosh(k) ** 2
-                        )
-                        / (
-                            (delta_rho + rhog) * sinh(k) * cosh(k)
-                            - (delta_rho * k + k * rhog) * sinh(k) ** 2
-                            + (delta_rho * k + k * rhog) * cosh(k) ** 2
-                            + sqrt(
-                                delta_rho**2 * k**2 * sinh(k) ** 4
-                                - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + delta_rho**2 * k**2 * cosh(k) ** 4
-                                + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
-                                - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
-                                + k**2 * rhog**2 * sinh(k) ** 4
-                                - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + k**2 * rhog**2 * cosh(k) ** 4
-                                - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
-                                + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
-                                + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
-                                - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
-                                - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
-                                + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
-                                + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + 4 * delta_rho * rhog * sinh(k) ** 4
-                                - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
-                                + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            )
-                        )
-                    )
-                    * (
-                        (delta_rho + rhog) * sinh(k) * cosh(k)
-                        - (delta_rho * k + k * rhog) * sinh(k) ** 2
-                        + (delta_rho * k + k * rhog) * cosh(k) ** 2
-                        + sqrt(
-                            delta_rho**2 * k**2 * sinh(k) ** 4
-                            - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            + delta_rho**2 * k**2 * cosh(k) ** 4
-                            + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
-                            - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
-                            + k**2 * rhog**2 * sinh(k) ** 4
-                            - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            + k**2 * rhog**2 * cosh(k) ** 4
-                            - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
-                            + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
-                            + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
-                            - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
-                            - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
-                            + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
-                            + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            + 4 * delta_rho * rhog * sinh(k) ** 4
-                            - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
-                            + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                        )
-                    )
-                )
-            )
-            + (
-                (alphag * k * zprime * cosh(k * zprime) - alphag * sinh(k * zprime))
-                * sinh(k)
-                * cosh(k)
-                - (alphag * k * zprime * sinh(k * zprime) - alphag * cosh(k * zprime))
+        -0.5
+        * (
+            exp(
+                -delta_rho
+                * rhog
+                * t
                 * sinh(k) ** 2
-                - alphag * k * sinh(k * zprime)
+                / (
+                    (delta_rho * k - k * rhog) * sinh(k) * cosh(k)
+                    + delta_rho * k**2
+                    - k**2 * rhog
+                    - sqrt(
+                        (delta_rho**2 + 2 * delta_rho * rhog + rhog**2) * sinh(k) ** 4
+                        + delta_rho**2 * k**2
+                        - 2 * delta_rho * k**2 * rhog
+                        + k**2 * rhog**2
+                        + 2
+                        * (delta_rho**2 * k - 2 * delta_rho * k * rhog + k * rhog**2)
+                        * sinh(k)
+                        * cosh(k)
+                        - (
+                            4 * delta_rho * k**2 * rhog
+                            - delta_rho**2
+                            + 2 * delta_rho * rhog
+                            - rhog**2
+                        )
+                        * sinh(k) ** 2
+                    )
+                    * k
+                )
             )
-            / (T0 * rhog * sinh(k) ** 2)
-    ) * cos(k * x)
-
-
-def nond_G(x, t):
-    k = nond_wavenumber()
-    F0 = nond_eta0()
-    G0 = nond_xi0()
-    delta_rho = (rho0 - rhou) * nond_factor() / rho0
-    zprime = depth / D
-    T0 = deltaT
-    alphag = nond_factor() * alpha * T0
-    rhog = nond_factor()  # use this as a proxy for the nondimensional factorisation
-    return (
-            (
+            / (
                 (
                     k * rhog * sinh(k) ** 2 * cosh(k)
                     - k * rhog * cosh(k) ** 3
                     + rhog * sinh(k) ** 3
                     - rhog * sinh(k) * cosh(k) ** 2
-                )
-                * exp(
-                    -delta_rho
-                    * rhog
-                    * t
-                    * sinh(k) ** 2
-                    / (
-                        (delta_rho * k - k * rhog) * sinh(k) * cosh(k)
-                        + delta_rho * k**2
-                        - k**2 * rhog
-                        - sqrt(
-                            (delta_rho**2 + 2 * delta_rho * rhog + rhog**2)
-                            * sinh(k) ** 4
-                            + delta_rho**2 * k**2
-                            - 2 * delta_rho * k**2 * rhog
-                            + k**2 * rhog**2
-                            + 2
-                            * (
-                                delta_rho**2 * k
-                                - 2 * delta_rho * k * rhog
-                                + k * rhog**2
-                            )
-                            * sinh(k)
-                            * cosh(k)
-                            - (
-                                4 * delta_rho * k**2 * rhog
-                                - delta_rho**2
-                                + 2 * delta_rho * rhog
-                                - rhog**2
-                            )
-                            * sinh(k) ** 2
-                        )
-                        * k
-                    )
-                )
-                / (
-                    (
-                        (
-                            k * rhog * sinh(k) ** 2 * cosh(k)
-                            - k * rhog * cosh(k) ** 3
-                            + rhog * sinh(k) ** 3
-                            - rhog * sinh(k) * cosh(k) ** 2
-                        )
-                        / (
-                            (delta_rho + rhog) * sinh(k) * cosh(k)
-                            - (delta_rho * k + k * rhog) * sinh(k) ** 2
-                            + (delta_rho * k + k * rhog) * cosh(k) ** 2
-                            - sqrt(
-                                delta_rho**2 * k**2 * sinh(k) ** 4
-                                - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + delta_rho**2 * k**2 * cosh(k) ** 4
-                                + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
-                                - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
-                                + k**2 * rhog**2 * sinh(k) ** 4
-                                - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + k**2 * rhog**2 * cosh(k) ** 4
-                                - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
-                                + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
-                                + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
-                                - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
-                                - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
-                                + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
-                                + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + 4 * delta_rho * rhog * sinh(k) ** 4
-                                - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
-                                + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            )
-                        )
-                        - (
-                            k * rhog * sinh(k) ** 2 * cosh(k)
-                            - k * rhog * cosh(k) ** 3
-                            + rhog * sinh(k) ** 3
-                            - rhog * sinh(k) * cosh(k) ** 2
-                        )
-                        / (
-                            (delta_rho + rhog) * sinh(k) * cosh(k)
-                            - (delta_rho * k + k * rhog) * sinh(k) ** 2
-                            + (delta_rho * k + k * rhog) * cosh(k) ** 2
-                            + sqrt(
-                                delta_rho**2 * k**2 * sinh(k) ** 4
-                                - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + delta_rho**2 * k**2 * cosh(k) ** 4
-                                + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
-                                - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
-                                + k**2 * rhog**2 * sinh(k) ** 4
-                                - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + k**2 * rhog**2 * cosh(k) ** 4
-                                - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
-                                + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
-                                + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
-                                - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
-                                - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
-                                + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
-                                + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + 4 * delta_rho * rhog * sinh(k) ** 4
-                                - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
-                                + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            )
-                        )
-                    )
-                    * (
-                        (delta_rho + rhog) * sinh(k) * cosh(k)
-                        - (delta_rho * k + k * rhog) * sinh(k) ** 2
-                        + (delta_rho * k + k * rhog) * cosh(k) ** 2
-                        - sqrt(
-                            delta_rho**2 * k**2 * sinh(k) ** 4
-                            - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            + delta_rho**2 * k**2 * cosh(k) ** 4
-                            + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
-                            - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
-                            + k**2 * rhog**2 * sinh(k) ** 4
-                            - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            + k**2 * rhog**2 * cosh(k) ** 4
-                            - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
-                            + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
-                            + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
-                            - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
-                            - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
-                            + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
-                            + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            + 4 * delta_rho * rhog * sinh(k) ** 4
-                            - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
-                            + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                        )
-                    )
-                )
-                - (
-                    k * rhog * sinh(k) ** 2 * cosh(k)
-                    - k * rhog * cosh(k) ** 3
-                    + rhog * sinh(k) ** 3
-                    - rhog * sinh(k) * cosh(k) ** 2
-                )
-                * exp(
-                    -delta_rho
-                    * rhog
-                    * t
-                    * sinh(k) ** 2
-                    / (
-                        (delta_rho * k - k * rhog) * sinh(k) * cosh(k)
-                        + delta_rho * k**2
-                        - k**2 * rhog
-                        + sqrt(
-                            (delta_rho**2 + 2 * delta_rho * rhog + rhog**2)
-                            * sinh(k) ** 4
-                            + delta_rho**2 * k**2
-                            - 2 * delta_rho * k**2 * rhog
-                            + k**2 * rhog**2
-                            + 2
-                            * (
-                                delta_rho**2 * k
-                                - 2 * delta_rho * k * rhog
-                                + k * rhog**2
-                            )
-                            * sinh(k)
-                            * cosh(k)
-                            - (
-                                4 * delta_rho * k**2 * rhog
-                                - delta_rho**2
-                                + 2 * delta_rho * rhog
-                                - rhog**2
-                            )
-                            * sinh(k) ** 2
-                        )
-                        * k
-                    )
-                )
-                / (
-                    (
-                        (
-                            k * rhog * sinh(k) ** 2 * cosh(k)
-                            - k * rhog * cosh(k) ** 3
-                            + rhog * sinh(k) ** 3
-                            - rhog * sinh(k) * cosh(k) ** 2
-                        )
-                        / (
-                            (delta_rho + rhog) * sinh(k) * cosh(k)
-                            - (delta_rho * k + k * rhog) * sinh(k) ** 2
-                            + (delta_rho * k + k * rhog) * cosh(k) ** 2
-                            - sqrt(
-                                delta_rho**2 * k**2 * sinh(k) ** 4
-                                - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + delta_rho**2 * k**2 * cosh(k) ** 4
-                                + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
-                                - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
-                                + k**2 * rhog**2 * sinh(k) ** 4
-                                - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + k**2 * rhog**2 * cosh(k) ** 4
-                                - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
-                                + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
-                                + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
-                                - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
-                                - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
-                                + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
-                                + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + 4 * delta_rho * rhog * sinh(k) ** 4
-                                - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
-                                + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            )
-                        )
-                        - (
-                            k * rhog * sinh(k) ** 2 * cosh(k)
-                            - k * rhog * cosh(k) ** 3
-                            + rhog * sinh(k) ** 3
-                            - rhog * sinh(k) * cosh(k) ** 2
-                        )
-                        / (
-                            (delta_rho + rhog) * sinh(k) * cosh(k)
-                            - (delta_rho * k + k * rhog) * sinh(k) ** 2
-                            + (delta_rho * k + k * rhog) * cosh(k) ** 2
-                            + sqrt(
-                                delta_rho**2 * k**2 * sinh(k) ** 4
-                                - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + delta_rho**2 * k**2 * cosh(k) ** 4
-                                + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
-                                - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
-                                + k**2 * rhog**2 * sinh(k) ** 4
-                                - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + k**2 * rhog**2 * cosh(k) ** 4
-                                - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
-                                + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
-                                + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
-                                - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
-                                - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
-                                + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
-                                + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + 4 * delta_rho * rhog * sinh(k) ** 4
-                                - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
-                                + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            )
-                        )
-                    )
-                    * (
-                        (delta_rho + rhog) * sinh(k) * cosh(k)
-                        - (delta_rho * k + k * rhog) * sinh(k) ** 2
-                        + (delta_rho * k + k * rhog) * cosh(k) ** 2
-                        + sqrt(
-                            delta_rho**2 * k**2 * sinh(k) ** 4
-                            - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            + delta_rho**2 * k**2 * cosh(k) ** 4
-                            + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
-                            - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
-                            + k**2 * rhog**2 * sinh(k) ** 4
-                            - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            + k**2 * rhog**2 * cosh(k) ** 4
-                            - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
-                            + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
-                            + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
-                            - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
-                            - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
-                            + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
-                            + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            + 4 * delta_rho * rhog * sinh(k) ** 4
-                            - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
-                            + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                        )
-                    )
-                )
-            )
-            * (
-                G0
-                + (
-                    alphag * k * sinh(k * zprime) * cosh(k)
-                    - (
-                        alphag * k * zprime * cosh(k * zprime)
-                        - alphag * sinh(k * zprime)
-                    )
-                    * sinh(k)
-                )
-                / (T0 * delta_rho * sinh(k) ** 2)
-            )
-            - 2
-            * (
-                F0
-                - (
-                    (alphag * k * zprime * cosh(k * zprime) - alphag * sinh(k * zprime))
-                    * sinh(k)
-                    * cosh(k)
-                    - (
-                        alphag * k * zprime * sinh(k * zprime)
-                        - alphag * cosh(k * zprime)
-                    )
-                    * sinh(k) ** 2
-                    - alphag * k * sinh(k * zprime)
-                )
-                / (T0 * rhog * sinh(k) ** 2)
-            )
-            * (
-                (
-                    (
-                        k * rhog * sinh(k) ** 2 * cosh(k)
-                        - k * rhog * cosh(k) ** 3
-                        + rhog * sinh(k) ** 3
-                        - rhog * sinh(k) * cosh(k) ** 2
-                    )
-                    / (
-                        (
-                            (
-                                k * rhog * sinh(k) ** 2 * cosh(k)
-                                - k * rhog * cosh(k) ** 3
-                                + rhog * sinh(k) ** 3
-                                - rhog * sinh(k) * cosh(k) ** 2
-                            )
-                            / (
-                                (delta_rho + rhog) * sinh(k) * cosh(k)
-                                - (delta_rho * k + k * rhog) * sinh(k) ** 2
-                                + (delta_rho * k + k * rhog) * cosh(k) ** 2
-                                - sqrt(
-                                    delta_rho**2 * k**2 * sinh(k) ** 4
-                                    - 2
-                                    * delta_rho**2
-                                    * k**2
-                                    * sinh(k) ** 2
-                                    * cosh(k) ** 2
-                                    + delta_rho**2 * k**2 * cosh(k) ** 4
-                                    + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
-                                    - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
-                                    + k**2 * rhog**2 * sinh(k) ** 4
-                                    - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                    + k**2 * rhog**2 * cosh(k) ** 4
-                                    - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
-                                    + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
-                                    + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
-                                    - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
-                                    - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
-                                    + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
-                                    + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                    + 4 * delta_rho * rhog * sinh(k) ** 4
-                                    - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
-                                    + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                )
-                            )
-                            - (
-                                k * rhog * sinh(k) ** 2 * cosh(k)
-                                - k * rhog * cosh(k) ** 3
-                                + rhog * sinh(k) ** 3
-                                - rhog * sinh(k) * cosh(k) ** 2
-                            )
-                            / (
-                                (delta_rho + rhog) * sinh(k) * cosh(k)
-                                - (delta_rho * k + k * rhog) * sinh(k) ** 2
-                                + (delta_rho * k + k * rhog) * cosh(k) ** 2
-                                + sqrt(
-                                    delta_rho**2 * k**2 * sinh(k) ** 4
-                                    - 2
-                                    * delta_rho**2
-                                    * k**2
-                                    * sinh(k) ** 2
-                                    * cosh(k) ** 2
-                                    + delta_rho**2 * k**2 * cosh(k) ** 4
-                                    + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
-                                    - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
-                                    + k**2 * rhog**2 * sinh(k) ** 4
-                                    - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                    + k**2 * rhog**2 * cosh(k) ** 4
-                                    - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
-                                    + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
-                                    + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
-                                    - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
-                                    - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
-                                    + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
-                                    + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                    + 4 * delta_rho * rhog * sinh(k) ** 4
-                                    - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
-                                    + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                )
-                            )
-                        )
-                        * (
-                            (delta_rho + rhog) * sinh(k) * cosh(k)
-                            - (delta_rho * k + k * rhog) * sinh(k) ** 2
-                            + (delta_rho * k + k * rhog) * cosh(k) ** 2
-                            + sqrt(
-                                delta_rho**2 * k**2 * sinh(k) ** 4
-                                - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + delta_rho**2 * k**2 * cosh(k) ** 4
-                                + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
-                                - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
-                                + k**2 * rhog**2 * sinh(k) ** 4
-                                - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + k**2 * rhog**2 * cosh(k) ** 4
-                                - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
-                                + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
-                                + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
-                                - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
-                                - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
-                                + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
-                                + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
-                                + 4 * delta_rho * rhog * sinh(k) ** 4
-                                - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
-                                + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
-                            )
-                        )
-                    )
-                    + 1
-                )
-                * (
-                    k * rhog * sinh(k) ** 2 * cosh(k)
-                    - k * rhog * cosh(k) ** 3
-                    + rhog * sinh(k) ** 3
-                    - rhog * sinh(k) * cosh(k) ** 2
-                )
-                * exp(
-                    -delta_rho
-                    * rhog
-                    * t
-                    * sinh(k) ** 2
-                    / (
-                        (delta_rho * k - k * rhog) * sinh(k) * cosh(k)
-                        + delta_rho * k**2
-                        - k**2 * rhog
-                        + sqrt(
-                            (delta_rho**2 + 2 * delta_rho * rhog + rhog**2)
-                            * sinh(k) ** 4
-                            + delta_rho**2 * k**2
-                            - 2 * delta_rho * k**2 * rhog
-                            + k**2 * rhog**2
-                            + 2
-                            * (
-                                delta_rho**2 * k
-                                - 2 * delta_rho * k * rhog
-                                + k * rhog**2
-                            )
-                            * sinh(k)
-                            * cosh(k)
-                            - (
-                                4 * delta_rho * k**2 * rhog
-                                - delta_rho**2
-                                + 2 * delta_rho * rhog
-                                - rhog**2
-                            )
-                            * sinh(k) ** 2
-                        )
-                        * k
-                    )
                 )
                 / (
                     (delta_rho + rhog) * sinh(k) * cosh(k)
                     - (delta_rho * k + k * rhog) * sinh(k) ** 2
                     + (delta_rho * k + k * rhog) * cosh(k) ** 2
-                    + sqrt(
+                    - sqrt(
                         delta_rho**2 * k**2 * sinh(k) ** 4
                         - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
                         + delta_rho**2 * k**2 * cosh(k) ** 4
@@ -1154,40 +228,154 @@ def nond_G(x, t):
                     + rhog * sinh(k) ** 3
                     - rhog * sinh(k) * cosh(k) ** 2
                 )
-                ** 2
-                * exp(
-                    -delta_rho
-                    * rhog
-                    * t
-                    * sinh(k) ** 2
-                    / (
-                        (delta_rho * k - k * rhog) * sinh(k) * cosh(k)
-                        + delta_rho * k**2
-                        - k**2 * rhog
-                        - sqrt(
-                            (delta_rho**2 + 2 * delta_rho * rhog + rhog**2)
-                            * sinh(k) ** 4
-                            + delta_rho**2 * k**2
-                            - 2 * delta_rho * k**2 * rhog
-                            + k**2 * rhog**2
-                            + 2
-                            * (
-                                delta_rho**2 * k
-                                - 2 * delta_rho * k * rhog
-                                + k * rhog**2
-                            )
-                            * sinh(k)
-                            * cosh(k)
-                            - (
-                                4 * delta_rho * k**2 * rhog
-                                - delta_rho**2
-                                + 2 * delta_rho * rhog
-                                - rhog**2
-                            )
-                            * sinh(k) ** 2
-                        )
-                        * k
+                / (
+                    (delta_rho + rhog) * sinh(k) * cosh(k)
+                    - (delta_rho * k + k * rhog) * sinh(k) ** 2
+                    + (delta_rho * k + k * rhog) * cosh(k) ** 2
+                    + sqrt(
+                        delta_rho**2 * k**2 * sinh(k) ** 4
+                        - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + delta_rho**2 * k**2 * cosh(k) ** 4
+                        + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
+                        - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
+                        + k**2 * rhog**2 * sinh(k) ** 4
+                        - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + k**2 * rhog**2 * cosh(k) ** 4
+                        - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
+                        + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
+                        + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
+                        - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
+                        - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
+                        + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
+                        + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + 4 * delta_rho * rhog * sinh(k) ** 4
+                        - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
+                        + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
                     )
+                )
+            )
+            - exp(
+                -delta_rho
+                * rhog
+                * t
+                * sinh(k) ** 2
+                / (
+                    (delta_rho * k - k * rhog) * sinh(k) * cosh(k)
+                    + delta_rho * k**2
+                    - k**2 * rhog
+                    + sqrt(
+                        (delta_rho**2 + 2 * delta_rho * rhog + rhog**2) * sinh(k) ** 4
+                        + delta_rho**2 * k**2
+                        - 2 * delta_rho * k**2 * rhog
+                        + k**2 * rhog**2
+                        + 2
+                        * (delta_rho**2 * k - 2 * delta_rho * k * rhog + k * rhog**2)
+                        * sinh(k)
+                        * cosh(k)
+                        - (
+                            4 * delta_rho * k**2 * rhog
+                            - delta_rho**2
+                            + 2 * delta_rho * rhog
+                            - rhog**2
+                        )
+                        * sinh(k) ** 2
+                    )
+                    * k
+                )
+            )
+            / (
+                (
+                    k * rhog * sinh(k) ** 2 * cosh(k)
+                    - k * rhog * cosh(k) ** 3
+                    + rhog * sinh(k) ** 3
+                    - rhog * sinh(k) * cosh(k) ** 2
+                )
+                / (
+                    (delta_rho + rhog) * sinh(k) * cosh(k)
+                    - (delta_rho * k + k * rhog) * sinh(k) ** 2
+                    + (delta_rho * k + k * rhog) * cosh(k) ** 2
+                    - sqrt(
+                        delta_rho**2 * k**2 * sinh(k) ** 4
+                        - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + delta_rho**2 * k**2 * cosh(k) ** 4
+                        + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
+                        - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
+                        + k**2 * rhog**2 * sinh(k) ** 4
+                        - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + k**2 * rhog**2 * cosh(k) ** 4
+                        - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
+                        + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
+                        + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
+                        - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
+                        - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
+                        + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
+                        + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + 4 * delta_rho * rhog * sinh(k) ** 4
+                        - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
+                        + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                    )
+                )
+                - (
+                    k * rhog * sinh(k) ** 2 * cosh(k)
+                    - k * rhog * cosh(k) ** 3
+                    + rhog * sinh(k) ** 3
+                    - rhog * sinh(k) * cosh(k) ** 2
+                )
+                / (
+                    (delta_rho + rhog) * sinh(k) * cosh(k)
+                    - (delta_rho * k + k * rhog) * sinh(k) ** 2
+                    + (delta_rho * k + k * rhog) * cosh(k) ** 2
+                    + sqrt(
+                        delta_rho**2 * k**2 * sinh(k) ** 4
+                        - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + delta_rho**2 * k**2 * cosh(k) ** 4
+                        + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
+                        - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
+                        + k**2 * rhog**2 * sinh(k) ** 4
+                        - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + k**2 * rhog**2 * cosh(k) ** 4
+                        - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
+                        + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
+                        + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
+                        - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
+                        - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
+                        + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
+                        + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + 4 * delta_rho * rhog * sinh(k) ** 4
+                        - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
+                        + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                    )
+                )
+            )
+        )
+        * (
+            G0
+            + (
+                alphag * k * sinh(k * zprime) * cosh(k)
+                - (alphag * k * zprime * cosh(k * zprime) - alphag * sinh(k * zprime))
+                * sinh(k)
+            )
+            / (T0 * delta_rho * sinh(k) ** 2)
+        )
+        + (
+            F0
+            - (
+                (alphag * k * zprime * cosh(k * zprime) - alphag * sinh(k * zprime))
+                * sinh(k)
+                * cosh(k)
+                - (alphag * k * zprime * sinh(k * zprime) - alphag * cosh(k * zprime))
+                * sinh(k) ** 2
+                - alphag * k * sinh(k * zprime)
+            )
+            / (T0 * rhog * sinh(k) ** 2)
+        )
+        * (
+            (
+                (
+                    k * rhog * sinh(k) ** 2 * cosh(k)
+                    - k * rhog * cosh(k) ** 3
+                    + rhog * sinh(k) ** 3
+                    - rhog * sinh(k) * cosh(k) ** 2
                 )
                 / (
                     (
@@ -1258,6 +446,106 @@ def nond_G(x, t):
                         (delta_rho + rhog) * sinh(k) * cosh(k)
                         - (delta_rho * k + k * rhog) * sinh(k) ** 2
                         + (delta_rho * k + k * rhog) * cosh(k) ** 2
+                        + sqrt(
+                            delta_rho**2 * k**2 * sinh(k) ** 4
+                            - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + delta_rho**2 * k**2 * cosh(k) ** 4
+                            + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
+                            - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
+                            + k**2 * rhog**2 * sinh(k) ** 4
+                            - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + k**2 * rhog**2 * cosh(k) ** 4
+                            - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
+                            + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
+                            + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
+                            - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
+                            - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
+                            + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
+                            + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + 4 * delta_rho * rhog * sinh(k) ** 4
+                            - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
+                            + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        )
+                    )
+                )
+                + 1
+            )
+            * exp(
+                -delta_rho
+                * rhog
+                * t
+                * sinh(k) ** 2
+                / (
+                    (delta_rho * k - k * rhog) * sinh(k) * cosh(k)
+                    + delta_rho * k**2
+                    - k**2 * rhog
+                    + sqrt(
+                        (delta_rho**2 + 2 * delta_rho * rhog + rhog**2) * sinh(k) ** 4
+                        + delta_rho**2 * k**2
+                        - 2 * delta_rho * k**2 * rhog
+                        + k**2 * rhog**2
+                        + 2
+                        * (delta_rho**2 * k - 2 * delta_rho * k * rhog + k * rhog**2)
+                        * sinh(k)
+                        * cosh(k)
+                        - (
+                            4 * delta_rho * k**2 * rhog
+                            - delta_rho**2
+                            + 2 * delta_rho * rhog
+                            - rhog**2
+                        )
+                        * sinh(k) ** 2
+                    )
+                    * k
+                )
+            )
+            - (
+                k * rhog * sinh(k) ** 2 * cosh(k)
+                - k * rhog * cosh(k) ** 3
+                + rhog * sinh(k) ** 3
+                - rhog * sinh(k) * cosh(k) ** 2
+            )
+            * exp(
+                -delta_rho
+                * rhog
+                * t
+                * sinh(k) ** 2
+                / (
+                    (delta_rho * k - k * rhog) * sinh(k) * cosh(k)
+                    + delta_rho * k**2
+                    - k**2 * rhog
+                    - sqrt(
+                        (delta_rho**2 + 2 * delta_rho * rhog + rhog**2) * sinh(k) ** 4
+                        + delta_rho**2 * k**2
+                        - 2 * delta_rho * k**2 * rhog
+                        + k**2 * rhog**2
+                        + 2
+                        * (delta_rho**2 * k - 2 * delta_rho * k * rhog + k * rhog**2)
+                        * sinh(k)
+                        * cosh(k)
+                        - (
+                            4 * delta_rho * k**2 * rhog
+                            - delta_rho**2
+                            + 2 * delta_rho * rhog
+                            - rhog**2
+                        )
+                        * sinh(k) ** 2
+                    )
+                    * k
+                )
+            )
+            / (
+                (
+                    (
+                        k * rhog * sinh(k) ** 2 * cosh(k)
+                        - k * rhog * cosh(k) ** 3
+                        + rhog * sinh(k) ** 3
+                        - rhog * sinh(k) * cosh(k) ** 2
+                    )
+                    / (
+                        (delta_rho + rhog) * sinh(k) * cosh(k)
+                        - (delta_rho * k + k * rhog) * sinh(k) ** 2
+                        + (delta_rho * k + k * rhog) * cosh(k) ** 2
                         - sqrt(
                             delta_rho**2 * k**2 * sinh(k) ** 4
                             - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
@@ -1277,6 +565,436 @@ def nond_G(x, t):
                             + 4 * delta_rho * rhog * sinh(k) ** 4
                             - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
                             + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        )
+                    )
+                    - (
+                        k * rhog * sinh(k) ** 2 * cosh(k)
+                        - k * rhog * cosh(k) ** 3
+                        + rhog * sinh(k) ** 3
+                        - rhog * sinh(k) * cosh(k) ** 2
+                    )
+                    / (
+                        (delta_rho + rhog) * sinh(k) * cosh(k)
+                        - (delta_rho * k + k * rhog) * sinh(k) ** 2
+                        + (delta_rho * k + k * rhog) * cosh(k) ** 2
+                        + sqrt(
+                            delta_rho**2 * k**2 * sinh(k) ** 4
+                            - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + delta_rho**2 * k**2 * cosh(k) ** 4
+                            + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
+                            - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
+                            + k**2 * rhog**2 * sinh(k) ** 4
+                            - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + k**2 * rhog**2 * cosh(k) ** 4
+                            - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
+                            + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
+                            + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
+                            - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
+                            - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
+                            + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
+                            + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + 4 * delta_rho * rhog * sinh(k) ** 4
+                            - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
+                            + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        )
+                    )
+                )
+                * (
+                    (delta_rho + rhog) * sinh(k) * cosh(k)
+                    - (delta_rho * k + k * rhog) * sinh(k) ** 2
+                    + (delta_rho * k + k * rhog) * cosh(k) ** 2
+                    + sqrt(
+                        delta_rho**2 * k**2 * sinh(k) ** 4
+                        - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + delta_rho**2 * k**2 * cosh(k) ** 4
+                        + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
+                        - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
+                        + k**2 * rhog**2 * sinh(k) ** 4
+                        - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + k**2 * rhog**2 * cosh(k) ** 4
+                        - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
+                        + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
+                        + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
+                        - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
+                        - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
+                        + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
+                        + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + 4 * delta_rho * rhog * sinh(k) ** 4
+                        - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
+                        + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                    )
+                )
+            )
+        )
+        + (
+            (alphag * k * zprime * cosh(k * zprime) - alphag * sinh(k * zprime))
+            * sinh(k)
+            * cosh(k)
+            - (alphag * k * zprime * sinh(k * zprime) - alphag * cosh(k * zprime))
+            * sinh(k) ** 2
+            - alphag * k * sinh(k * zprime)
+        )
+        / (T0 * rhog * sinh(k) ** 2)
+    ) * cos(k * x)
+
+
+def nond_G(x, t):
+    k = nond_wavenumber()
+    F0 = nond_eta0()
+    G0 = nond_xi0()
+    delta_rho = (rho0 - rhou) * nond_factor() / rho0
+    zprime = depth / D
+    T0 = deltaT
+    alphag = nond_factor() * alpha * T0
+    rhog = nond_factor()  # use this as a proxy for the nondimensional factorisation
+    return (
+        (
+            (
+                k * rhog * sinh(k) ** 2 * cosh(k)
+                - k * rhog * cosh(k) ** 3
+                + rhog * sinh(k) ** 3
+                - rhog * sinh(k) * cosh(k) ** 2
+            )
+            * exp(
+                -delta_rho
+                * rhog
+                * t
+                * sinh(k) ** 2
+                / (
+                    (delta_rho * k - k * rhog) * sinh(k) * cosh(k)
+                    + delta_rho * k**2
+                    - k**2 * rhog
+                    - sqrt(
+                        (delta_rho**2 + 2 * delta_rho * rhog + rhog**2) * sinh(k) ** 4
+                        + delta_rho**2 * k**2
+                        - 2 * delta_rho * k**2 * rhog
+                        + k**2 * rhog**2
+                        + 2
+                        * (delta_rho**2 * k - 2 * delta_rho * k * rhog + k * rhog**2)
+                        * sinh(k)
+                        * cosh(k)
+                        - (
+                            4 * delta_rho * k**2 * rhog
+                            - delta_rho**2
+                            + 2 * delta_rho * rhog
+                            - rhog**2
+                        )
+                        * sinh(k) ** 2
+                    )
+                    * k
+                )
+            )
+            / (
+                (
+                    (
+                        k * rhog * sinh(k) ** 2 * cosh(k)
+                        - k * rhog * cosh(k) ** 3
+                        + rhog * sinh(k) ** 3
+                        - rhog * sinh(k) * cosh(k) ** 2
+                    )
+                    / (
+                        (delta_rho + rhog) * sinh(k) * cosh(k)
+                        - (delta_rho * k + k * rhog) * sinh(k) ** 2
+                        + (delta_rho * k + k * rhog) * cosh(k) ** 2
+                        - sqrt(
+                            delta_rho**2 * k**2 * sinh(k) ** 4
+                            - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + delta_rho**2 * k**2 * cosh(k) ** 4
+                            + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
+                            - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
+                            + k**2 * rhog**2 * sinh(k) ** 4
+                            - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + k**2 * rhog**2 * cosh(k) ** 4
+                            - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
+                            + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
+                            + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
+                            - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
+                            - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
+                            + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
+                            + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + 4 * delta_rho * rhog * sinh(k) ** 4
+                            - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
+                            + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        )
+                    )
+                    - (
+                        k * rhog * sinh(k) ** 2 * cosh(k)
+                        - k * rhog * cosh(k) ** 3
+                        + rhog * sinh(k) ** 3
+                        - rhog * sinh(k) * cosh(k) ** 2
+                    )
+                    / (
+                        (delta_rho + rhog) * sinh(k) * cosh(k)
+                        - (delta_rho * k + k * rhog) * sinh(k) ** 2
+                        + (delta_rho * k + k * rhog) * cosh(k) ** 2
+                        + sqrt(
+                            delta_rho**2 * k**2 * sinh(k) ** 4
+                            - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + delta_rho**2 * k**2 * cosh(k) ** 4
+                            + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
+                            - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
+                            + k**2 * rhog**2 * sinh(k) ** 4
+                            - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + k**2 * rhog**2 * cosh(k) ** 4
+                            - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
+                            + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
+                            + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
+                            - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
+                            - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
+                            + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
+                            + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + 4 * delta_rho * rhog * sinh(k) ** 4
+                            - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
+                            + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        )
+                    )
+                )
+                * (
+                    (delta_rho + rhog) * sinh(k) * cosh(k)
+                    - (delta_rho * k + k * rhog) * sinh(k) ** 2
+                    + (delta_rho * k + k * rhog) * cosh(k) ** 2
+                    - sqrt(
+                        delta_rho**2 * k**2 * sinh(k) ** 4
+                        - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + delta_rho**2 * k**2 * cosh(k) ** 4
+                        + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
+                        - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
+                        + k**2 * rhog**2 * sinh(k) ** 4
+                        - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + k**2 * rhog**2 * cosh(k) ** 4
+                        - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
+                        + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
+                        + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
+                        - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
+                        - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
+                        + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
+                        + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + 4 * delta_rho * rhog * sinh(k) ** 4
+                        - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
+                        + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                    )
+                )
+            )
+            - (
+                k * rhog * sinh(k) ** 2 * cosh(k)
+                - k * rhog * cosh(k) ** 3
+                + rhog * sinh(k) ** 3
+                - rhog * sinh(k) * cosh(k) ** 2
+            )
+            * exp(
+                -delta_rho
+                * rhog
+                * t
+                * sinh(k) ** 2
+                / (
+                    (delta_rho * k - k * rhog) * sinh(k) * cosh(k)
+                    + delta_rho * k**2
+                    - k**2 * rhog
+                    + sqrt(
+                        (delta_rho**2 + 2 * delta_rho * rhog + rhog**2) * sinh(k) ** 4
+                        + delta_rho**2 * k**2
+                        - 2 * delta_rho * k**2 * rhog
+                        + k**2 * rhog**2
+                        + 2
+                        * (delta_rho**2 * k - 2 * delta_rho * k * rhog + k * rhog**2)
+                        * sinh(k)
+                        * cosh(k)
+                        - (
+                            4 * delta_rho * k**2 * rhog
+                            - delta_rho**2
+                            + 2 * delta_rho * rhog
+                            - rhog**2
+                        )
+                        * sinh(k) ** 2
+                    )
+                    * k
+                )
+            )
+            / (
+                (
+                    (
+                        k * rhog * sinh(k) ** 2 * cosh(k)
+                        - k * rhog * cosh(k) ** 3
+                        + rhog * sinh(k) ** 3
+                        - rhog * sinh(k) * cosh(k) ** 2
+                    )
+                    / (
+                        (delta_rho + rhog) * sinh(k) * cosh(k)
+                        - (delta_rho * k + k * rhog) * sinh(k) ** 2
+                        + (delta_rho * k + k * rhog) * cosh(k) ** 2
+                        - sqrt(
+                            delta_rho**2 * k**2 * sinh(k) ** 4
+                            - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + delta_rho**2 * k**2 * cosh(k) ** 4
+                            + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
+                            - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
+                            + k**2 * rhog**2 * sinh(k) ** 4
+                            - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + k**2 * rhog**2 * cosh(k) ** 4
+                            - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
+                            + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
+                            + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
+                            - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
+                            - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
+                            + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
+                            + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + 4 * delta_rho * rhog * sinh(k) ** 4
+                            - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
+                            + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        )
+                    )
+                    - (
+                        k * rhog * sinh(k) ** 2 * cosh(k)
+                        - k * rhog * cosh(k) ** 3
+                        + rhog * sinh(k) ** 3
+                        - rhog * sinh(k) * cosh(k) ** 2
+                    )
+                    / (
+                        (delta_rho + rhog) * sinh(k) * cosh(k)
+                        - (delta_rho * k + k * rhog) * sinh(k) ** 2
+                        + (delta_rho * k + k * rhog) * cosh(k) ** 2
+                        + sqrt(
+                            delta_rho**2 * k**2 * sinh(k) ** 4
+                            - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + delta_rho**2 * k**2 * cosh(k) ** 4
+                            + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
+                            - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
+                            + k**2 * rhog**2 * sinh(k) ** 4
+                            - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + k**2 * rhog**2 * cosh(k) ** 4
+                            - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
+                            + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
+                            + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
+                            - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
+                            - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
+                            + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
+                            + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + 4 * delta_rho * rhog * sinh(k) ** 4
+                            - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
+                            + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        )
+                    )
+                )
+                * (
+                    (delta_rho + rhog) * sinh(k) * cosh(k)
+                    - (delta_rho * k + k * rhog) * sinh(k) ** 2
+                    + (delta_rho * k + k * rhog) * cosh(k) ** 2
+                    + sqrt(
+                        delta_rho**2 * k**2 * sinh(k) ** 4
+                        - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + delta_rho**2 * k**2 * cosh(k) ** 4
+                        + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
+                        - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
+                        + k**2 * rhog**2 * sinh(k) ** 4
+                        - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + k**2 * rhog**2 * cosh(k) ** 4
+                        - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
+                        + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
+                        + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
+                        - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
+                        - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
+                        + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
+                        + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + 4 * delta_rho * rhog * sinh(k) ** 4
+                        - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
+                        + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                    )
+                )
+            )
+        )
+        * (
+            G0
+            + (
+                alphag * k * sinh(k * zprime) * cosh(k)
+                - (alphag * k * zprime * cosh(k * zprime) - alphag * sinh(k * zprime))
+                * sinh(k)
+            )
+            / (T0 * delta_rho * sinh(k) ** 2)
+        )
+        - 2
+        * (
+            F0
+            - (
+                (alphag * k * zprime * cosh(k * zprime) - alphag * sinh(k * zprime))
+                * sinh(k)
+                * cosh(k)
+                - (alphag * k * zprime * sinh(k * zprime) - alphag * cosh(k * zprime))
+                * sinh(k) ** 2
+                - alphag * k * sinh(k * zprime)
+            )
+            / (T0 * rhog * sinh(k) ** 2)
+        )
+        * (
+            (
+                (
+                    k * rhog * sinh(k) ** 2 * cosh(k)
+                    - k * rhog * cosh(k) ** 3
+                    + rhog * sinh(k) ** 3
+                    - rhog * sinh(k) * cosh(k) ** 2
+                )
+                / (
+                    (
+                        (
+                            k * rhog * sinh(k) ** 2 * cosh(k)
+                            - k * rhog * cosh(k) ** 3
+                            + rhog * sinh(k) ** 3
+                            - rhog * sinh(k) * cosh(k) ** 2
+                        )
+                        / (
+                            (delta_rho + rhog) * sinh(k) * cosh(k)
+                            - (delta_rho * k + k * rhog) * sinh(k) ** 2
+                            + (delta_rho * k + k * rhog) * cosh(k) ** 2
+                            - sqrt(
+                                delta_rho**2 * k**2 * sinh(k) ** 4
+                                - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
+                                + delta_rho**2 * k**2 * cosh(k) ** 4
+                                + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
+                                - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
+                                + k**2 * rhog**2 * sinh(k) ** 4
+                                - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                                + k**2 * rhog**2 * cosh(k) ** 4
+                                - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
+                                + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
+                                + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
+                                - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
+                                - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
+                                + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
+                                + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
+                                + 4 * delta_rho * rhog * sinh(k) ** 4
+                                - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
+                                + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            )
+                        )
+                        - (
+                            k * rhog * sinh(k) ** 2 * cosh(k)
+                            - k * rhog * cosh(k) ** 3
+                            + rhog * sinh(k) ** 3
+                            - rhog * sinh(k) * cosh(k) ** 2
+                        )
+                        / (
+                            (delta_rho + rhog) * sinh(k) * cosh(k)
+                            - (delta_rho * k + k * rhog) * sinh(k) ** 2
+                            + (delta_rho * k + k * rhog) * cosh(k) ** 2
+                            + sqrt(
+                                delta_rho**2 * k**2 * sinh(k) ** 4
+                                - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
+                                + delta_rho**2 * k**2 * cosh(k) ** 4
+                                + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
+                                - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
+                                + k**2 * rhog**2 * sinh(k) ** 4
+                                - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                                + k**2 * rhog**2 * cosh(k) ** 4
+                                - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
+                                + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
+                                + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
+                                - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
+                                - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
+                                + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
+                                + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
+                                + 4 * delta_rho * rhog * sinh(k) ** 4
+                                - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
+                                + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            )
                         )
                     )
                     * (
@@ -1305,13 +1023,227 @@ def nond_G(x, t):
                         )
                     )
                 )
+                + 1
+            )
+            * (
+                k * rhog * sinh(k) ** 2 * cosh(k)
+                - k * rhog * cosh(k) ** 3
+                + rhog * sinh(k) ** 3
+                - rhog * sinh(k) * cosh(k) ** 2
+            )
+            * exp(
+                -delta_rho
+                * rhog
+                * t
+                * sinh(k) ** 2
+                / (
+                    (delta_rho * k - k * rhog) * sinh(k) * cosh(k)
+                    + delta_rho * k**2
+                    - k**2 * rhog
+                    + sqrt(
+                        (delta_rho**2 + 2 * delta_rho * rhog + rhog**2) * sinh(k) ** 4
+                        + delta_rho**2 * k**2
+                        - 2 * delta_rho * k**2 * rhog
+                        + k**2 * rhog**2
+                        + 2
+                        * (delta_rho**2 * k - 2 * delta_rho * k * rhog + k * rhog**2)
+                        * sinh(k)
+                        * cosh(k)
+                        - (
+                            4 * delta_rho * k**2 * rhog
+                            - delta_rho**2
+                            + 2 * delta_rho * rhog
+                            - rhog**2
+                        )
+                        * sinh(k) ** 2
+                    )
+                    * k
+                )
+            )
+            / (
+                (delta_rho + rhog) * sinh(k) * cosh(k)
+                - (delta_rho * k + k * rhog) * sinh(k) ** 2
+                + (delta_rho * k + k * rhog) * cosh(k) ** 2
+                + sqrt(
+                    delta_rho**2 * k**2 * sinh(k) ** 4
+                    - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
+                    + delta_rho**2 * k**2 * cosh(k) ** 4
+                    + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
+                    - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
+                    + k**2 * rhog**2 * sinh(k) ** 4
+                    - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                    + k**2 * rhog**2 * cosh(k) ** 4
+                    - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
+                    + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
+                    + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
+                    - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
+                    - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
+                    + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
+                    + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
+                    + 4 * delta_rho * rhog * sinh(k) ** 4
+                    - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
+                    + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                )
             )
             - (
-                alphag * k * sinh(k * zprime) * cosh(k)
-                - (alphag * k * zprime * cosh(k * zprime) - alphag * sinh(k * zprime))
-                * sinh(k)
+                k * rhog * sinh(k) ** 2 * cosh(k)
+                - k * rhog * cosh(k) ** 3
+                + rhog * sinh(k) ** 3
+                - rhog * sinh(k) * cosh(k) ** 2
             )
-            / (T0 * delta_rho * sinh(k) ** 2)
+            ** 2
+            * exp(
+                -delta_rho
+                * rhog
+                * t
+                * sinh(k) ** 2
+                / (
+                    (delta_rho * k - k * rhog) * sinh(k) * cosh(k)
+                    + delta_rho * k**2
+                    - k**2 * rhog
+                    - sqrt(
+                        (delta_rho**2 + 2 * delta_rho * rhog + rhog**2) * sinh(k) ** 4
+                        + delta_rho**2 * k**2
+                        - 2 * delta_rho * k**2 * rhog
+                        + k**2 * rhog**2
+                        + 2
+                        * (delta_rho**2 * k - 2 * delta_rho * k * rhog + k * rhog**2)
+                        * sinh(k)
+                        * cosh(k)
+                        - (
+                            4 * delta_rho * k**2 * rhog
+                            - delta_rho**2
+                            + 2 * delta_rho * rhog
+                            - rhog**2
+                        )
+                        * sinh(k) ** 2
+                    )
+                    * k
+                )
+            )
+            / (
+                (
+                    (
+                        k * rhog * sinh(k) ** 2 * cosh(k)
+                        - k * rhog * cosh(k) ** 3
+                        + rhog * sinh(k) ** 3
+                        - rhog * sinh(k) * cosh(k) ** 2
+                    )
+                    / (
+                        (delta_rho + rhog) * sinh(k) * cosh(k)
+                        - (delta_rho * k + k * rhog) * sinh(k) ** 2
+                        + (delta_rho * k + k * rhog) * cosh(k) ** 2
+                        - sqrt(
+                            delta_rho**2 * k**2 * sinh(k) ** 4
+                            - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + delta_rho**2 * k**2 * cosh(k) ** 4
+                            + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
+                            - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
+                            + k**2 * rhog**2 * sinh(k) ** 4
+                            - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + k**2 * rhog**2 * cosh(k) ** 4
+                            - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
+                            + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
+                            + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
+                            - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
+                            - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
+                            + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
+                            + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + 4 * delta_rho * rhog * sinh(k) ** 4
+                            - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
+                            + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        )
+                    )
+                    - (
+                        k * rhog * sinh(k) ** 2 * cosh(k)
+                        - k * rhog * cosh(k) ** 3
+                        + rhog * sinh(k) ** 3
+                        - rhog * sinh(k) * cosh(k) ** 2
+                    )
+                    / (
+                        (delta_rho + rhog) * sinh(k) * cosh(k)
+                        - (delta_rho * k + k * rhog) * sinh(k) ** 2
+                        + (delta_rho * k + k * rhog) * cosh(k) ** 2
+                        + sqrt(
+                            delta_rho**2 * k**2 * sinh(k) ** 4
+                            - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + delta_rho**2 * k**2 * cosh(k) ** 4
+                            + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
+                            - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
+                            + k**2 * rhog**2 * sinh(k) ** 4
+                            - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + k**2 * rhog**2 * cosh(k) ** 4
+                            - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
+                            + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
+                            + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
+                            - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
+                            - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
+                            + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
+                            + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
+                            + 4 * delta_rho * rhog * sinh(k) ** 4
+                            - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
+                            + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        )
+                    )
+                )
+                * (
+                    (delta_rho + rhog) * sinh(k) * cosh(k)
+                    - (delta_rho * k + k * rhog) * sinh(k) ** 2
+                    + (delta_rho * k + k * rhog) * cosh(k) ** 2
+                    - sqrt(
+                        delta_rho**2 * k**2 * sinh(k) ** 4
+                        - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + delta_rho**2 * k**2 * cosh(k) ** 4
+                        + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
+                        - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
+                        + k**2 * rhog**2 * sinh(k) ** 4
+                        - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + k**2 * rhog**2 * cosh(k) ** 4
+                        - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
+                        + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
+                        + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
+                        - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
+                        - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
+                        + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
+                        + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + 4 * delta_rho * rhog * sinh(k) ** 4
+                        - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
+                        + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                    )
+                )
+                * (
+                    (delta_rho + rhog) * sinh(k) * cosh(k)
+                    - (delta_rho * k + k * rhog) * sinh(k) ** 2
+                    + (delta_rho * k + k * rhog) * cosh(k) ** 2
+                    + sqrt(
+                        delta_rho**2 * k**2 * sinh(k) ** 4
+                        - 2 * delta_rho**2 * k**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + delta_rho**2 * k**2 * cosh(k) ** 4
+                        + 2 * delta_rho * k**2 * rhog * sinh(k) ** 4
+                        - 2 * delta_rho * k**2 * rhog * cosh(k) ** 4
+                        + k**2 * rhog**2 * sinh(k) ** 4
+                        - 2 * k**2 * rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + k**2 * rhog**2 * cosh(k) ** 4
+                        - 2 * delta_rho**2 * k * sinh(k) ** 3 * cosh(k)
+                        + 2 * delta_rho**2 * k * sinh(k) * cosh(k) ** 3
+                        + 4 * delta_rho * k * rhog * sinh(k) ** 3 * cosh(k)
+                        - 4 * delta_rho * k * rhog * sinh(k) * cosh(k) ** 3
+                        - 2 * k * rhog**2 * sinh(k) ** 3 * cosh(k)
+                        + 2 * k * rhog**2 * sinh(k) * cosh(k) ** 3
+                        + delta_rho**2 * sinh(k) ** 2 * cosh(k) ** 2
+                        + 4 * delta_rho * rhog * sinh(k) ** 4
+                        - 2 * delta_rho * rhog * sinh(k) ** 2 * cosh(k) ** 2
+                        + rhog**2 * sinh(k) ** 2 * cosh(k) ** 2
+                    )
+                )
+            )
+        )
+        - (
+            alphag * k * sinh(k * zprime) * cosh(k)
+            - (alphag * k * zprime * cosh(k * zprime) - alphag * sinh(k * zprime))
+            * sinh(k)
+        )
+        / (T0 * delta_rho * sinh(k) ** 2)
     ) * cos(k * x)
 
 

@@ -43,4 +43,3 @@ def report_convergence(file1, file2):
   print '    error_linf_2 = ', error_linf_2
 
   return [convergencetop_l2, convergencebottom_l2, convergence_linf]
-

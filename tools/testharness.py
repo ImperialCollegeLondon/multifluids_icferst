@@ -376,7 +376,9 @@ class TestHarness:
                 except Queue.Empty:
                     break
             for e, lines in exceptions:
-                tc = TestCase(e[1].name, "{}.{}".format(e[1].length, e[1].filename[:-4]))
+                tc = TestCase(
+                    e[1].name, "{}.{}".format(e[1].length, e[1].filename[:-4])
+                )
                 tc.add_failure_info("Failure", lines)
                 self.xml_parser.test_cases += [tc]
                 self.tests.remove(e)

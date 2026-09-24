@@ -155,7 +155,9 @@ def measure(fname):
     for p in Phases:
         arr = get_phase_array(data.GetPointData(), p, "PhaseVolumeFraction")
         if arr is None:
-            raise RuntimeError("{}::PhaseVolumeFraction not found in {}".format(p, fname))
+            raise RuntimeError(
+                "{}::PhaseVolumeFraction not found in {}".format(p, fname)
+            )
         S = vtk_np(arr).astype(np.float64).ravel()
         out[p] = math.fsum(
             np.asarray(vol * por * S[tconn].mean(axis=1), dtype=np.float64)
@@ -272,7 +274,11 @@ if imm_hist:
             )
             total_drop = (imm0 - imm_hist[-1]) / imm0
             collapsed = any(v < Imm_floor for v in imm_hist)
-            print("CO2 immobile fraction: first {:.6e} last {:.6e}".format(imm0, imm_hist[-1]))
+            print(
+                "CO2 immobile fraction: first {:.6e} last {:.6e}".format(
+                    imm0, imm_hist[-1]
+                )
+            )
             print(
                 "  worst per-event drop %.3e, total drop %.3e (tol %.2f)"
                 % (worst_event, total_drop, Imm_drop_max)

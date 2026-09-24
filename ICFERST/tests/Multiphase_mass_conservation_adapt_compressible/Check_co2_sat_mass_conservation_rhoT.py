@@ -160,7 +160,9 @@ def measure(fname):
     for p in Phases:
         arr = get_phase_array(data.GetPointData(), p, "PhaseVolumeFraction")
         if arr is None:
-            raise RuntimeError("{}::PhaseVolumeFraction not found in {}".format(p, fname))
+            raise RuntimeError(
+                "{}::PhaseVolumeFraction not found in {}".format(p, fname)
+            )
         S = vtk_np(arr).astype(np.float64).ravel()
         rS = rho_field(pts, p) * S
         out[p] = math.fsum(

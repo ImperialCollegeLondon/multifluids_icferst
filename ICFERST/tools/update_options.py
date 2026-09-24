@@ -18,7 +18,6 @@ from gi.repository import Gtk as gtk
 # import gtk.gdk
 
 
-
 def Help():
     debug.dprint(
         "Usage: update_options [OPTIONS] ... [FILES]\n"

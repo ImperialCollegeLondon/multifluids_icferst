@@ -140,7 +140,3 @@ print   L1_sum / len(Experimental_X)
 print   L2_sum**0.5 / len(Experimental_X)
 print L1_sum_shock_front / N_shock
 print L2_sum_shock_front**0.5 / N_shock
-
-
-
-

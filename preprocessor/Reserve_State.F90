@@ -174,4 +174,3 @@ contains
   end subroutine deallocate_reserve_state
 
 end module reserve_state_module
-

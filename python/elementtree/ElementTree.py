@@ -721,11 +721,15 @@ class ElementTree:
                     except TypeError:
                         _raise_serialization_error(v)
                     file.write(
-                        ' {}="{}"'.format(_encode(k, encoding), _escape_attrib(v, encoding))
+                        ' {}="{}"'.format(
+                            _encode(k, encoding), _escape_attrib(v, encoding)
+                        )
                     )
                 for k, v in xmlns_items:
                     file.write(
-                        ' {}="{}"'.format(_encode(k, encoding), _escape_attrib(v, encoding))
+                        ' {}="{}"'.format(
+                            _encode(k, encoding), _escape_attrib(v, encoding)
+                        )
                     )
             if node.text or len(node):
                 file.write(">")

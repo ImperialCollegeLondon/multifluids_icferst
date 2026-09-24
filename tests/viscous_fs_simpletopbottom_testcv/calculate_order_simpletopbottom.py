@@ -56,4 +56,3 @@ def report_convergence(file1, file2):
   print '    errormaxfs_l2_2 = ', errormaxfs_l2_2, '(', quad2[1], ')'
 
   return [convergencetop_l2, convergencebottom_l2, convergence_linf]
-

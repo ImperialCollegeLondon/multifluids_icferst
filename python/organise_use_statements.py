@@ -136,9 +136,7 @@ def print_misplaced(data, namelist, silent, args):
             if data[nm]["filename"]:
                 high_filenames.append(data[nm]["filename"])
 
-    clean_high_filenames = {
-        os.path.relpath(filename) for filename in high_filenames
-    }
+    clean_high_filenames = {os.path.relpath(filename) for filename in high_filenames}
 
     for filename in clean_high_filenames:
         if os.path.basename(filename) in SKIP_LIST or filename not in namelist:
