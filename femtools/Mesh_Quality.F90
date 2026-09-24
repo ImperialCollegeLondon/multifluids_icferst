@@ -48,7 +48,10 @@ module mesh_quality
 
   public :: get_mesh_quality
 
-
+  ! VTK mesh quality measure constants
+  ! Prior to VTK version 9.2, these constants were defined as integer parameters.
+  ! In VTK version 9.2 and later, these constants are defined as part of the vtkMeshQuality::QualityMeasureTypes enum.
+  ! These values should match the corresponding VTK constants for mesh quality measures.
   integer, public :: VTK_QUALITY_EDGE_RATIO = 0, &
        VTK_QUALITY_ASPECT_RATIO = 1, &
        VTK_QUALITY_RADIUS_RATIO = 2, &
@@ -56,7 +59,7 @@ module mesh_quality
        VTK_QUALITY_MED_ASPECT_FROBENIUS = 4, &
        VTK_QUALITY_MAX_ASPECT_FROBENIUS = 5, &
        VTK_QUALITY_MIN_ANGLE = 6, &
-       VTK_QUALITY_COLLAPSE_RATIO = 1, &
+       VTK_QUALITY_COLLAPSE_RATIO = 7, &
        VTK_QUALITY_MAX_ANGLE = 8, &
        VTK_QUALITY_CONDITION = 9, &
        VTK_QUALITY_SCALED_JACOBIAN = 10, &

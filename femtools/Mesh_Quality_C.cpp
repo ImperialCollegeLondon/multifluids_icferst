@@ -25,6 +25,7 @@
 //    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 //    USA
 
+#include "vtkVersionMacros.h"
 #include "vtkCell.h"
 #include "vtkDataArray.h"
 #include "vtkPoints.h"
@@ -32,6 +33,12 @@
 #include "vtkDataSet.h"
 #include "vtkUnstructuredGrid.h"
 #include "vtkMeshQuality.h"
+
+// VTK_VERSION_CHECK/VTK_VERSION_NUMBER are absent before VTK 8.90, so build our own.
+#ifndef VTK_VERSION_CHECK
+#define VTK_VERSION_CHECK(major, minor, build) (10000000000ULL*(major) + 100000000ULL*(minor) + (build))
+#define VTK_VERSION_NUMBER VTK_VERSION_CHECK(VTK_MAJOR_VERSION, VTK_MINOR_VERSION, VTK_BUILD_VERSION)
+#endif
 
 #include <stdio.h>
 
@@ -72,15 +79,19 @@ void mesh_quality_c(int* dim, int* n_nodes, int* n_elements, int* connectivity_l
 
   vtkMeshQuality* filter = vtkMeshQuality::New();
 
-#if VTK_MAJOR_VERSION <= 5
-  filter->SetInput(ugrid);
-#else
   filter->SetInputData(ugrid);
+
+#if VTK_VERSION_NUMBER >= VTK_VERSION_CHECK(9, 2, 0)
+  const int vtk_quality_area = static_cast<int>(vtkMeshQuality::QualityMeasureTypes::AREA);
+  const int vtk_quality_volume = static_cast<int>(vtkMeshQuality::QualityMeasureTypes::VOLUME);
+#else
+  const int vtk_quality_area = VTK_QUALITY_AREA;
+  const int vtk_quality_volume = VTK_QUALITY_VOLUME;
 #endif
 
   filter->SetTriangleQualityMeasure(*measure);
-  if (*measure == VTK_QUALITY_AREA) {
-    filter->SetTetQualityMeasure(VTK_QUALITY_VOLUME);
+  if (*measure == vtk_quality_area) {
+    filter->SetTetQualityMeasure(vtk_quality_volume);
   } else {
     filter->SetTetQualityMeasure(*measure);
   }
