@@ -51,48 +51,48 @@ $
 $
 $ Node cards
 $
-GRID    40      0       50.     50.     0.      
+GRID    40      0       50.     50.     0.
 GRID    851     0       50.     50.     -10.9575
 GRID    852     0       50.     50.     -24.9999
 GRID    853     0       50.     50.     -39.0398
-GRID    39      0       50.     50.     -50.    
+GRID    39      0       50.     50.     -50.
 GRID    854     0       50.     50.     -62.3097
 GRID    855     0       50.     50.     -78.6063
 GRID    856     0       50.     50.     -99.9999
 GRID    857     0       50.     50.     -121.382
 GRID    858     0       50.     50.     -137.679
-GRID    14      0       50.     50.     -150.   
+GRID    14      0       50.     50.     -150.
 $
 $ Element cards
 $
 $
 $ Name: well01_trajectory
 $
-CROD    1       1007    40      851     
-CROD    2       1007    851     852     
-CROD    3       1007    852     853     
-CROD    4       1007    853     39      
-CROD    5       1007    39      854     
-CROD    6       1007    854     855     
-CROD    7       1007    855     856     
-CROD    8       1007    856     857     
-CROD    9       1007    857     858     
-CROD    10      1007    858     14      
+CROD    1       1007    40      851
+CROD    2       1007    851     852
+CROD    3       1007    852     853
+CROD    4       1007    853     39
+CROD    5       1007    39      854
+CROD    6       1007    854     855
+CROD    7       1007    855     856
+CROD    8       1007    856     857
+CROD    9       1007    857     858
+CROD    10      1007    858     14
 $
 $ Property cards
 $
 $
 $ Name: well01_trajectory
 $
-PROD    1007    100     0       0       0       0       
+PROD    1007    100     0       0       0       0
 $
 $ Material cards
 $
 $
 $ Name: Default-Steel
 $
-MAT1*   100             206800          80155.039       0.29            
-*       7e-06           1.2e-05         
+MAT1*   100             206800          80155.039       0.29
+*       7e-06           1.2e-05
 $
 $ Restraint cards
 $

@@ -1,12 +1,14 @@
 ## This Python script searches through the current directory, loads the maximum Tephra::Velocity values
 ## from the .stat file, and then prints out the results in a .pdf file.
 
-from fluidity_tools import stat_parser
 import matplotlib
+from fluidity_tools import stat_parser
+
 matplotlib.use('pdf')
-import pylab
-import numpy
 import os
+
+import numpy
+import pylab
 
 # List the contents of the current directory
 dir_list = os.listdir(".")
@@ -24,8 +26,8 @@ if("tephra_settling.stat" in dir_list):
    pylab.legend(loc=2)
 
    pylab.savefig('tephra_velocity.pdf')
-   
+
    print "Data plotted and saved in tephra_velocity.pdf"
 else:
    print "No .stat file found - cannot plot data."
-   
+

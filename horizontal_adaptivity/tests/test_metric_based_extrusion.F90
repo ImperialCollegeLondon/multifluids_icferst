@@ -35,7 +35,7 @@ subroutine test_metric_based_extrusion
   call set(old_z_mesh, z_mesh)
 
   call extrude(z_mesh, "/geometry/mesh::ExtrudedMesh", old_mesh)
-    
+
   ! OK. So now old_mesh is just a square in 2d
   ! with 4 nodes, we hope. Let's set the metric.
   call allocate(metric, old_mesh%mesh, "Metric")
@@ -51,7 +51,7 @@ subroutine test_metric_based_extrusion
 
   fail = (ele_count(adapted_mesh) /= 3)
   call report_test("[adapted mesh ele count]", fail, .false., "Should be 3")
-  
+
 end subroutine test_metric_based_extrusion
 
 function metric_func(pos)

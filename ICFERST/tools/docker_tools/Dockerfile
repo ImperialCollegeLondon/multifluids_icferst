@@ -56,6 +56,3 @@ RUN make install
 # Change to the icferst user and home directory
 USER icferst
 WORKDIR /home/icferst
-
-
-

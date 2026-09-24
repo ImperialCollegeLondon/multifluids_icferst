@@ -41,14 +41,14 @@ using namespace std;
 static int packing_ncalls = 0;
 
 packing::packing(const MI5& intelligance_report, const Mesh& mesh){
-  
+
   MPI_Comm_rank(MPI_COMM_WORLD, &MyRank);
   MPI_Comm_size(MPI_COMM_WORLD, &NProcs);
   __nnodes = intelligance_report.nnodes();
   __nelems = intelligance_report.nelems();
-  
+
   SendRecvBuffer.resize( NProcs );
-  
+
   size_t max_nodepack_size     = mesh.max_nodepack_size();
   size_t max_elempack_size     = mesh.max_elementpack_size();
   size_t max_pressurepack_size = mesh.max_pressurepack_size();
@@ -71,20 +71,20 @@ packing::packing(const MI5& intelligance_report, const Mesh& mesh){
 
     sum_nodes2send += intelligance_report.nodes2send[p].size();
     sum_elems2send += intelligance_report.elems2send[p].size();
-    
+
     nbytes = _space_for_ints +
-      (intelligance_report.nodes2send[p].size())*max_nodepack_size + 
-      (intelligance_report.pnodes2send[p].size())*max_pressurepack_size + 
+      (intelligance_report.nodes2send[p].size())*max_nodepack_size +
+      (intelligance_report.pnodes2send[p].size())*max_pressurepack_size +
       (intelligance_report.elems2send[p].size())*max_elempack_size;
 
     // For good measure
     nbytes = (unsigned)(nbytes*1.1);
-    
+
     ECHO("Requesting "<<nbytes<<" bytes for send buffer "<<p);
-    
+
     SendRecvBuffer[p].resize(nbytes);
   }
-  
+
 //  cout<<"migrating"<<packing_ncalls<<", "
 //      <<max_nodes2send<<" "<<max_elems2send<<" "
 //      <<sum_nodes2send<<" "<<sum_elems2send<<endl;
@@ -102,7 +102,7 @@ packing::~packing(){
 
 void packing::pack(const MI5& intelligance_report, Mesh& mesh){
   char *buff;
-  
+
   ECHO("Starting to pack");
 
   //
@@ -114,11 +114,11 @@ void packing::pack(const MI5& intelligance_report, Mesh& mesh){
     int cnt = intelligance_report.nodes2send[p].size();
 
     ECHO("Packing "<<cnt<<" nodes for "<<p);
-    
+
     MPI_Pack(&cnt, 1, MPI_INT, buff, len, &offsets[p], MPI_COMM_WORLD);
   }
   pack_nodes(intelligance_report, mesh);
-  
+
   //
   // Pack element data
   //
@@ -128,11 +128,11 @@ void packing::pack(const MI5& intelligance_report, Mesh& mesh){
     int cnt = intelligance_report.elems2send[p].size();
 
     ECHO("Packing "<<cnt<<" elements for "<<p);
-    
+
     MPI_Pack(&cnt, 1, MPI_INT, buff, len, &offsets[p], MPI_COMM_WORLD);
   }
   pack_elems(intelligance_report, mesh);
-  
+
   //
   // Pack pressure-node data
   //
@@ -140,14 +140,14 @@ void packing::pack(const MI5& intelligance_report, Mesh& mesh){
     int len = SendRecvBuffer[p].size();
     buff    = &(SendRecvBuffer[p][0]);
     int cnt = intelligance_report.pnodes2send[p].size();
-    
+
     ECHO("Pressure "<<cnt<<" nodes for "<<p<<" buff len="<<len<<", offsets[p]="<<offsets[p]);
-    
+
     MPI_Pack(&cnt, 1, MPI_INT, buff, len, &offsets[p], MPI_COMM_WORLD);
   }
   pack_pnodes(intelligance_report, mesh);
-  
-  // 
+
+  //
   // We might possibly resize the send buffers here but I still don't
   // know if this is a good idea or not.
   //
@@ -162,19 +162,19 @@ void packing::pack(const MI5& intelligance_report, Mesh& mesh){
 
 void packing::pack_nodes(const MI5& intelligance_report, Mesh& mesh){
   char *buffer;
-  
+
   for(unsigned p=0; p<NProcs; p++){
     ECHO("Node pack for "<< p);
 
     unsigned cnt = intelligance_report.nodes2send[p].size();
     for(unsigned n=0; n<cnt; n++){
-      
+
       int node = intelligance_report.nodes2send[p][n];
-      int bsize = SendRecvBuffer[p].size();      
+      int bsize = SendRecvBuffer[p].size();
       buffer    = &(SendRecvBuffer[p][0]);
 
       Node __node__ = mesh.get_node(node);
-      
+
       __node__.pack(buffer, bsize, offsets[p]);
     }
   }
@@ -182,19 +182,19 @@ void packing::pack_nodes(const MI5& intelligance_report, Mesh& mesh){
 
 void packing::pack_pnodes(const MI5& intelligance_report, Mesh& mesh){
   char *buffer;
-  
+
   for(unsigned p=0; p<NProcs; p++){
     ECHO("Pressure-node pack for "<< p);
-    
+
     unsigned cnt = intelligance_report.pnodes2send[p].size();
     for(unsigned n=0; n<cnt; n++){
-      
+
       int node = intelligance_report.pnodes2send[p][n];
-      int bsize = SendRecvBuffer[p].size();      
+      int bsize = SendRecvBuffer[p].size();
       buffer    = &(SendRecvBuffer[p][0]);
-      
+
       const PressureNode& __node__ = mesh.get_pnode(node);
-      
+
       __node__.pack(buffer, bsize, offsets[p]);
     }
   }
@@ -204,14 +204,14 @@ void packing::pack_elems(const MI5& intelligance_report, Mesh& mesh){
   char *buffer;
 
   for(unsigned p=0; p<NProcs; p++){
-    
+
     // Set up the buffer.
-    int bsize = SendRecvBuffer[p].size();      
+    int bsize = SendRecvBuffer[p].size();
     buffer    = &(SendRecvBuffer[p][0]);
-    
+
     for(unsigned e=0; e<intelligance_report.elems2send[p].size(); e++){
-      
-      int elem = intelligance_report.elems2send[p][e];      
+
+      int elem = intelligance_report.elems2send[p][e];
 
       Element __elem__ = mesh.get_element(elem);
       __elem__.pack(buffer, bsize, offsets[p]);
@@ -225,10 +225,10 @@ void packing::unpack(MI5& intelligance_report, Mesh& mesh){
   // Reset offsets
   for(unsigned p=0; p<NProcs; p++)
     offsets[p] = 0;
-  
+
   // Unpack node data.
   unpack_nodes(intelligance_report, mesh);
-  
+
   // Unpack element data
   unpack_elems(intelligance_report, mesh);
 
@@ -239,11 +239,11 @@ void packing::unpack(MI5& intelligance_report, Mesh& mesh){
 
 void packing::unpack_nodes( MI5& intelligance_report, Mesh& mesh){
   char *buffer;
-  
+
   ECHO("Unpacking nodes!");
-  
+
   for(unsigned p=0; p<NProcs; p++){
-    if( p == MyRank) 
+    if( p == MyRank)
       continue;
 
     int ncnt;
@@ -252,16 +252,16 @@ void packing::unpack_nodes( MI5& intelligance_report, Mesh& mesh){
 
     // How many new nodes.
     MPI_Unpack(buffer, nbytes, &offsets[p], &ncnt, 1, MPI_INT, MPI_COMM_WORLD);
-    
+
     ECHO("Unpacking " << ncnt << " nodes from " << p);
-    
+
     // --
     for(unsigned n = 0; n<(unsigned)ncnt; n++){
       Node node;
-      
+
       // Unpack node...
       node.unpack(buffer, nbytes, offsets[p]);
-     
+
       ECHO("Unpacking " << ncnt);
       CHECK(node);
 
@@ -278,7 +278,7 @@ void packing::unpack_nodes( MI5& intelligance_report, Mesh& mesh){
 
 void packing::unpack_elems(MI5& intelligance_report, Mesh& mesh){
   char *buffer;
-  
+
   for(unsigned p=0; p<NProcs; p++){
     if(p==MyRank)
       continue;
@@ -287,7 +287,7 @@ void packing::unpack_elems(MI5& intelligance_report, Mesh& mesh){
 
     int nbytes = SendRecvBuffer[p].size();
     buffer     = &(SendRecvBuffer[p][0]);
-    
+
     // How many new elements.
     MPI_Unpack(buffer, nbytes, &offsets[p], &ecnt, 1, MPI_INT, MPI_COMM_WORLD);
 
@@ -295,13 +295,13 @@ void packing::unpack_elems(MI5& intelligance_report, Mesh& mesh){
 
     for(int elem=0; elem<ecnt; elem++){
       Element element;
-      
-      // Unpack element...      
+
+      // Unpack element...
       element.unpack(buffer, nbytes, offsets[p]);
 
       ECHO("Unpacking " << ecnt);
       CHECK(element);
-  
+
       mesh.add_element(element);
     }
   }
@@ -309,30 +309,30 @@ void packing::unpack_elems(MI5& intelligance_report, Mesh& mesh){
 
 void packing::unpack_pnodes( MI5& intelligance_report, Mesh& mesh){
   ECHO("Unpacking pressure nodes...");
-  
+
   for(unsigned p=0; p<NProcs; p++){
-    if( p == MyRank) 
+    if( p == MyRank)
       continue;
-    
+
     int ncnt;
     int nbytes = SendRecvBuffer[p].size();
     char *buffer     = &(SendRecvBuffer[p][0]);
-    
+
     // How many new pressure nodes.
     MPI_Unpack(buffer, nbytes, &offsets[p], &ncnt, 1, MPI_INT, MPI_COMM_WORLD);
-    
+
     ECHO("Unpacking " << ncnt << " pressure nodes from " << p);
-    
+
     // --
     for(unsigned n = 0; n<(unsigned)ncnt; n++){
       PressureNode node;
-      
+
       // Unpack node...
       node.unpack(buffer, nbytes, offsets[p]);
-      
+
       ECHO("Unpacking " << ncnt);
       CHECK(node);
-      
+
       mesh.add_node( node );
     }
   }
@@ -341,11 +341,11 @@ void packing::unpack_pnodes( MI5& intelligance_report, Mesh& mesh){
 }
 
 void packing::send(){
-  
+
   ECHO("Sending submeshes.");
   allSendRecv(SendRecvBuffer);
   ECHO("Received submeshes.");
-  
+
   return;
 }
 
@@ -353,8 +353,3 @@ void packing::clear(){
   offsets.clear();
   SendRecvBuffer.clear();
 }
-
-
-
-
-

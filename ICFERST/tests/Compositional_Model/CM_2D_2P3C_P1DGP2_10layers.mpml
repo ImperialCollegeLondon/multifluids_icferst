@@ -504,7 +504,7 @@ xref=[] ; yref=[]
 for line in f:
  d = [ float(i) for i in line.split() ]
  xref.append(d[0]) ; yref.append(d[1])
- 
+
 for i in range( field.node_count ):
  X = Xp.node_val(i) ; x = X[0]
  for j in range( len( xref ) - 1 ):
@@ -927,7 +927,7 @@ xref=[] ; yref=[]
 for line in f:
  d = [ float(i) for i in line.split() ]
  xref.append(d[0]) ; yref.append(d[1])
- 
+
 for i in range( field.node_count ):
  X = Xp.node_val(i) ; x = X[0]
  for j in range( len( xref ) - 1 ):
@@ -962,7 +962,7 @@ xref=[] ; yref=[]
 for line in f:
  d = [ float(i) for i in line.split() ]
  xref.append(d[0]) ; yref.append(d[1])
- 
+
 for i in range( field.node_count ):
  X = Xp.node_val(i) ; x = X[0]
  for j in range( len( xref ) - 1 ):
@@ -997,7 +997,7 @@ xref=[] ; yref=[]
 for line in f:
  d = [ float(i) for i in line.split() ]
  xref.append(d[0]) ; yref.append(d[1])
- 
+
 for i in range( field.node_count ):
  X = Xp.node_val(i) ; x = X[0]
  for j in range( len( xref ) - 1 ):

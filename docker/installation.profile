@@ -28,4 +28,3 @@ tlpdbopt_sys_bin /usr/local/bin
 tlpdbopt_sys_info /usr/local/share/info
 tlpdbopt_sys_man /usr/local/share/man
 tlpdbopt_w32_multi_user 1
-

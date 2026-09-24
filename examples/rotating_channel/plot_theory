@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-import pylab
 import channel_tools
+import pylab
 
 channel_tools.plot_theory()
 

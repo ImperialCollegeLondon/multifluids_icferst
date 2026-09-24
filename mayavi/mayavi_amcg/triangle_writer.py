@@ -1,18 +1,19 @@
 # Author: Daryl Harrison
 
 # Enthought library imports.
+# Local imports.
+from os import path
+
 from enthought.traits.api import HasTraits, Instance, String
 from enthought.tvtk.api import tvtk
 
-# Local imports.
-from os import path
 
 ######################################################################
 # `TriangleWriter` class
 ######################################################################
 class TriangleWriter(HasTraits):
     """
-    
+
     < Description here >
     """
 

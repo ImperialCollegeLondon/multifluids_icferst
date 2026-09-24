@@ -158,4 +158,3 @@ assert(d_final_change &lt; 1.E-10)
   <warn_tests>
   </warn_tests>
 </testproblem>
-

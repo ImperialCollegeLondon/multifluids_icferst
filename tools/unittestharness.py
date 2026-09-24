@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
+import glob
 import os
 import os.path
-import glob
+
 
 class UnitTest:
     def __init__(self, exe):
@@ -12,42 +13,48 @@ class UnitTest:
         self.cwd = os.getcwd()
 
     def log(self, msg):
-        if self.verbose and msg != '':
-            print("    %s: %s" % (self.exe.split('/')[-1], msg))
+        if self.verbose and msg != "":
+            print("    {}: {}".format(self.exe.split("/")[-1], msg))
 
     def run(self):
         os.chdir(self.dir)
-#        self.log("chdir " + self.dir)
+        #        self.log("chdir " + self.dir)
         self.log("Running")
         f = os.popen(self.exe)
         self.output = f.read()
         os.chdir(self.cwd)
-        
+
         exitStatus = f.close()
         if exitStatus is None:
-          return 0
+            return 0
         else:
-          return exitStatus
+            return exitStatus
 
     def parse(self):
         passcount = 0
         warncount = 0
         failcount = 0
 
-        for line in self.output.split('\n'):
+        for line in self.output.split("\n"):
             line = line.lstrip()
             self.log(line)
-            if line.startswith("Pass"): passcount = passcount + 1
-            if line.startswith("Warn"): warncount = warncount + 1
-            if line.startswith("Fail"): failcount = failcount + 1
+            if line.startswith("Pass"):
+                passcount = passcount + 1
+            if line.startswith("Warn"):
+                warncount = warncount + 1
+            if line.startswith("Fail"):
+                failcount = failcount + 1
 
         return (passcount, warncount, failcount)
+
 
 class UnitTestHarness:
     def __init__(self, dir):
         self.tests = []
-        if dir[-1] == '/': dir = dir + "*"
-        else: dir = dir + "/*"
+        if dir[-1] == "/":
+            dir = dir + "*"
+        else:
+            dir = dir + "/*"
 
         files = glob.glob(dir)
         for file in files:
@@ -64,25 +71,25 @@ class UnitTestHarness:
 
         for test in self.tests:
             exitStatus = test.run()
-            
-            (P, W, F) = test.parse()
+
+            P, W, F = test.parse()
 
             if (P, W, F) == (0, 0, 0):
-              print("    WARNING: no output from test")
-              warncount += 1
-              warntests.append(test.exe)
+                print("    WARNING: no output from test")
+                warncount += 1
+                warntests.append(test.exe)
 
             if W > 0:
-              warntests.append(test.exe)
+                warntests.append(test.exe)
 
             if F > 0:
-              failtests.append(test.exe)
-              
+                failtests.append(test.exe)
+
             if not exitStatus == 0:
-              print("    ERROR: non-zero exit code from test")
-              failcount += 1
-              if not test.exe in failtests:
-                  failtests.append(test.exe)
+                print("    ERROR: non-zero exit code from test")
+                failcount += 1
+                if not test.exe in failtests:
+                    failtests.append(test.exe)
 
             passcount += P
             warncount += W
@@ -99,22 +106,36 @@ class UnitTestHarness:
         else:
             print("    Failures: %d; tests = %s" % (failcount, failtests))
 
+
 if __name__ == "__main__":
     import sys
 
     try:
-        os.environ["PYTHONPATH"] = os.path.abspath(os.path.join(os.getcwd(), "python")) + ":" + os.environ["PYTHONPATH"]
+        os.environ["PYTHONPATH"] = (
+            os.path.abspath(os.path.join(os.getcwd(), "python"))
+            + ":"
+            + os.environ["PYTHONPATH"]
+        )
     except KeyError:
         os.putenv("PYTHONPATH", os.path.abspath(os.path.join(os.getcwd(), "python")))
 
     try:
-        os.environ["LD_LIBRARY_PATH"] = os.getcwd() + os.sep + sys.argv[1] + os.sep + "lib:" + os.environ["LD_LIBRARY_PATH"]
+        os.environ["LD_LIBRARY_PATH"] = (
+            os.getcwd()
+            + os.sep
+            + sys.argv[1]
+            + os.sep
+            + "lib:"
+            + os.environ["LD_LIBRARY_PATH"]
+        )
     except KeyError:
-        os.putenv("LD_LIBRARY_PATH", os.getcwd() + os.sep + sys.argv[1] + os.sep + "lib")
+        os.putenv(
+            "LD_LIBRARY_PATH", os.getcwd() + os.sep + sys.argv[1] + os.sep + "lib"
+        )
 
     if "--electricfence" in sys.argv:
-      os.putenv("LD_PRELOAD", "/usr/lib/libefence.so.0.0")
-      #os.putenv("EF_DISABLE_BANNER", "1")
+        os.putenv("LD_PRELOAD", "/usr/lib/libefence.so.0.0")
+        # os.putenv("EF_DISABLE_BANNER", "1")
 
     TestHarness = UnitTestHarness(sys.argv[-1])
     TestHarness.run()

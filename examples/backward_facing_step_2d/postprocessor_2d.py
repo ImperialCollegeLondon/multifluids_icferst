@@ -1,19 +1,21 @@
 #!/usr/bin/env python
 
 import glob
-import sys
 import os
-import vtktools
+import re
+import sys
+
 import numpy
 import pylab
-import re
+import vtktools
 from matplotlib import rc
+
 
 def get_filelist(sample, start):
 
     def key(s):
         return int(s.split('_')[-1].split('.')[0])
-   
+
     list = glob.glob("*vtu")
     list = [l for l in list if 'check' not in l]
     vtu_nos = [float(s.split('_')[-1].split('.')[0]) for s in list]
@@ -48,7 +50,7 @@ def tryint(s):
         return int(s)
     except:
         return s
-    
+
 def alphanum_key(s):
     """ Turn a string into a list of string and number chunks.
         "z23a" -> ["z", 23, "a"]
@@ -354,5 +356,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-
-

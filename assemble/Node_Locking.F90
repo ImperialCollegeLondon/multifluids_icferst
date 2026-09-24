@@ -84,7 +84,7 @@ contains
       end if
     end if
 
-    !We can pass down a list of nodes to be locked 
+    !We can pass down a list of nodes to be locked
     if (present(nodes_to_lock)) is_node_locked = is_node_locked + nodes_to_lock
 
     allocate(locked_nodes(count(is_node_locked /= 0)))

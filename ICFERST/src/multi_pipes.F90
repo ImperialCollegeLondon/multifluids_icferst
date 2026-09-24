@@ -909,10 +909,10 @@ contains
                                 ! Form the 1D diffusion : k_eff * face_area / segment_length
                                 DIFF_COEF_1D = DIFF_K_GI * suf_DETWEI(bgi) / DX
 
-                                ! Assemble into matrix ... same as for the reservoir (cv-adv-dif)        
+                                ! Assemble into matrix ... same as for the reservoir (cv-adv-dif)
                                 LOC_MAT_II(iphase) = LOC_MAT_II(iphase) + DIFF_COEF_1D
                                 LOC_MAT_IJ(iphase) = LOC_MAT_IJ(iphase) - DIFF_COEF_1D
-                                ! Ruixiao: We shouldn't put anything to the rhs since well model is 
+                                ! Ruixiao: We shouldn't put anything to the rhs since well model is
                                 !          fullly implicit i.e. no theta
                                 !LOC_CV_RHS_I(iphase) = LOC_CV_RHS_I(iphase) &
                                 !    + DIFF_COEF_1D * ( T_CV_NODJ(iphase) - T_CV_NODI(iphase) )
@@ -1581,7 +1581,7 @@ contains
               if (has_conductivity_pipes) then
                   !Apply only where wells are closed, this is a good approximation
                   !Gamma should be the same for at least the well phases, so we check nphase
-                  !Now thermal conductivity coupling phase1 and phase2 appears whatever screen is open or close to flow 
+                  !Now thermal conductivity coupling phase1 and phase2 appears whatever screen is open or close to flow
                   !if (pipes_aux%GAMMA_PRES_ABS( Mdims%nphase, Mdims%nphase, CV_NODI )<1d-8) then
                       count = min(size(conductivity_pipes%val),cv_nodi)
                       count2= min(size(well_thickness%val),cv_nodi)

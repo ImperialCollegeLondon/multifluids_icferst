@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
-from numpy import arange,concatenate,array,argsort
+import math
 import os
 import sys
-import vtktools
-import math
-from pylab import *
-from matplotlib.ticker import MaxNLocator
 
+import vtktools
+from matplotlib.ticker import MaxNLocator
+from numpy import arange, argsort, array, concatenate
+from pylab import *
 
 filelist = sys.argv[1:]
 
@@ -35,10 +35,10 @@ for file in filelist:
    temp = u.GetScalarField("Temperature")
    vert_diff = u.GetScalarField("GLSVerticalDiffusivity")
    vert_visc = u.GetScalarField("GLSVerticalViscosity")
-   uvw = u.GetVectorField("Velocity")   
+   uvw = u.GetVectorField("Velocity")
    kk = u.GetScalarField('GLSTurbulentKineticEnergy')
    pos = u.GetLocations()
-   
+
 
    xyzkk = []
    for i in range(0,len(kk)):
@@ -48,8 +48,8 @@ for file in filelist:
    xyzkkarr = vtktools.arr(xyzkk)
    III = argsort(xyzkkarr[:,1])
    xyzkkarrsort = xyzkkarr[III,:]
-   
-   
+
+
 
 
    zzz = -xyzkkarrsort[:,1]
@@ -58,9 +58,9 @@ for file in filelist:
    uuu = xyzkkarrsort[:,5]
    diff = xyzkkarrsort[:,6]
    visc = xyzkkarrsort[:,7]
-   
+
    fig = figure()
-   
+
    ax = fig.add_subplot(221)
    ax.plot(ttt*10*2.0e-4,zzz,'b')
    ax.xaxis.set_major_locator(MaxNLocator(5))

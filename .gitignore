@@ -39,4 +39,3 @@ version.inc
 diagnostics/Diagnostic_Fields_New.F90
 libspud/diamond/diamond/plugins.py
 libspud/diamond/diamond/preprocess.py
-

@@ -1,12 +1,15 @@
 #!/usr/bin/env python
 
-from fluidity_tools import stat_parser
-import matplotlib.pyplot as plt
-from matplotlib.pyplot import figure, show
+import csv
 import getopt
 import sys
-import csv
+
+import matplotlib.pyplot as plt
+from fluidity_tools import stat_parser
+from matplotlib.pyplot import figure, show
+
 import tools
+
 
 def usage():
   print "plotgages.py --file=filename.detectors"
@@ -27,7 +30,7 @@ def main(argv=None):
     print "Getopterror :("
     usage()
     sys.exit(2)
-  
+
   filename=''
   for opt, arg in opts:
     if opt == '--file':
@@ -48,7 +51,7 @@ def main(argv=None):
   timesteps=s["ElapsedTime"]["value"]
   timestep=timesteps[1]-timesteps[0]
   print "Found ", len(timesteps), " timesteps with dt=", timestep, " starting at t0=", timesteps[0]-timestep
-  
+
   fs=s["water"]["FreeSurface"]
   print "Found ", len(fs), " free surface detectors."
 
@@ -64,7 +67,7 @@ def main(argv=None):
     mea_gauge1.append(gauges[0])
     mea_gauge2.append(gauges[1])
     mea_gauge3.append(gauges[2])
- 
+
   plt.ion()  # switch in interactive mode
   fig1= figure()
 #  fig2 = figure()
@@ -74,7 +77,7 @@ def main(argv=None):
   subplt2 = fig1.add_subplot(312, title='Gauge 2', xlabel='Time [s]', ylabel='Free surface [cm]')
   subplt3 = fig1.add_subplot(313, title='Gauge 3', xlabel='Time [s]', ylabel='Free surface [cm]')
 
-   
+
   subplt1.plot(timesteps, s["water"]["FreeSurface"]["gauge1"]+offset, label='ICOM') # plot gauge1 detector data
   subplt1.plot(timesteps, mea_gauge1, label='Experimental data') # plot gauge1 measurement data
 
@@ -92,6 +95,6 @@ def main(argv=None):
 #    gauge1.append(s["water"]["FreeSurface"]["gauge1"])
 
   raw_input("Press Enter to exit")
-   
+
 if __name__ == "__main__":
    main()

@@ -1,5 +1,5 @@
 !    Copyright (C) 2006 Imperial College London and others.
-!    
+!
 !    Please see the AUTHORS file in the main source directory for a full list
 !    of copyright holders.
 !
@@ -9,7 +9,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!    
+!
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation,
@@ -35,9 +35,9 @@ module detector_tools
   use embed_python, only: set_detectors_from_python
   use integer_hash_table_module
   use fields
-  
+
   implicit none
-  
+
   private
 
   public :: insert, allocate, deallocate, copy, move, move_all, remove, &
@@ -91,42 +91,42 @@ module detector_tools
      module procedure detector_value_scalar, detector_value_vector
   end interface
 
-contains 
+contains
 
   subroutine detector_allocate_from_params(new_detector, ndims, local_coord_count)
     type(detector_type),  pointer, intent(out) :: new_detector
     integer, intent(in) :: ndims, local_coord_count
-      
+
     assert(.not. associated(new_detector))
-      
+
     ! allocate the memory for the new detector
     if (.not. associated(new_detector)) then
        allocate(new_detector)
     end if
     allocate(new_detector%position(ndims))
     allocate(new_detector%local_coords(local_coord_count))
-      
+
     assert(associated(new_detector))
-      
+
   end subroutine detector_allocate_from_params
-    
+
   subroutine detector_allocate_from_detector(new_detector, old_detector)
     type(detector_type), pointer, intent(in) :: old_detector
     type(detector_type),  pointer, intent(out) :: new_detector
-      
+
     integer :: ndims, local_coord_count
-      
+
     ndims = size(old_detector%position)
     local_coord_count = size(old_detector%local_coords)
-      
+
     ! allocate the memory for the new detector
     call detector_allocate_from_params(new_detector, ndims, local_coord_count)
-      
+
   end subroutine detector_allocate_from_detector
-    
+
   subroutine detector_deallocate(detector)
     type(detector_type), pointer :: detector
-      
+
     if(associated(detector)) then
        if(allocated(detector%local_coords)) then
           deallocate(detector%local_coords)
@@ -169,7 +169,7 @@ contains
 
     ! Deallocate move_parameters
     parameters => detector_list%move_parameters
-    if (associated(parameters)) then 
+    if (associated(parameters)) then
        if (allocated(parameters%timestep_weights)) then
           deallocate(parameters%timestep_weights)
        end if
@@ -179,20 +179,20 @@ contains
     end if
 
   end subroutine detector_list_deallocate
-    
+
   subroutine detector_copy(new_detector, old_detector)
     ! Copies all the information from the old detector to
     ! the new detector
     type(detector_type), pointer, intent(in) :: old_detector
     type(detector_type),  pointer :: new_detector
-      
+
     new_detector%position = old_detector%position
     new_detector%element = old_detector%element
     new_detector%id_number = old_detector%id_number
     new_detector%type = old_detector%type
     new_detector%name = old_detector%name
     new_detector%local_coords=old_detector%local_coords
-      
+
   end subroutine detector_copy
 
   subroutine insert_into_detector_list(detector, current_list)
@@ -201,8 +201,8 @@ contains
     type(detector_type), pointer :: detector
 
     if (current_list%length == 0) then
-       current_list%first => detector 
-       current_list%last => detector 
+       current_list%first => detector
+       current_list%last => detector
        current_list%first%previous => null()
        current_list%last%next => null()
        current_list%length = 1
@@ -217,7 +217,7 @@ contains
   end subroutine insert_into_detector_list
 
   subroutine remove_detector_from_list(detector, detector_list)
-    !! Removes the detector from the list, 
+    !! Removes the detector from the list,
     !! but does not deallocated it
     type(detector_linked_list), intent(inout) :: detector_list
     type(detector_type), pointer :: detector
@@ -244,13 +244,13 @@ contains
   end subroutine remove_detector_from_list
 
   subroutine delete_detector(detector, detector_list)
-    ! Removes and deallocates the given detector 
+    ! Removes and deallocates the given detector
     ! and outputs the next detector in the list as detector
     type(detector_type), pointer :: detector
     type(detector_linked_list), intent(inout), optional :: detector_list
-    
+
     type(detector_type), pointer :: temp_detector
-    
+
     if (present(detector_list)) then
        temp_detector => detector
        detector => detector%next
@@ -259,7 +259,7 @@ contains
     else
        call deallocate(detector)
     end if
-      
+
   end subroutine delete_detector
 
   subroutine move_detector(detector, from_list, to_list)
@@ -269,7 +269,7 @@ contains
     type(detector_linked_list), intent(inout) :: to_list
 
     call remove(detector, from_list)
-    call insert(detector, to_list)  
+    call insert(detector, to_list)
 
   end subroutine move_detector
 
@@ -281,19 +281,19 @@ contains
 
     do while (associated(from_list%first))
        detector => from_list%first
-       call move(detector, from_list, to_list)   
+       call move(detector, from_list, to_list)
     end do
 
   end subroutine move_all_detectors
 
   subroutine delete_all_detectors(detector_list)
-    ! Remove and deallocate all detectors in a list   
+    ! Remove and deallocate all detectors in a list
     type(detector_linked_list), intent(inout) :: detector_list
     type(detector_type), pointer :: detector
 
     detector => detector_list%first
     do while (associated(detector))
-       call delete(detector,detector_list) 
+       call delete(detector,detector_list)
     end do
 
   end subroutine delete_all_detectors
@@ -345,7 +345,7 @@ contains
        assert(size(buff)==ndims+4)
        buff(ndims+4) = detector%list_id
     end if
-    
+
   end subroutine pack_detector
 
   subroutine unpack_detector(detector,buff,ndims,global_to_local,coordinates,nstages)
@@ -355,7 +355,7 @@ contains
     integer, intent(in) :: ndims
     type(integer_hash_table), intent(in), optional :: global_to_local
     type(vector_field), intent(in), optional :: coordinates
-    integer, intent(in), optional :: nstages    
+    integer, intent(in), optional :: nstages
 
     assert(size(buff)>=ndims+3)
 
@@ -390,13 +390,13 @@ contains
        ! update_vector, dimension(ndim)
        if (.not. allocated(detector%update_vector)) then
           allocate(detector%update_vector(ndims))
-       end if       
+       end if
        detector%update_vector = reshape(buff(ndims+4:2*ndims+3),(/ndims/))
 
        ! k, dimension(nstages:ndim)
        if (.not. allocated(detector%k)) then
           allocate(detector%k(nstages,ndims))
-       end if  
+       end if
        detector%k = reshape(buff(2*ndims+4:(nstages+2)*ndims+3),(/nstages,ndims/))
 
        ! If update_vector still exists, we're not done moving
@@ -407,7 +407,7 @@ contains
        detector%list_id = buff(ndims+4)
        detector%search_complete=.true.
     end if
-   
+
   end subroutine unpack_detector
 
   function detector_value_scalar(sfield, detector) result(value)
@@ -415,7 +415,7 @@ contains
     real :: value
     type(scalar_field), intent(in) :: sfield
     type(detector_type), intent(in) :: detector
-    
+
     assert(detector%element>0)
     value = eval_field(detector%element, sfield, detector%local_coords)
 
@@ -426,7 +426,7 @@ contains
     type(vector_field), intent(in) :: vfield
     type(detector_type), intent(in) :: detector
     real, dimension(vfield%dim) :: value
-    
+
     assert(detector%element>0)
     value = eval_field(detector%element, vfield, detector%local_coords)
 
@@ -434,15 +434,15 @@ contains
 
   subroutine set_detector_coords_from_python(values, ndete, func, time)
     !!< Given a list of positions and a time, evaluate the python function
-    !!< specified in the string func at those points. 
+    !!< specified in the string func at those points.
     real, dimension(:,:), target, intent(inout) :: values
     !! Func may contain any python at all but the following function must
     !! be defiled:
     !!  def val(t)
-    !! where t is the time. The result must be a float. 
+    !! where t is the time. The result must be a float.
     character(len=*), intent(in) :: func
     real :: time
-    
+
     real, dimension(:), pointer :: lvx,lvy,lvz
     real, dimension(0), target :: zero
     integer :: stat, dim, ndete

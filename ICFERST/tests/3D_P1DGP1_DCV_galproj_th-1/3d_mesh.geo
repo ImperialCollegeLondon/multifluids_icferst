@@ -17,7 +17,7 @@ Physical Volume(101) = {1};
 
 // left
 Physical Surface(6) = {26};
-// bottom 
+// bottom
 Physical Surface(8) = {14};
 // top
 Physical Surface(9) = {22};
@@ -27,7 +27,3 @@ Physical Surface(7) = {18};
 Physical Surface(11) = {5};
 // side 2
 Physical Surface(12) = {27};
-
-
-
-

@@ -88,7 +88,7 @@ while initialIndex &lt; len(initial_locations) and finalIndex &lt; len(final_loc
 
 if initialIndex &lt; len(initial_locations):
   print initial_locations[initialIndex:]
-  raise Exception("Failure")  
+  raise Exception("Failure")
     </test>
   </pass_tests>
   <warn_tests>

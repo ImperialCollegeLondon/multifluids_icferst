@@ -33,9 +33,9 @@ module Petsc_Tools
   use Reference_Counting
   use halo_data_types
   use halos_base
-#include "petsc/finclude/petscmat.h"  
-  use petscmat 
-#include "petsc/finclude/petsc.h"   
+#include "petsc/finclude/petscmat.h"
+  use petscmat
+#include "petsc/finclude/petsc.h"
   use petsc
 
 
@@ -1100,7 +1100,7 @@ contains
     integer, dimension(:), pointer:: cols
     integer rows(1)
     integer, dimension(:), allocatable:: colidx
-    integer ncols 
+    integer ncols
     PetscInt :: nprows, npcols
     PetscInt, dimension(:), pointer :: nnz
     integer i, l
@@ -1122,7 +1122,7 @@ contains
       npcols=ncols
     end if
 
-    allocate(nnz(nprows)) 
+    allocate(nnz(nprows))
     ! calcute n/o nonzero entries of private rows:
     do i=1, nprows
       cols => row_m_ptr(sparsity, i)
@@ -1496,7 +1496,7 @@ function full_CreateSeqAIJ(sparsity, row_numbering, col_numbering, only_diagonal
 
     PetscErrorCode ierr
     type(csr_sparsity) :: sparsity
-    
+
     ! PetscScalar, dimension(:), allocatable:: row_vals
     integer, dimension(:), allocatable::  unn2gnn
     integer private_columns
@@ -1607,7 +1607,7 @@ function full_CreateSeqAIJ(sparsity, row_numbering, col_numbering, only_diagonal
         j=j+ncols
         ! This is stupid, we were given copies in MatGetRow so it could
         ! have restored its internal tmp arrays straight away, anyway:
-        
+
 #else
         allocate(row_vals(size(A%val) - j + 1))
         call MatGetRow(matrix, offset+i, ncols, sparsity%colm(j:), row_vals, ierr)

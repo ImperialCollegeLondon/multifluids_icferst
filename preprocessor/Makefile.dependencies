@@ -121,4 +121,3 @@ synthetic_bc.o ../include/synthetic_bc.mod: synthetic_bc.F90 \
    ../include/fields.mod ../include/fldebug.mod \
    ../include/global_parameters.mod ../include/parallel_tools.mod \
    ../include/state_module.mod ../include/transform_elements.mod
-

@@ -22,7 +22,7 @@ phytoplankton1=d["water"]["Phytoplankton"]["integral"][0]
 from fluidity_tools import stat_parser
 d = stat_parser("biology_conservation.stat")
 phytoplankton2=d["water"]["Phytoplankton"]["integral"][-1]
-    </variable>    
+    </variable>
     <variable name="zooplankton1" language="python">
 from fluidity_tools import stat_parser
 d = stat_parser("biology_conservation.stat")
@@ -101,7 +101,7 @@ assert (abs(before - after) &lt; 1e-4)
     <test name="Pointwise conservation" language="python">
 nNodes = len(DifferencePerNode)
 print max(DifferencePerNode)
-for i in range(0,nNodes-1): 
+for i in range(0,nNodes-1):
     assert (DifferencePerNode[i] &lt; 1e-3)
     </test>
   </pass_tests>

@@ -12,44 +12,45 @@
 #   Config: Impose_min_max OFF, bounded::Diffuse ON, zero flow, porosity
 #   contrast through a metal blob, LIVE reaction, correction rescale disabled.
 
-import vtk
-import sys
-import os
 import math
-import numpy as np
+import os
+import sys
 
-if not hasattr(np, 'bool'):
+import numpy as np
+import vtk
+
+if not hasattr(np, "bool"):
     np.bool = bool
 
 # TOLERANCE OF THE CHECKING
 # Fail threshold set ~4 orders above the
 # measured post-fix drift, still far below the pre-fix defect (which moves
 # O(1e-4..1e-2) relative of the solid part per adapt across a 0.5/0.06 contrast).
-Tolerance_per_event = 1.0e-9   # max |d I| / I0 between consecutive dumps
-Tolerance_total     = 1.0e-9   # |I_end - I_0| / I0
-Min_dumps           = 5        # the run must produce at least this many dumps
-Min_mesh_changes    = 3        # at least this many dumps must show a changed
-                               # node count (i.e. adapt actually happened)
+Tolerance_per_event = 1.0e-9  # max |d I| / I0 between consecutive dumps
+Tolerance_total = 1.0e-9  # |I_end - I_0| / I0
+Min_dumps = 5  # the run must produce at least this many dumps
+Min_mesh_changes = 3  # at least this many dumps must show a changed
+# node count (i.e. adapt actually happened)
 
 # Constant physical parameters from the mpml (single-phase, incompressible)
 RHO_FLUID = 1000.0
 RHO_SOLID = 2650.0
 
-print('Running the model')
+print("Running the model")
 
 path = os.getcwd()
-binpath = path[:path.rindex('ICFERST')] + 'bin/icferst'
-os.system('rm -f ' + path + '/*.vtu')
-os.system(binpath + ' ' + path + '/metal_mass_conservation_adapt.mpml')
+binpath = path[: path.rindex("ICFERST")] + "bin/icferst"
+os.system("rm -f " + path + "/*.vtu")
+os.system(binpath + " " + path + "/metal_mass_conservation_adapt.mpml")
 
 # ---------------- locate the dump series ----------------
 AutoNumber = -1
-AutoFile = ''
+AutoFile = ""
 for files in os.listdir(path):
-    if files.endswith(".vtu") and 'checkpoint' not in files.lower():
-        pos = files.rfind('_')
-        pos2 = files.rfind('.')
-        tail = files[pos + 1:pos2]
+    if files.endswith(".vtu") and "checkpoint" not in files.lower():
+        pos = files.rfind("_")
+        pos2 = files.rfind(".")
+        tail = files[pos + 1 : pos2]
         if not tail.isdigit():
             continue
         AutoFile = files[:pos]
@@ -57,8 +58,10 @@ for files in os.listdir(path):
 
 Passed = True
 if AutoNumber < Min_dumps:
-    print('Only %d dumps found (need >= %d): the run did not complete'
-          % (AutoNumber + 1, Min_dumps))
+    print(
+        "Only %d dumps found (need >= %d): the run did not complete"
+        % (AutoNumber + 1, Min_dumps)
+    )
     Passed = False
 
 
@@ -71,6 +74,7 @@ def read_vtu(fname):
 
 def vtk_np(arr):
     from vtk.util import numpy_support
+
     return None if arr is None else numpy_support.vtk_to_numpy(arr)
 
 
@@ -79,7 +83,7 @@ def get_array(container, suffix):
     (handles any phase prefix, e.g. 'aquifer::Cu_solid')."""
     for i in range(container.GetNumberOfArrays()):
         n = container.GetArrayName(i)
-        if n and (n == suffix or n.endswith('::' + suffix)):
+        if n and (n == suffix or n.endswith("::" + suffix)):
             return container.GetArray(i)
     return None
 
@@ -89,8 +93,7 @@ def tet_cells(data):
     try:
         types = vtk_np(data.GetCellTypesArray())
     except AttributeError:
-        types = np.array([data.GetCellType(c)
-                          for c in range(data.GetNumberOfCells())])
+        types = np.array([data.GetCellType(c) for c in range(data.GetNumberOfCells())])
     ids = np.nonzero(types == vtk.VTK_TETRA)[0]
     try:  # VTK >= 9 fast path
         conn = vtk_np(data.GetCells().GetConnectivityArray())
@@ -114,32 +117,40 @@ def metal_invariant(fname):
     data = read_vtu(fname)
     pts = vtk_np(data.GetPoints().GetData()).astype(np.float64)
 
-    c_fluid = get_array(data.GetPointData(), 'PassiveTracer_Cu')
-    c_solid = get_array(data.GetPointData(), 'Cu_solid')
+    c_fluid = get_array(data.GetPointData(), "PassiveTracer_Cu")
+    c_solid = get_array(data.GetPointData(), "Cu_solid")
     if c_fluid is None:
-        raise RuntimeError('PassiveTracer_Cu point array not found in ' + fname)
+        raise RuntimeError("PassiveTracer_Cu point array not found in " + fname)
     if c_solid is None:
-        raise RuntimeError('Cu_solid point array not found in ' + fname)
+        raise RuntimeError("Cu_solid point array not found in " + fname)
     c_fluid = vtk_np(c_fluid).astype(np.float64)
     c_solid = vtk_np(c_solid).astype(np.float64)
 
     tconn, tids = tet_cells(data)
-    por_arr = get_array(data.GetCellData(), 'Porosity')
-    por = (vtk_np(por_arr)[tids].astype(np.float64)
-           if por_arr is not None else np.ones(len(tids)))
+    por_arr = get_array(data.GetCellData(), "Porosity")
+    por = (
+        vtk_np(por_arr)[tids].astype(np.float64)
+        if por_arr is not None
+        else np.ones(len(tids))
+    )
 
     a = pts[tconn[:, 0]]
-    vol = np.abs(np.einsum('ij,ij->i',
-                           pts[tconn[:, 1]] - a,
-                           np.cross(pts[tconn[:, 2]] - a,
-                                    pts[tconn[:, 3]] - a))) / 6.0
+    vol = (
+        np.abs(
+            np.einsum(
+                "ij,ij->i",
+                pts[tconn[:, 1]] - a,
+                np.cross(pts[tconn[:, 2]] - a, pts[tconn[:, 3]] - a),
+            )
+        )
+        / 6.0
+    )
 
     cf_cell = c_fluid[tconn].mean(axis=1)
     cs_cell = c_solid[tconn].mean(axis=1)
 
     # single-phase incompressible: S = 1, rho_f constant
-    integrand = vol * (por * RHO_FLUID * cf_cell
-                       + (1.0 - por) * RHO_SOLID * cs_cell)
+    integrand = vol * (por * RHO_FLUID * cf_cell + (1.0 - por) * RHO_SOLID * cs_cell)
     I = math.fsum(np.asarray(integrand, dtype=np.float64))
     return I, data.GetNumberOfPoints()
 
@@ -149,19 +160,39 @@ def split_parts(fname):
     side drifts if the test fails."""
     data = read_vtu(fname)
     pts = vtk_np(data.GetPoints().GetData()).astype(np.float64)
-    c_fluid = vtk_np(get_array(data.GetPointData(), 'PassiveTracer_Cu')).astype(np.float64)
-    c_solid = vtk_np(get_array(data.GetPointData(), 'Cu_solid')).astype(np.float64)
+    c_fluid = vtk_np(get_array(data.GetPointData(), "PassiveTracer_Cu")).astype(
+        np.float64
+    )
+    c_solid = vtk_np(get_array(data.GetPointData(), "Cu_solid")).astype(np.float64)
     tconn, tids = tet_cells(data)
-    por_arr = get_array(data.GetCellData(), 'Porosity')
-    por = (vtk_np(por_arr)[tids].astype(np.float64)
-           if por_arr is not None else np.ones(len(tids)))
+    por_arr = get_array(data.GetCellData(), "Porosity")
+    por = (
+        vtk_np(por_arr)[tids].astype(np.float64)
+        if por_arr is not None
+        else np.ones(len(tids))
+    )
     a = pts[tconn[:, 0]]
-    vol = np.abs(np.einsum('ij,ij->i',
-                           pts[tconn[:, 1]] - a,
-                           np.cross(pts[tconn[:, 2]] - a,
-                                    pts[tconn[:, 3]] - a))) / 6.0
-    fluid = math.fsum(np.asarray(vol * por * RHO_FLUID * c_fluid[tconn].mean(axis=1), dtype=np.float64))
-    solid = math.fsum(np.asarray(vol * (1.0 - por) * RHO_SOLID * c_solid[tconn].mean(axis=1), dtype=np.float64))
+    vol = (
+        np.abs(
+            np.einsum(
+                "ij,ij->i",
+                pts[tconn[:, 1]] - a,
+                np.cross(pts[tconn[:, 2]] - a, pts[tconn[:, 3]] - a),
+            )
+        )
+        / 6.0
+    )
+    fluid = math.fsum(
+        np.asarray(
+            vol * por * RHO_FLUID * c_fluid[tconn].mean(axis=1), dtype=np.float64
+        )
+    )
+    solid = math.fsum(
+        np.asarray(
+            vol * (1.0 - por) * RHO_SOLID * c_solid[tconn].mean(axis=1),
+            dtype=np.float64,
+        )
+    )
     return fluid, solid
 
 
@@ -177,16 +208,25 @@ def solid_mass_by_region(fname):
     region and the low-porosity region."""
     data = read_vtu(fname)
     pts = vtk_np(data.GetPoints().GetData()).astype(np.float64)
-    c_solid = vtk_np(get_array(data.GetPointData(), 'Cu_solid')).astype(np.float64)
+    c_solid = vtk_np(get_array(data.GetPointData(), "Cu_solid")).astype(np.float64)
     tconn, tids = tet_cells(data)
-    por_arr = get_array(data.GetCellData(), 'Porosity')
-    por = (vtk_np(por_arr)[tids].astype(np.float64)
-           if por_arr is not None else np.ones(len(tids)))
+    por_arr = get_array(data.GetCellData(), "Porosity")
+    por = (
+        vtk_np(por_arr)[tids].astype(np.float64)
+        if por_arr is not None
+        else np.ones(len(tids))
+    )
     a = pts[tconn[:, 0]]
-    vol = np.abs(np.einsum('ij,ij->i',
-                           pts[tconn[:, 1]] - a,
-                           np.cross(pts[tconn[:, 2]] - a,
-                                    pts[tconn[:, 3]] - a))) / 6.0
+    vol = (
+        np.abs(
+            np.einsum(
+                "ij,ij->i",
+                pts[tconn[:, 1]] - a,
+                np.cross(pts[tconn[:, 2]] - a, pts[tconn[:, 3]] - a),
+            )
+        )
+        / 6.0
+    )
     cs_cell = c_solid[tconn].mean(axis=1)
     mass_cell = vol * (1.0 - por) * RHO_SOLID * cs_cell
     high_phi = por >= PHI_MID
@@ -204,22 +244,26 @@ region_high = []
 region_low = []
 if Passed:
     for i in range(AutoNumber + 1):
-        m, n = metal_invariant(os.path.join(path, '%s_%d.vtu' % (AutoFile, i)))
-        fl, so = split_parts(os.path.join(path, '%s_%d.vtu' % (AutoFile, i)))
-        m_high, m_low = solid_mass_by_region(os.path.join(path, '%s_%d.vtu' % (AutoFile, i)))
+        m, n = metal_invariant(os.path.join(path, "%s_%d.vtu" % (AutoFile, i)))
+        fl, so = split_parts(os.path.join(path, "%s_%d.vtu" % (AutoFile, i)))
+        m_high, m_low = solid_mass_by_region(
+            os.path.join(path, "%s_%d.vtu" % (AutoFile, i))
+        )
         masses.append(m)
         nnodes.append(n)
         fluid_masses.append(fl)
         solid_masses.append(so)
         region_high.append(m_high)
         region_low.append(m_low)
-        print('  dump %3d: nodes = %7d, I = %.10e  (fluid %.6e | solid %.6e)  '
-              '[solid by region: high-phi %.6e | low-phi %.6e]'
-              % (i, n, m, fl, so, m_high, m_low))
+        print(
+            "  dump %3d: nodes = %7d, I = %.10e  (fluid %.6e | solid %.6e)  "
+            "[solid by region: high-phi %.6e | low-phi %.6e]"
+            % (i, n, m, fl, so, m_high, m_low)
+        )
 
     I0 = masses[0]
     if abs(I0) < 1e-30:
-        print('Initial invariant is zero: broken initial condition')
+        print("Initial invariant is zero: broken initial condition")
         Passed = False
 
 
@@ -236,21 +280,29 @@ if Passed:
     worst_I, total_I = worst_and_total(masses)
     changes = sum(1 for i in range(1, len(nnodes)) if nnodes[i] != nnodes[i - 1])
 
-    print('worst per-event relative drift, total I : %.3e (tolerance %.1e)'
-          % (worst_I, Tolerance_per_event))
-    print('total relative drift, total I           : %.3e (tolerance %.1e)'
-          % (total_I, Tolerance_total))
-    print('dumps with changed node count            : %d (require >= %d)'
-          % (changes, Min_mesh_changes))
+    print(
+        "worst per-event relative drift, total I : %.3e (tolerance %.1e)"
+        % (worst_I, Tolerance_per_event)
+    )
+    print(
+        "total relative drift, total I           : %.3e (tolerance %.1e)"
+        % (total_I, Tolerance_total)
+    )
+    print(
+        "dumps with changed node count            : %d (require >= %d)"
+        % (changes, Min_mesh_changes)
+    )
 
     if worst_I > Tolerance_per_event or total_I > Tolerance_total:
-        print('Total metal mass I is not conserved across adapt: the metal '
-              'tracers are not being correctly weighted around the mesh-to-mesh '
-              'projection (check the (1-phi)*rho_s weight for the solid tracer '
-              'and the phi*rho*S weight for the fluid tracer).')
+        print(
+            "Total metal mass I is not conserved across adapt: the metal "
+            "tracers are not being correctly weighted around the mesh-to-mesh "
+            "projection (check the (1-phi)*rho_s weight for the solid tracer "
+            "and the phi*rho*S weight for the fluid tracer)."
+        )
         Passed = False
     if changes < Min_mesh_changes:
-        print('Mesh barely changed: adaptation did not exercise the projection')
+        print("Mesh barely changed: adaptation did not exercise the projection")
         Passed = False
 
     # ---- DIAGNOSTICS ONLY (not pass/fail) ----
@@ -258,18 +310,24 @@ if Passed:
     worst_solid, total_solid = worst_and_total(solid_masses)
     worst_high, total_high = worst_and_total(region_high)
     worst_low, total_low = worst_and_total(region_low)
-    print('(diagnostic) M_fluid drift : worst %.3e, total %.3e (reaction-driven, not a gate)'
-          % (worst_fluid, total_fluid))
-    print('(diagnostic) M_solid drift : worst %.3e, total %.3e (reaction-driven, not a gate)'
-          % (worst_solid, total_solid))
-    print('(diagnostic) solid mass, high-phi region : worst %.3e, total %.3e'
-          % (worst_high, total_high))
-    print('(diagnostic) solid mass, low-phi region  : worst %.3e, total %.3e'
-          % (worst_low, total_low))
+    print(
+        "(diagnostic) M_fluid drift : worst %.3e, total %.3e (reaction-driven, not a gate)"
+        % (worst_fluid, total_fluid)
+    )
+    print(
+        "(diagnostic) M_solid drift : worst %.3e, total %.3e (reaction-driven, not a gate)"
+        % (worst_solid, total_solid)
+    )
+    print(
+        "(diagnostic) solid mass, high-phi region : worst %.3e, total %.3e"
+        % (worst_high, total_high)
+    )
+    print(
+        "(diagnostic) solid mass, low-phi region  : worst %.3e, total %.3e"
+        % (worst_low, total_low)
+    )
 
 if Passed:
-    print('Metal mass conservation across adaptivity works OK')
+    print("Metal mass conservation across adaptivity works OK")
 else:
-    print('Metal mass conservation across adaptivity does NOT work')
-
-
+    print("Metal mass conservation across adaptivity does NOT work")

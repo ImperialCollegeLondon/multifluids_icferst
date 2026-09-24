@@ -188,7 +188,7 @@ contains
                     if (has_boussinesq_aprox) then !disable time-derivative terms
                       PackedDRhoDPressure%val( 1, iphase, : ) = 0.
                     else
-                      if (iphase <= Mdims%n_in_pres) then 
+                      if (iphase <= Mdims%n_in_pres) then
                         PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho + drhodp_porous * Rho
                       else
                         PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho
@@ -208,7 +208,7 @@ contains
                     if (has_boussinesq_aprox) then!disable time-derivative terms
                       PackedDRhoDPressure%val( 1, iphase, : ) = 0.
                     else
-                      if (iphase <= Mdims%n_in_pres) then 
+                      if (iphase <= Mdims%n_in_pres) then
                         PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho + drhodp_porous * Rho
                       else
                         PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho
@@ -234,7 +234,7 @@ contains
                 if (has_boussinesq_aprox) then !disable time-derivative terms
                   PackedDRhoDPressure%val( 1, iphase, : ) = 0.
                 else
-                  if (iphase <= Mdims%n_in_pres) then 
+                  if (iphase <= Mdims%n_in_pres) then
                     PackedDRhoDPressure%val( 1, iphase, : ) = dRhodP + drhodp_porous * Rho
                   else
                     PackedDRhoDPressure%val( 1, iphase, : ) = dRhodP
@@ -856,7 +856,7 @@ contains
           call allocate (sfield, pnt_sfield%mesh, "Temporary_surface_pressure")
           call initialise_field(sfield, "/numerical_methods/Surface_pressure" , position)
           ref_pressure_field = sfield%val
-        else 
+        else
           call get_option("/numerical_methods/Surface_pressure/constant", ref_pressure, default = 1e5)
           ref_pressure_field(:) = ref_pressure
         end if
@@ -3795,7 +3795,7 @@ contains
     !>   * competing rate-controlled precipitation is proportionally limited so the total mass
     !>     removed never exceeds the available fluid metal mass - also order-independent.
     !>   (with w_f = phi*S*rho_f and w_s = (1-phi)*rho_porous)
-    !> - A reaction with both laws applies the flash where its precipitation rate <= 0 
+    !> - A reaction with both laws applies the flash where its precipitation rate <= 0
     !>   and the rate law where its partition coefficient <= 0.
     !>
     !> Restrictions (enforced): each solid tracer may appear in exactly one reaction, and all
@@ -4168,7 +4168,7 @@ contains
 
       ! here we run multi_dev_shape_funs just to calculate element volumes
       call allocate_multi_dev_shape_funs(CV_funs, DevFuns)
-      
+
       sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
 
       total_mass = 0.0
@@ -4218,7 +4218,7 @@ contains
       sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
 
       do iphase = 1, Mdims%n_in_pres
-        if ( total_mass_after(iphase) > 0 ) then 
+        if ( total_mass_after(iphase) > 0 ) then
 
           correction_factor(iphase) = total_mass_before(iphase) / total_mass_after(iphase)
           error(iphase) = 1.0 / correction_factor(iphase) - 1.0

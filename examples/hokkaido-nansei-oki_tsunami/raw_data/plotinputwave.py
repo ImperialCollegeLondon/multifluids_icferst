@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 
-from fluidity_tools import stat_parser
-import matplotlib.pyplot as plt
-from matplotlib.pyplot import figure, show
+import csv
 import getopt
 import sys
-import csv
+
+import matplotlib.pyplot as plt
+from fluidity_tools import stat_parser
+from matplotlib.pyplot import figure, show
+
 
 def usage():
   print "plotinputwave.py -b starttime -e endtime --save=basename"
@@ -15,7 +17,7 @@ def get_inputelevation(t):
         data=[]
         for (time, heigth) in InputWaveReader:
                 data.append((float(time), float(heigth)))
-                
+
         for i in range(1,len(data)):
                 if data[i][0]<t:
                         continue
@@ -24,7 +26,7 @@ def get_inputelevation(t):
                 h1=data[max(0,i-1)][1]
                 h2=data[i][1]
                 return h1*(t-t2)/(t1-t2)+h2*(t-t1)/(t2-t1)
-        
+
         print "Warning: t is outside the available data. Using last available waterheigth..."
         return data[-1][1]
 
@@ -38,7 +40,7 @@ def main(argv=None):
     print "Getopterror :("
     usage()
     sys.exit(2)
-  
+
   subtitle=''
   subtitle_pure=''
   endtime=22.5
@@ -63,7 +65,7 @@ def main(argv=None):
   print "Generating plot"
 
   print 'Using dt=', dt
-  
+
   starttimestep=int(max(0,starttime/dt))
   endtimestep=int(endtime/dt)
 
@@ -78,7 +80,7 @@ def main(argv=None):
     time.append(i*dt)
     elev=get_inputelevation(time[-1])
     input_elevation.append(elev*100.0) # in cm
- 
+
   plt.ion()  # switch in interactive mode
   fig1= figure()
 
@@ -96,6 +98,6 @@ def main(argv=None):
 #  for i in range(timesteps):
 #    gauge1.append(s["water"]["FreeSurface"]["gauge1"])
 
-    
+
 if __name__ == "__main__":
    main()

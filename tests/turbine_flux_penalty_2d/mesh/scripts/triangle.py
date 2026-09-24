@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import sys
+
 from sets import Set
 
 edges=[]
@@ -7,7 +8,7 @@ surface_ids=[] # surface ids of the edges
 nodes=[]
 eles=[]
 region_ids=[] # region ids of the elements
-edge_attribute1=[] # first edge attribute 
+edge_attribute1=[] # first edge attribute
 dim=-1
 debug=0
 
@@ -109,13 +110,13 @@ def pnode(fnode):
 
             else:
                 if dim == 3:
-                    nodes.append(([float(x) for x in parts[1:]]))
+                    nodes.append([float(x) for x in parts[1:]])
                 else:
-                    nodes.append(([float(x) for x in parts[1:3]]))
+                    nodes.append([float(x) for x in parts[1:3]])
     if (len(nodes) != nbnodes):
         print "Error: actual number of nodes does not corresponds " + str(len(nodes)), nbnodes
         sys.exit(2)
-                                 
+
     return nodes, dim
 
 def pedges(fedge):
@@ -136,7 +137,7 @@ def pedges(fedge):
             parts = line.split()
             if len(parts)==0:
                 continue
-        
+
             if len(parts)==0:
                 continue
             if count == 0:
@@ -147,7 +148,7 @@ def pedges(fedge):
                     print "Error: too many attributes in .edge file!"
 
             else:
-                 edges.append(([int(x) for x in parts[1:3]]))
+                 edges.append([int(x) for x in parts[1:3]])
                  if boundary >= 1:
                    surface_ids.append(int(parts[3]))
                  if boundary >= 2:
@@ -181,7 +182,7 @@ def peles(fele):
                 count += 1
 
             else:
-                eles.append(([int(x) for x in parts[1:nodesperele+1]]))
+                eles.append([int(x) for x in parts[1:nodesperele+1]])
                 if region==1:
                         region_ids.append(int(parts[len(parts)-1]))
 
@@ -195,7 +196,7 @@ def peles(fele):
 def edges_with_bid(bid):
    global edges
    ret=[]
-   
+
    for i in range(0,len(surface_ids)):
         if surface_ids[i] == bid:
                 ret.append(i)
@@ -266,7 +267,7 @@ def has_ele_edge_on_boundaryid(elein, nodeid, boundary_id):
                                 print "Found boundary edge with id", edgeid_from_nodeids([n,nodeid])[0]+1
                         return True
         return False
-                
+
 def get_eles_on_ele_side(elein, nodeid, edgein, boundary_id):
         global eles, edges
         if not has_ele_edge_on_boundaryid(elein, nodeid, boundary_id):
@@ -274,7 +275,7 @@ def get_eles_on_ele_side(elein, nodeid, edgein, boundary_id):
                 sys.exit()
         ret=[elein]
         thirdnode=Set(eles[elein]).difference(Set(edges[edgein])).pop()
-        while True: 
+        while True:
                 if debug>3:
                         print "Found third node of current element wit index: ", thirdnode
                         print "Looking for neighbour with nodes ", thirdnode, nodeid
@@ -296,7 +297,7 @@ def get_eles_on_ele_side(elein, nodeid, edgein, boundary_id):
                 thirdnode=Set(eles[elein]).difference(Set([nodeid, thirdnode])).pop()
 
 
-# deletes the node with id nodeid and updates the elelist and edgelist 
+# deletes the node with id nodeid and updates the elelist and edgelist
 def delete_nodeid(nodeid):
         global eles, edges, nodes
         for index, ele in enumerate(eles):
@@ -311,7 +312,7 @@ def delete_nodeid(nodeid):
                 edges[index]=[x if x<nodeid else x-1 for x in edges[index]]
         nodes.pop(nodeid-1)
 
-# deletes the ele with id eleid 
+# deletes the ele with id eleid
 def delete_eleid(eleid):
         global eles, region_ids
         eles.pop(eleid-1)

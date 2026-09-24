@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
-import numpy
-from numpy import array,argsort,corrcoef,size
 import sys
+
+import numpy
+from numpy import argsort, array, corrcoef, size
+
 
 def main():
 

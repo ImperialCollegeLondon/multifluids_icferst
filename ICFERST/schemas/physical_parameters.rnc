@@ -27,7 +27,7 @@ gravity_options =
       ## i)</b> this option can only be used for single phase and substitute hydrostatic_boundaries or hydrostatic_pressure_solver.
       ##
       ## <b>ii)</b> the EOS will use the non-hydrostatic pressure to compute the properties.
-      element remove_hydrostatic_contribution { empty }?,      
+      element remove_hydrostatic_contribution { empty }?,
       ## The direction of the gravity vector.
       element vector_field {
          attribute name { "GravityDirection" },

@@ -71,7 +71,7 @@ real, parameter:: VERTICAL_INTEGRATION_EPS=1.0e-8
 ! the equator. So this shift needs to be big enough to not make both projected hemispheres
 ! overlap
 real, parameter:: HEMISPHERE_SHIFT=10.0
-  
+
 private
 
 public CalculateTopBottomDistance
@@ -98,7 +98,7 @@ public compute_face_normal_gravity
 real, parameter :: GNOMONIC_BOX_WIDTH = 10.0
 
 contains
-  
+
 subroutine UpdateDistanceField(state, name, vertical_coordinate)
   ! This sub calculates the vertical distance to the free surface
   ! and bottom of the ocean to all nodes. The results are stored
@@ -110,7 +110,7 @@ subroutine UpdateDistanceField(state, name, vertical_coordinate)
   ! Local variables
   type(vector_field), pointer:: positions, vertical_normal
   type(scalar_field), pointer:: distance
-  
+
   integer, pointer, dimension(:):: surface_element_list
 
   ! the distance field to compute:
@@ -120,31 +120,31 @@ subroutine UpdateDistanceField(state, name, vertical_coordinate)
     surface_element_list=surface_element_list)
   positions => extract_vector_field(state, "Coordinate")
   vertical_normal => extract_vector_field(state, "GravityDirection")
-  
-  ! in each node of the mesh, set "distance" to the vertical coordinate 
+
+  ! in each node of the mesh, set "distance" to the vertical coordinate
   ! of this node projected to the above/below surface mesh
   call VerticalExtrapolation(vertical_coordinate, distance, positions, &
     vertical_normal, surface_element_list, surface_name=name)
-    
+
   ! the distance is then calculated by subtracting its own vertical coordinate
   call addto(distance, vertical_coordinate, scale=-1.0)
-  
+
   if (name=="DistanceToBottom") then
     ! make distance to bottom positive
     call scale(distance, -1.0)
   end if
-  
+
 end subroutine UpdateDistanceField
-  
+
 subroutine CalculateTopBottomDistance(state)
   !! This sub calculates the vertical distance to the free surface
   !! and bottom of the ocean to all nodes. The results are stored
   !! in the 'DistanceToBottom/Top' fields from state.
   type(state_type), intent(inout):: state
-    
+
   type(mesh_type), pointer:: xmesh
   type(scalar_field):: vertical_coordinate
-  
+
   xmesh => extract_mesh(state, "CoordinateMesh")
   call allocate(vertical_coordinate, xmesh, "VerticalCoordinate")
   call calculate_vertical_coordinate(state, vertical_coordinate)
@@ -153,17 +153,17 @@ subroutine CalculateTopBottomDistance(state)
   call deallocate(vertical_coordinate)
 
 end subroutine CalculateTopBottomDistance
-  
+
 subroutine calculate_vertical_coordinate(state, vertical_coordinate)
   !! Computes a vertical coordinate, i.e. a scalar field such that
   !! for each 2 nodes above each other, the difference of the field
   !! in these nodes gives the distance between them.
   type(state_type), intent(inout):: state
   type(scalar_field), intent(inout):: vertical_coordinate
-    
+
   type(vector_field), pointer:: positions, gravity_normal
   type(scalar_field):: positions_magnitude
-  
+
   positions => extract_vector_field(state, "Coordinate")
   if(have_option('/geometry/spherical_earth')) then
     ! use the radius as vertical coordinate
@@ -178,7 +178,7 @@ subroutine calculate_vertical_coordinate(state, vertical_coordinate)
     ! gravity points down, we want a vertical coordinate that increases upward
     call scale(vertical_coordinate, -1.0)
   end if
-  
+
 end subroutine calculate_vertical_coordinate
 
 subroutine VerticalExtrapolationScalar(from_field, to_field, &
@@ -196,20 +196,20 @@ subroutine VerticalExtrapolationScalar(from_field, to_field, &
   type(vector_field), target, intent(in):: vertical_normal
   !! the surface elements (faces numbers) that make up the surface
   integer, dimension(:), intent(in):: surface_element_list
-  !! If provided the projected surface mesh onto horizontal coordinates 
-  !! and its associated rtree/pickers are cached under this name and 
+  !! If provided the projected surface mesh onto horizontal coordinates
+  !! and its associated rtree/pickers are cached under this name and
   !! attached to the 'positions'. In this case when called again with
   !! the same 'positions' and the same surface_name,
   !! the same surface_element_list should again be provided.
   character(len=*), optional, intent(in):: surface_name
 
   type(scalar_field), dimension(1):: to_fields
-    
+
   to_fields=(/ to_field /)
   call VerticalExtrapolationMultiple( (/ from_field /) , to_fields, &
       positions, vertical_normal, surface_element_list, &
       surface_name=surface_name)
-  
+
 end subroutine VerticalExtrapolationScalar
 
 subroutine VerticalExtrapolationVector(from_field, to_field, &
@@ -227,27 +227,27 @@ subroutine VerticalExtrapolationVector(from_field, to_field, &
   type(vector_field), target, intent(in):: vertical_normal
   !! the surface elements (faces numbers) that make up the surface
   integer, dimension(:), intent(in):: surface_element_list
-  !! If provided the projected surface mesh onto horizontal coordinates 
-  !! and its associated rtree/pickers are cached under this name and 
+  !! If provided the projected surface mesh onto horizontal coordinates
+  !! and its associated rtree/pickers are cached under this name and
   !! attached to the 'positions'. In this case when called again with
   !! the same 'positions' and the same surface_name,
   !! the same surface_element_list should again be provided.
   character(len=*), optional, intent(in):: surface_name
-  
+
   type(scalar_field), dimension(from_field%dim):: from_field_components, to_field_components
   integer i
-  
+
   assert(from_field%dim==to_field%dim)
-  
+
   do i=1, from_field%dim
      from_field_components(i)=extract_scalar_field(from_field, i)
      to_field_components(i)=extract_scalar_field(to_field, i)
   end do
-    
+
   call VerticalExtrapolationMultiple( from_field_components, to_field_components, &
         positions, vertical_normal, surface_element_list, &
         surface_name=surface_name)
-  
+
 end subroutine VerticalExtrapolationVector
 
 subroutine VerticalExtrapolationMultiple(from_fields, to_fields, &
@@ -257,8 +257,8 @@ subroutine VerticalExtrapolationMultiple(from_fields, to_fields, &
   !! The from_fields should be 3D fields of which only the values on the
   !! 2D horizontal surface are used.
   !! This version takes multiple from_fields at the same time and extrapolates
-  !! to to_fields, such that the surface search only has to be done once. This 
-  !! will only work if all the from_fields are on the same mesh, and on all the 
+  !! to to_fields, such that the surface search only has to be done once. This
+  !! will only work if all the from_fields are on the same mesh, and on all the
   !! to_field are on the same (possibly a different) mesh.
   type(scalar_field), dimension(:), intent(in):: from_fields
   !! Resulting extrapolated field. May be the same field or a field on
@@ -270,8 +270,8 @@ subroutine VerticalExtrapolationMultiple(from_fields, to_fields, &
 
   !! the surface elements (faces numbers) that make up the surface
   integer, dimension(:), intent(in):: surface_element_list
-  !! If provided the projected surface mesh onto horizontal coordinates 
-  !! and its associated rtree/pickers are cached under this name and 
+  !! If provided the projected surface mesh onto horizontal coordinates
+  !! and its associated rtree/pickers are cached under this name and
   !! attached to the 'positions'. In this case when called again with
   !! the same 'positions' and the same surface_name,
   !! the same surface_element_list should again be provided.
@@ -288,24 +288,24 @@ subroutine VerticalExtrapolationMultiple(from_fields, to_fields, &
      assert(to_fields(1)%mesh==to_fields(i)%mesh)
      assert(from_fields(1)%mesh==from_fields(i)%mesh)
   end do
-  
+
   to_nodes=nowned_nodes(to_fields(1))
   ! local coordinates is one more than horizontal coordinate dim
   allocate( seles(to_nodes), loc_coords(1:positions%dim, 1:to_nodes) )
-  
+
   if (present(surface_name)) then
     lsurface_name=surface_name
   else
     lsurface_name="TempSurfaceName"
   end if
-  
+
   ! project the positions of to_fields(1)%mesh into the horizontal plane
   ! and returns 'seles' (facet numbers) and loc_coords
   ! to tell where these projected nodes are found in the surface mesh
   call horizontal_picker(to_fields(1)%mesh, positions, vertical_normal, &
       surface_element_list, lsurface_name, &
       seles, loc_coords)
-  
+
   ! interpolate using the returned faces and loc_coords
   do i=1, size(to_fields)
     do j=1, to_nodes
@@ -315,19 +315,19 @@ subroutine VerticalExtrapolationMultiple(from_fields, to_fields, &
              face_val( from_fields(i), face ) ))
      end do
   end do
-    
+
   if (IsParallel()) then
     do i=1, size(to_fields)
       call halo_update(to_fields(i))
     end do
   end if
-  
+
   if (.not. present(surface_name)) then
     call remove_boundary_condition(positions, "TempSurfaceName")
   end if
-  
+
 end subroutine VerticalExtrapolationMultiple
-  
+
 subroutine horizontal_picker(mesh, positions, vertical_normal, &
   surface_element_list, surface_name, &
   seles, loc_coords)
@@ -335,7 +335,7 @@ subroutine horizontal_picker(mesh, positions, vertical_normal, &
   !! Returns the surface elements 'seles' that each node lies under
   !! and the loc_coords in this element of this node projected
   !! upward (radially on the sphere) onto the surface mesh
-  
+
   !! mesh
   type(mesh_type), intent(in):: mesh
   !! a valid positions field for the whole domain, not necessarily on 'mesh'
@@ -345,38 +345,38 @@ subroutine horizontal_picker(mesh, positions, vertical_normal, &
   type(vector_field), target, intent(in):: vertical_normal
   !! the surface elements (faces numbers) that make up the surface
   integer, dimension(:), intent(in):: surface_element_list
-  !! The projected surface mesh onto horizontal coordinates 
-  !! and its associated rtree/pickers are cached under this name and 
+  !! The projected surface mesh onto horizontal coordinates
+  !! and its associated rtree/pickers are cached under this name and
   !! attached to the 'positions'. When called again with
   !! the same 'positions' and the same surface_name,
   !! the same surface_element_list should again be provided.
   character(len=*), intent(in):: surface_name
-  
+
   !! returned surface elements (facet numbers in 'mesh')
   !! and loc coords each node has been found in
   !! size(seles)==size(loc_coords,2)==nowned_nodes(mesh)
   integer, dimension(:), intent(out):: seles
   real, dimension(:,:), intent(out):: loc_coords
-  
+
   type(vector_field):: mesh_positions
   type(vector_field), pointer:: horizontal_positions
   integer, dimension(:), pointer:: horizontal_mesh_list
   real, dimension(:,:), allocatable:: horizontal_coordinate
   real, dimension(vertical_normal%dim):: normal_vector
   integer:: i, stat, nodes
-  
+
   assert(.not. mesh_periodic(positions))
-  
+
   ! search only the first owned nodes
   nodes=nowned_nodes(mesh)
-  
+
   assert( size(seles)==nodes )
   assert(size(loc_coords,1)==positions%dim)
   assert( size(loc_coords,2)==nodes )
-  
+
   if (mesh==positions%mesh) then
     mesh_positions=positions
-    ! make mesh_positions indep. ref. of the field, so we can deallocate it 
+    ! make mesh_positions indep. ref. of the field, so we can deallocate it
     ! safely without destroying positions
     call incref(mesh_positions)
   else
@@ -397,8 +397,8 @@ subroutine horizontal_picker(mesh, positions, vertical_normal, &
       FLAbort("Unknown error in remmaping positions in horizontal_picker.")
     end if
   end if
-  
-  
+
+
   ! create an array of the horizontally projected coordinates of the 'mesh' nodes
   allocate( horizontal_coordinate(1:positions%dim-1, 1:nodes) )
   if (have_option('/geometry/spherical_earth')) then
@@ -413,14 +413,14 @@ subroutine horizontal_picker(mesh, positions, vertical_normal, &
       horizontal_coordinate(:,i) = map2horizontal(node_val(mesh_positions, i), normal_vector)
     end do
   end if
-    
+
   call get_horizontal_positions(positions, surface_element_list, &
       vertical_normal, surface_name, &
       horizontal_positions, horizontal_mesh_list)
-    
+
   call picker_inquire(horizontal_positions, horizontal_coordinate, &
     seles, loc_coords, global=.false. )
-    
+
   ! in the spherical case some of the surface elements may be duplicated
   ! within horizontal positions, the returned seles should refer to entries
   ! in surface_element_list however - also check for nodes not found
@@ -433,11 +433,11 @@ subroutine horizontal_picker(mesh, positions, vertical_normal, &
       seles(i) = horizontal_mesh_list(seles(i))
     end if
   end do
-    
+
   call deallocate(mesh_positions)
 
 end subroutine horizontal_picker
-  
+
 subroutine get_horizontal_positions(positions, surface_element_list, vertical_normal, surface_name, &
   horizontal_positions, horizontal_mesh_list)
 ! returns a horizontal positions field over the surface mesh indicated by
@@ -447,7 +447,7 @@ subroutine get_horizontal_positions(positions, surface_element_list, vertical_no
   type(vector_field), intent(in):: vertical_normal
   integer, dimension(:), intent(in):: surface_element_list
   character(len=*), intent(in):: surface_name
-  
+
   ! Returns the horizontal positions on a horizontal mesh, this mesh
   ! may have some of the facets in surface_element_list duplicated -
   ! this is only in the spherical case where the horizontal mesh
@@ -459,12 +459,12 @@ subroutine get_horizontal_positions(positions, surface_element_list, vertical_no
   ! also horizontal_mesh_list should not be deallocated
   type(vector_field), pointer:: horizontal_positions
   integer, dimension(:), pointer:: horizontal_mesh_list
-  
+
   if (.not. has_boundary_condition_name(positions, surface_name)) then
     call create_horizontal_positions(positions, &
         surface_element_list, vertical_normal, surface_name)
   end if
-    
+
   horizontal_positions => extract_surface_field(positions, surface_name, &
     trim(surface_name)//"HorizontalCoordinate")
 
@@ -472,23 +472,23 @@ subroutine get_horizontal_positions(positions, surface_element_list, vertical_no
       surface_element_list=horizontal_mesh_list)
 
 end subroutine get_horizontal_positions
-  
+
 subroutine create_horizontal_positions(positions, surface_element_list, vertical_normal, surface_name)
-! adds a "boundary condition" to 'positions' with an associated vector surface field containing a dim-1 
-! horizontal coordinate field that can be used to map from the surface mesh specified 
+! adds a "boundary condition" to 'positions' with an associated vector surface field containing a dim-1
+! horizontal coordinate field that can be used to map from the surface mesh specified
 ! by 'surface_element_list'. This "boundary condition" will be stored under the name 'surface_name'
   type(vector_field), intent(inout):: positions
   type(vector_field), intent(in):: vertical_normal
   integer, dimension(:), intent(in):: surface_element_list
   character(len=*), intent(in):: surface_name
-    
+
   type(mesh_type), pointer:: surface_mesh
   type(vector_field):: horizontal_positions, surface_positions
   type(vector_boundary_condition), pointer :: last_bc
   integer, dimension(:), pointer:: surface_node_list, surface_element_map
   real, dimension(vertical_normal%dim):: normal_vector
   integer:: i, node, nobcs
-  
+
   call add_boundary_condition_surface_elements(positions, &
     name=surface_name, type="verticalextrapolation", &
     surface_element_list=surface_element_list)
@@ -496,7 +496,7 @@ subroutine create_horizontal_positions(positions, surface_element_list, vertical
   ! and surface_node_list a mapping between nodes in surface_mesh and nodes in positions%mesh
   call get_boundary_condition(positions, name=surface_name, &
     surface_mesh=surface_mesh, surface_node_list=surface_node_list)
-    
+
   if (have_option('/geometry/spherical_earth')) then
     call allocate(surface_positions, dim=positions%dim, mesh=surface_mesh, &
       name="TempSurfacePositions")
@@ -530,7 +530,7 @@ subroutine create_horizontal_positions(positions, surface_element_list, vertical
     end do
 
     call deallocate(surface_positions)
-    
+
   else
 
     ! flat case
@@ -549,7 +549,7 @@ subroutine create_horizontal_positions(positions, surface_element_list, vertical
 
   call insert_surface_field(positions, name=surface_name, &
     surface_field=horizontal_positions)
-    
+
   call deallocate(horizontal_positions)
 
 end subroutine create_horizontal_positions
@@ -635,13 +635,13 @@ real, dimension(size(xyz)-1):: map2horizontal
 
   real, dimension(size(xyz)):: hxyz
   integer:: i, c, takeout
-  
+
   ! first subtract of the vertical component
   hxyz=xyz-dot_product(xyz, normal_vector)*normal_vector
-  
+
   ! then leave out the "most vertical" coordinate
   takeout=maxloc(abs(normal_vector), dim=1)
-  
+
   c=1
   do i=1, size(xyz)
     if (i==takeout) cycle
@@ -661,7 +661,7 @@ real, dimension(size(xyz)-1):: xy
   xy(1:i-1) = xyz(1:i-1)/xyz(i)
   xy(i:) = xyz(i+1:)/xyz(i)
   xy(1) = xy(1) + sign(3*i*GNOMONIC_BOX_WIDTH, xyz(i))
-    
+
 end function map2horizontal_sphere
 
 function VerticalProlongationOperator(mesh, positions, vertical_normal, &
@@ -669,7 +669,7 @@ function VerticalProlongationOperator(mesh, positions, vertical_normal, &
   !! creates a prolongation operator that prolongates values on
   !! a surface mesh to a full mesh below using the same interpolation
   !! as the vertical extrapolation code above. The transpose of this prolongation
-  !! operator can be used as a restriction/clustering operator 
+  !! operator can be used as a restriction/clustering operator
   !! from the full mesh to the surface.
   type(csr_matrix) :: VerticalProlongationOperator
   !! the mesh to which to prolongate, its nodes are only considered as
@@ -702,15 +702,15 @@ function VerticalProlongationOperator(mesh, positions, vertical_normal, &
   integer i, j, k, rows, entries, count, snod, sele
   ! coefficient have to be at least this otherwise they're negligable in an interpolation
   real, parameter :: COEF_EPS=1d-10
-  
+
   ! only assemble the rows associted with nodes we own
   rows=nowned_nodes(mesh)
-  
+
   ! local coordinates is one more than horizontal coordinate dim
   allocate( seles(rows), loc_coords(1:positions%dim, 1:rows) )
-  
+
   ! project the positions of to_fields(1)%mesh into the horizontal plane
-  ! and returns 'seles' (indices in surface_element_list) and loc_coords 
+  ! and returns 'seles' (indices in surface_element_list) and loc_coords
   ! to tell where these projected nodes are found in the surface mesh
   call horizontal_picker(mesh, positions, vertical_normal, &
       surface_element_list, "TempSurfaceName", &
@@ -721,16 +721,16 @@ function VerticalProlongationOperator(mesh, positions, vertical_normal, &
   do i=1, rows
      entries=entries+face_loc(mesh, seles(i))
   end do
-  ! preliminary matrix:  
+  ! preliminary matrix:
   allocate( mat(1:entries), findrm(1:rows+1), &
     colm(1:entries) )
-  
+
   if (.not. present(surface_mesh)) then
      ! We use the entire surface mesh of 'mesh'
      lsurface_mesh => mesh%faces%surface_mesh
      ! Not all surface nodes may be used (i.e. interpolated from) - even
      ! within surface elements that /are/ in surface_element-list.
-     ! We need a map between global surface node numbering and 
+     ! We need a map between global surface node numbering and
      ! a consecutive numbering of used surface nodes.
      ! (this will be the column numbering)
      allocate(snod2used_snod(1:node_count(lsurface_mesh)))
@@ -754,7 +754,7 @@ function VerticalProlongationOperator(mesh, positions, vertical_normal, &
 
      sele = seles(i)
      snodes => ele_nodes(lsurface_mesh, sele)
-     
+
      do j=1, size(snodes)
        coef=eval_shape(ele_shape(lsurface_mesh, sele), j, loc_coords(:,i))
        snod=snodes(j)
@@ -773,29 +773,29 @@ function VerticalProlongationOperator(mesh, positions, vertical_normal, &
          mat(entries)=coef
        end if
      end do
-       
+
   end do
   findrm(i)=entries+1
-  
+
   if (present(surface_mesh)) then
-    ! we haven't counted used surface nodes, instead we're using all 
+    ! we haven't counted used surface nodes, instead we're using all
     ! nodes of surface mesh as columns
     count=node_count(surface_mesh)
   end if
-  
+
   call allocate(sparsity, rows, count, &
      entries, diag=.false., name="VerticalProlongationSparsity")
   sparsity%findrm=findrm
   sparsity%colm=colm(1:entries)
   ! for lots of applications it's good to have sorted rows
   call sparsity_sort(sparsity)
-  
+
   call allocate(VerticalProlongationOperator, sparsity, &
     name="VerticalProlongationOperator")
   call deallocate(sparsity)
 
   ! as the sparsity has been sorted the ordering of mat(:) no longer
-  ! matches that of sparsity%colm, however it still matches the original 
+  ! matches that of sparsity%colm, however it still matches the original
   ! unsorted colm(:)
   do i=1, rows
      do k=findrm(i), findrm(i+1)-1
@@ -803,7 +803,7 @@ function VerticalProlongationOperator(mesh, positions, vertical_normal, &
        call set(VerticalProlongationOperator, i, j, mat(k))
      end do
   end do
-  
+
   if (.not. present(surface_mesh)) then
     deallocate( snod2used_snod )
   else
@@ -811,11 +811,11 @@ function VerticalProlongationOperator(mesh, positions, vertical_normal, &
   end if
   deallocate( findrm, colm, mat )
   deallocate( seles, loc_coords )
-  
+
   call remove_boundary_condition(positions, "TempSurfaceName")
-  
+
 end function VerticalProlongationOperator
-  
+
 subroutine vertical_element_ordering(ordered_elements, face_normal_gravity, optimal_ordering)
 !!< Calculates an element ordering such that each element is
 !!< is preceded by all elements above it.
@@ -823,20 +823,20 @@ integer, dimension(:), intent(out):: ordered_elements
 !! need to supply face_normal_gravity matrix,
 !! created by compute_face_normal_gravity() subroutine below
 type(csr_matrix), intent(in):: face_normal_gravity
-!! returns .true. if an optimal ordering is found, i.e there are no 
-!! cycles, i.o.w. elements that are (indirectly) above and below each other 
+!! returns .true. if an optimal ordering is found, i.e there are no
+!! cycles, i.o.w. elements that are (indirectly) above and below each other
 !! at the same time (deck of cards problem).
 logical, optional, intent(out):: optimal_ordering
-  
+
   type(dynamic_bin_type) dbin
   real, dimension(:), pointer:: inn
   integer, dimension(:), pointer:: neigh
   integer, dimension(:), allocatable:: bin_list
   integer i, j, elm, bin_no
   logical warning
-  
+
   assert( size(ordered_elements)==size(face_normal_gravity,1) )
-  
+
   ! create binlist, i.e. assign each element to a bin, according to
   ! the number of elements above it
   allocate(bin_list(1:size(ordered_elements)))
@@ -848,21 +848,21 @@ logical, optional, intent(out):: optimal_ordering
     ! neigh>0 so we don't count exterior boundary faces
     bin_list(i)=count( inn<-VERTICAL_INTEGRATION_EPS .and. neigh>0 )+1
   end do
-    
+
   call allocate(dbin, bin_list)
-  
+
   warning=.false.
   do i=1, size(ordered_elements)
     ! pull an element from the first non-empty bin
     ! (hopefully an element with no unprocessed elements above)
     call pull_element(dbin, elm, bin_no)
     ordered_elements(i)=elm
-    ! if this is bin one then it is indeed an element with no unprocessed 
+    ! if this is bin one then it is indeed an element with no unprocessed
     !  elements above, otherwise issue a warning
     if (bin_no>1) warning=.true.
-    
+
     ! update elements below:
-    
+
     ! adjacent elements:
     neigh => row_m_ptr(face_normal_gravity, elm)
     inn => row_val_ptr(face_normal_gravity, elm)
@@ -879,22 +879,22 @@ logical, optional, intent(out):: optimal_ordering
        end if
     end do
   end do
-  
+
   if (warning) then
     ! this warning may be reduced (in verbosity level) if it occurs frequently:
     ewrite(-1,*) "Warning: vertical_element_ordering has detected a cycle."
     ewrite(-1,*) "(deck of cards problem). This may reduce the efficiency"
     ewrite(-1,*) "of your vertically sweeping solve."
   end if
-  
+
   if (present(optimal_ordering)) then
     optimal_ordering=.not. warning
   end if
-  
+
   call deallocate(dbin)
-  
+
 end subroutine vertical_element_ordering
-  
+
 subroutine compute_face_normal_gravity(face_normal_gravity, &
   positions, vertical_normal)
 !!< Returns a matrix where A_ij is the inner product of the face normal
@@ -909,17 +909,17 @@ type(vector_field), target, intent(in):: positions, vertical_normal
   integer, dimension(:), pointer:: neigh, faces
   real inn, area
   integer sngi, nloc, i, k
-    
+
   mesh => positions%mesh
   call allocate(face_normal_gravity, mesh%faces%face_list%sparsity)
   call zero(face_normal_gravity)
-  
+
   sngi=face_ngi(mesh, 1)
   nloc=ele_loc(mesh,1)
   allocate( detwei_f(1:sngi), &
     face_normal(1:positions%dim, 1:sngi), &
     gravity_normal(1:positions%dim, 1:sngi))
-  
+
   do i=1, element_count(mesh)
      ! elements adjacent to element i
      ! this is a row (column indices) in the mesh%faces%face_list matrix
@@ -951,11 +951,11 @@ type(vector_field), target, intent(in):: positions, vertical_normal
            end if
         end if
      end do
-        
+
   end do
 
 end subroutine compute_face_normal_gravity
-  
+
 subroutine vertical_integration_scalar(from_field, to_field, &
     positions, vertical_normal, surface_element_list, rhs)
 !!< See description vertical_integration_multiple
@@ -966,12 +966,12 @@ integer, dimension(:), intent(in):: surface_element_list
 type(scalar_field), optional, intent(in):: rhs
 
   type(scalar_field) to_fields(1)
-    
+
   to_fields=(/ to_field /)
-  if (present(rhs)) then     
+  if (present(rhs)) then
      call vertical_integration_multiple( (/ from_field /), to_fields, &
         positions, vertical_normal, surface_element_list, rhs=(/ rhs /) )
-  else  
+  else
      call vertical_integration_multiple( (/ from_field /), to_fields, &
         positions, vertical_normal, surface_element_list)
   end if
@@ -986,13 +986,13 @@ type(vector_field), intent(in):: to_field
 type(vector_field), intent(in):: positions, vertical_normal
 integer, dimension(:), intent(in):: surface_element_list
 type(vector_field), optional, intent(in):: rhs
-  
+
   type(scalar_field), dimension(from_field%dim):: from_field_components, &
      to_field_components, rhs_components
   integer i
-  
+
   assert(from_field%dim==to_field%dim)
-  
+
   do i=1, from_field%dim
      from_field_components(i)=extract_scalar_field(from_field, i)
      to_field_components(i)=extract_scalar_field(to_field, i)
@@ -1000,7 +1000,7 @@ type(vector_field), optional, intent(in):: rhs
         rhs_components(i)=extract_scalar_field(rhs, i)
      end if
   end do
-  
+
   if (present(rhs)) then
      call vertical_integration_multiple( from_field_components, &
         to_field_components, positions, vertical_normal, &
@@ -1010,7 +1010,7 @@ type(vector_field), optional, intent(in):: rhs
         to_field_components, positions, vertical_normal, &
         surface_element_list)
   end if
-  
+
 end subroutine vertical_integration_vector
 
 subroutine vertical_integration_multiple(from_fields, to_fields, &
@@ -1018,9 +1018,9 @@ subroutine vertical_integration_multiple(from_fields, to_fields, &
 !!< This subroutine solves: dP/dz=rhs using DG
 !!< It can be used for vertical integration downwards (dP/dz=0) as a drop
 !!< in replacement of VerticalExtrapolation hence its similar interface.
-!!< The field P is the to_field. A boundary condition is given by the 
+!!< The field P is the to_field. A boundary condition is given by the
 !!< from_field. Again completely similar to VerticalExtrapolation, it may
-!!< be defined as a surface field on surface elements given by 
+!!< be defined as a surface field on surface elements given by
 !!< surface_element_list or it may be a field on the complete mesh
 !!< in which case only its values on these surface elements are used.
 !!< vertical_normal specifies the direction in which to integrate (usually downwards)
@@ -1032,7 +1032,7 @@ type(scalar_field), dimension(:), intent(inout):: to_fields
 type(vector_field), intent(in):: positions, vertical_normal
 integer, dimension(:), intent(in):: surface_element_list
 type(scalar_field), dimension(:), optional, intent(in):: rhs
-  
+
   type(csr_matrix) face_normal_gravity
   type(element_type), pointer:: ele_shp, face_shp, x_face_shp
   real, dimension(:), pointer:: inn
@@ -1044,18 +1044,18 @@ type(scalar_field), dimension(:), optional, intent(in):: rhs
   integer nloc, snloc, ngi, sngi
   integer i, j, k, f, f2, elm, it, noit
   logical optimal_ordering, from_surface_fields
-  
+
   assert( size(from_fields)==size(to_fields) )
-  
+
   ! computes inner product of face normal and gravity (see above)
   call compute_face_normal_gravity(face_normal_gravity, &
      positions, vertical_normal)
-  
+
   ! determine an ordering for the elements based on this
   allocate( ordered_elements(1:element_count(positions)) )
   call vertical_element_ordering(ordered_elements, face_normal_gravity, &
      optimal_ordering)
-     
+
   ! General initalisation
   !-----------------------
   ! various grid numbers
@@ -1074,7 +1074,7 @@ type(scalar_field), dimension(:), optional, intent(in):: rhs
      dele_shp(1:nloc, 1:ngi, 1:positions%dim), &
      face_mat(1:snloc, 1:snloc), face_nds(1:snloc), face_nds2(1:snloc), &
      detwei(1:ngi), detwei_f(1:sngi))
-     
+
   if (element_count(from_fields(1))==size(surface_element_list)) then
      ! from_fields are fields over the surface mesh only
      ! so we're using all of its values:
@@ -1086,10 +1086,10 @@ type(scalar_field), dimension(:), optional, intent(in):: rhs
   else
      ! from_fields are on the full mesh and we only extract its values
      ! at the specified surface_elements
-     
-     from_surface_fields=.false.     
-  end if     
-     
+
+     from_surface_fields=.false.
+  end if
+
   surface_rhs=0
   ! Compute contribution of exterior surface integral (boundary condition) to rhs
   !-----------------------
@@ -1109,7 +1109,7 @@ type(scalar_field), dimension(:), optional, intent(in):: rhs
         end if
      end do
   end do
-  
+
   ! Solution loop
   !-----------------------
   if (optimal_ordering) then
@@ -1117,12 +1117,12 @@ type(scalar_field), dimension(:), optional, intent(in):: rhs
   else
     noit=10
   end if
-  
+
   do it=1, noit
      do i=1, element_count(positions)
-       
+
         elm=ordered_elements(i)
-        
+
         ! construct diagonal matrix block for this element
         call transform_to_physical(positions, elm, &
            shape=ele_shp, dshape=dele_shp, detwei=detwei)
@@ -1139,7 +1139,7 @@ type(scalar_field), dimension(:), optional, intent(in):: rhs
            ele_rhs=0.0
         end if
 
-        
+
         ! then add contribution of surface integrals of incoming
         ! faces to the rhs and matrix
         neigh => row_m_ptr(face_normal_gravity, elm)
@@ -1150,16 +1150,16 @@ type(scalar_field), dimension(:), optional, intent(in):: rhs
             call transform_facet_to_physical(positions, faces(j), &
                  detwei_f)
             face_mat=-shape_shape(face_shp, face_shp, detwei_f)*inn(j)
-            
+
             face_nds=face_global_nodes(to_fields(1), faces(j))
             face_lnds => face_local_nodes(to_fields(1)%mesh, faces(j))
             ele_mat(face_lnds,face_lnds)=ele_mat(face_lnds,face_lnds)+face_mat
-            
+
             if (neigh(j)>0) then
                ! face of element neigh(j), facing elm:
                f2=ele_face(positions, neigh(j), elm)
                face_nds2=face_global_nodes(to_fields(1), f2)
-               
+
                do k=1, size(to_fields)
                   ele_rhs(face_lnds,k)=ele_rhs(face_lnds,k)+ &
                      matmul(face_mat, node_val(to_fields(k), face_nds2))
@@ -1170,9 +1170,9 @@ type(scalar_field), dimension(:), optional, intent(in):: rhs
             end if
           end if
         end do
-        
+
         call invert(ele_mat)
-        
+
         ! compute values for the to_fields:
         ele_nds => ele_nodes(to_fields(1), elm)
         do k=1, size(to_fields)
@@ -1180,13 +1180,13 @@ type(scalar_field), dimension(:), optional, intent(in):: rhs
         end do
      end do
   end do
-  
+
   call deallocate(face_normal_gravity)
-  
+
 end subroutine vertical_integration_multiple
-  
+
 subroutine vertical_extrapolation_module_check_options
-  
+
   if (have_option("/geometry/ocean_boundaries")) then
     if (.not. have_option("/physical_parameters/gravity")) then
       ewrite(-1,*) "If you select /geometry/ocean_boundaries, you also need to "//&
@@ -1194,7 +1194,7 @@ subroutine vertical_extrapolation_module_check_options
       FLExit("Missing gravity!")
     end if
   end if
-  
+
 end subroutine vertical_extrapolation_module_check_options
 
 end module vertical_extrapolation_module

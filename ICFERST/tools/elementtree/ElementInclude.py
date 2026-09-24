@@ -46,6 +46,7 @@
 ##
 
 import copy
+
 import ElementTree
 
 XINCLUDE = "{http://www.w3.org/2001/XInclude}"
@@ -56,8 +57,10 @@ XINCLUDE_FALLBACK = XINCLUDE + "fallback"
 ##
 # Fatal include error.
 
+
 class FatalIncludeError(SyntaxError):
     pass
+
 
 ##
 # Default loader.  This loader reads an included resource from disk.
@@ -71,6 +74,7 @@ class FatalIncludeError(SyntaxError):
 #    or raise an IOError exception.
 # @throws IOError If the loader fails to load the resource.
 
+
 def default_loader(href, parse, encoding=None):
     file = open(href)
     if parse == "xml":
@@ -82,6 +86,7 @@ def default_loader(href, parse, encoding=None):
     file.close()
     return data
 
+
 ##
 # Expand XInclude directives.
 #
@@ -92,6 +97,7 @@ def default_loader(href, parse, encoding=None):
 # @throws FatalIncludeError If the function fails to include a given
 #     resource, or if the tree contains malformed XInclude elements.
 # @throws IOError If the function fails to load a given resource.
+
 
 def include(elem, loader=None):
     if loader is None:
@@ -107,9 +113,7 @@ def include(elem, loader=None):
             if parse == "xml":
                 node = loader(href, parse)
                 if node is None:
-                    raise FatalIncludeError(
-                        "cannot load %r as %r" % (href, parse)
-                        )
+                    raise FatalIncludeError("cannot load {!r} as {!r}".format(href, parse))
                 node = copy.copy(node)
                 if e.tail:
                     node.tail = (node.tail or "") + e.tail
@@ -117,11 +121,9 @@ def include(elem, loader=None):
             elif parse == "text":
                 text = loader(href, parse, e.get("encoding"))
                 if text is None:
-                    raise FatalIncludeError(
-                        "cannot load %r as %r" % (href, parse)
-                        )
+                    raise FatalIncludeError("cannot load {!r} as {!r}".format(href, parse))
                 if i:
-                    node = elem[i-1]
+                    node = elem[i - 1]
                     node.tail = (node.tail or "") + text
                 else:
                     elem.text = (elem.text or "") + text + (e.tail or "")
@@ -134,8 +136,7 @@ def include(elem, loader=None):
         elif e.tag == XINCLUDE_FALLBACK:
             raise FatalIncludeError(
                 "xi:fallback tag must be child of xi:include (%r)" % e.tag
-                )
+            )
         else:
             include(e, loader)
         i = i + 1
-

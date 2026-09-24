@@ -26,7 +26,7 @@ Y_in= np.fromfile(f,dtype=np.float)
 for i in range(0,100):
     X[i]=X_in[i+10]
     Y[i]=Y_in[i+10]
-    
+
 last_single_locations_error[0,0] = s['Single_Lagr_1']['position'][0][-1] - X[0]
 last_single_locations_error[1,0] = s['Single_Lagr_1']['position'][1][-1] - Y[0]
 last_single_locations_error[0,1] = s['Single_Lagr_2']['position'][0][-1] - X[50]

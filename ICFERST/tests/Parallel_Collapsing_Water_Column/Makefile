@@ -12,7 +12,7 @@ input: decomp
 
 clean:
 	rm -f *.d.* fluidity.*
-	rm -f *.node *.bound *.ele *.face *.stat *.vtu *.pvtu 
+	rm -f *.node *.bound *.ele *.face *.stat *.vtu *.pvtu
 	rm -rf cwc_P1DGP?_[0-9]
 	rm -f matrixdump*
 	rm -f src/*.halo

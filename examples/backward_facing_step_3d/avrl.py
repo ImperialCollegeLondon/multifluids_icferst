@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import sys
+
 import numpy
+
 
 def moving_average(name):
   npy = numpy.load(str(name))
@@ -36,4 +38,3 @@ def main():
 
 if __name__ == "__main__":
   sys.exit(main())
-

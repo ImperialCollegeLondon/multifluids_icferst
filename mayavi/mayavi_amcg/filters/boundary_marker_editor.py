@@ -5,16 +5,26 @@
 
 # Author: Daryl Harrison
 
-# Enthought library imports
-from enthought.traits.api import Instance, Range, Bool, Float, List, String, File, Button
-from enthought.traits.ui.api import View, Group, Item, ListEditor
-
-from enthought.tvtk.api import tvtk
 from enthought.mayavi.core.dataset_manager import DatasetManager
-from numpy import *
 
 # Local imports
 from enthought.mayavi.core.filter import Filter
+
+# Enthought library imports
+from enthought.traits.api import (
+    Bool,
+    Button,
+    File,
+    Float,
+    Instance,
+    List,
+    Range,
+    String,
+)
+from enthought.traits.ui.api import Group, Item, ListEditor, View
+from enthought.tvtk.api import tvtk
+from numpy import *
+
 
 ################################################################################
 # `BoundaryMarkerEditor` class.

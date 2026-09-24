@@ -1,11 +1,29 @@
 #!/usr/bin/env python
 
-from numpy import sqrt,pi,exp,sin,array,size,abs,max,amax,dot,zeros,reshape,transpose,arange
-from pylab import *
 import sys
+
+from numpy import (
+    abs,
+    amax,
+    arange,
+    array,
+    dot,
+    exp,
+    max,
+    pi,
+    reshape,
+    sin,
+    size,
+    sqrt,
+    transpose,
+    zeros,
+)
+from pylab import *
+
 sys.path.append('/home/piggott/bin/')
-import vtktools
 import nodecount
+import vtktools
+
 
 def function_psi(X,Y):
    lam = 1.0;      b = 1.0;
@@ -24,13 +42,13 @@ def function_psi(X,Y):
 def function_tetvol(X,Y,Z):
    X12 = X[1] - X[0]; X13 = X[2] - X[0]; X14 = X[3] - X[0]
    Y12 = Y[1] - Y[0]; Y13 = Y[2] - Y[0]; Y14 = Y[3] - Y[0]
-   Z12 = Z[1] - Z[0]; Z13 = Z[2] - Z[0]; Z14 = Z[3] - Z[0]   
+   Z12 = Z[1] - Z[0]; Z13 = Z[2] - Z[0]; Z14 = Z[3] - Z[0]
    VOL = X12*( Y13*Z14 - Y14*Z13 ) + X13*( Y14*Z12 - Y12*Z14 ) + X14*( Y12*Z13 - Y13*Z12 )
    return abs(VOL/6)
 
 
 def function_trivol(X,Y):
-   a = sqrt( (X[1] - X[0])**2 + (Y[1] - Y[0])**2) 
+   a = sqrt( (X[1] - X[0])**2 + (Y[1] - Y[0])**2)
    b = sqrt( (X[2] - X[0])**2 + (Y[2] - Y[0])**2)
    c = sqrt( (X[2] - X[1])**2 + (Y[2] - Y[1])**2)
    s = 0.5*(a+b+c)
@@ -121,8 +139,8 @@ print normfinemesh,norm2finemesh
 #   for j in arange(2,N-2):
 #      tempfinemesh_x[(i-1)*N + j-1 ] = (tt[(i+1)*N + j ] - tt[(i-1)*N + j ])/float(N)
 #        tempfinemesh_y[(i-1)*N + j-1 ] = (tt[i*N + j+1 ]   - tt[i*N + j-1   ])/float(N)
-        
-          
-            
+
+
+
 #contour(reshape(tempfinemesh_x,(N-1,N-1)))
 #show()

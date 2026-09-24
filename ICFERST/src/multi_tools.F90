@@ -882,8 +882,8 @@ END subroutine RotationMatrix
     !>@param b Input RHS term, returns the X that minimise the system
     subroutine Least_squares_solver(A, b, rank)
       implicit none
-      real, dimension(:,:), intent(inout) :: A 
-      real, dimension(:,:), intent(inout) :: b 
+      real, dimension(:,:), intent(inout) :: A
+      real, dimension(:,:), intent(inout) :: b
       integer, intent(inout) :: rank
       !Local variables
       integer :: i, j, k, theta, m, n, nrhs, lda, ldb
@@ -1040,21 +1040,21 @@ END subroutine RotationMatrix
 #endif
 
       call python_reset()
-      
+
       !Support for multiphase
       call python_add_states(states)
       call python_run_string("state = states['"//trim(states(iphase)%name)//"']")
       if (iphase == 1) call python_run_string("Pressure = state.scalar_fields['Pressure']")
       do i = 1, size(states)
-        if (iphase /= i) then 
+        if (iphase /= i) then
           call python_run_string("state"//int2str(i)//" = states['"//trim(states(i)%name)//"']")
           !Provide Pressure always so it is available in all the phases
           if (i == 1) call python_run_string("Pressure = state1.scalar_fields['Pressure']")
         end if
       end do
-      
+
       !Depending on the input field we define field in a different way
-      if (present(scalar_result)) then 
+      if (present(scalar_result)) then
         if (.not.have_option("/material_phase["// int2str( iphase - 1)//"]/scalar_field::Dummy")) then
             ewrite(0, *) "ERROR: Trying to compute a python scalar_field without enabling the Dummy field in the corresponding phase."
           stop 657483
@@ -1063,7 +1063,7 @@ END subroutine RotationMatrix
         !Impose initially the given value
         s_field%val = scalar_result
         call python_run_string("field = state.scalar_fields['Dummy']")
-      end if     
+      end if
       if (present(sfield)) call python_run_string("field = state.scalar_fields['"//trim(sfield%name)//"']")
       if (present(vfield)) call python_run_string("field = state.vector_fields['"//trim(vfield%name)//"']")
       if (present(tfield)) call python_run_string("field = state.tensor_fields['"//trim(tfield%name)//"']")
@@ -1075,7 +1075,7 @@ END subroutine RotationMatrix
       write(buffer,*) dt
       call python_run_string("dt="//trim(buffer))
       ! Get the code (in some cases it comes under the algorithm part and not in other cases...)
-      if (have_option(trim( option_path_python ) // '/algorithm')) then 
+      if (have_option(trim( option_path_python ) // '/algorithm')) then
         call get_option( trim( option_path_python ) // '/algorithm', pycode )
       else
         call get_option( trim( option_path_python ), pycode )
@@ -1203,19 +1203,19 @@ version and using & profiling, please configure WITHOUT 'petscdebug'"
 
       !> @brief: Returns true if the input name is a Tracer type:PassiveTracer, Tracer, Species, Concentration or any other reserved word
       !> This function is used to easily identify Tracers that may have diffusion, sources/sinks, dispersion, etc.
-    logical function is_Tracer_field(input_name) 
-        implicit none 
+    logical function is_Tracer_field(input_name)
+        implicit none
         character( len = * ), intent( in ) :: input_name
-        
+
         is_Tracer_field = input_name(1:min(len(input_name), 13))=="PassiveTracer"&
                  .or. input_name(1:min(len(input_name), 6))=="Tracer" .or.&
                 input_name(1:min(len(input_name), 7)) =="Species".or. trim(input_name)=="Concentration"
     end function is_Tracer_field
-    
-    !> @brief: Returns true if the input name is an Active Tracer type, Tracer, Species, Concentration or any other reserved word 
+
+    !> @brief: Returns true if the input name is an Active Tracer type, Tracer, Species, Concentration or any other reserved word
     !> This function is used to easily identify Tracers that may have diffusion, sources/sinks, dispersion, etc.
-    logical function is_Active_Tracer_field(input_name, ignore_concentration) 
-        implicit none 
+    logical function is_Active_Tracer_field(input_name, ignore_concentration)
+        implicit none
         character( len = * ), intent( in ) :: input_name
         logical, optional, INTENT(IN) :: ignore_concentration
 
@@ -1228,10 +1228,10 @@ version and using & profiling, please configure WITHOUT 'petscdebug'"
     end function is_Active_Tracer_field
 
     !> @brief: Returns true if the input name is a PassievTracer type.
-    logical function is_PassiveTracer_field(input_name) 
-        implicit none 
+    logical function is_PassiveTracer_field(input_name)
+        implicit none
         character( len = * ), intent( in ) :: input_name
-        
+
         is_PassiveTracer_field = input_name(1:min(len(input_name), 13))=="PassiveTracer"
 
     end function is_PassiveTracer_field

@@ -12,7 +12,7 @@
 with open("log", "rb") as f:
     linelist = f.readlines()           # Read the first line.
     last = linelist[len(linelist)-1]   # The last line
-f.close 
+f.close
 
 if 'OK' in last: cwc = True
 

@@ -70,7 +70,7 @@ OBJS_POSTDIAGNOSTICS = Multiphase_TimeLoop.o Multiphase_Prototype_Wrapper.o
 	@echo "        CXX $<"
 	$(CXX) $(CXXFLAGS) -c $<
 
-default: $(OBJS_PREDIAGNOSTICS)  $(OBJS_POSTDIAGNOSTICS) 
+default: $(OBJS_PREDIAGNOSTICS)  $(OBJS_POSTDIAGNOSTICS)
 
 pre_diagnostics: $(OBJS_PREDIAGNOSTICS)
 

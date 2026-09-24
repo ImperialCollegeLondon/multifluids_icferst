@@ -13,7 +13,7 @@ mpiexec ../../bin/flredecomp -i 1 -o 4 -v -l lagrangian-4th-C lagrangian-4th-C-f
   <variables>
     <variable name="ab_convergence" language="python">
 from fluidity_tools import stat_parser
-import numpy as np 
+import numpy as np
 from numpy import zeros,fromfile
 from math import sqrt, log
 
@@ -54,10 +54,10 @@ l2_norm_b=sqrt(lsb)
 ab_ratio = l2_norm_a/l2_norm_b
 ab_convergence = log(ab_ratio, 10)
     </variable>
-    
+
     <variable name="bc_convergence" language="python">
 from fluidity_tools import stat_parser
-import numpy as np 
+import numpy as np
 from numpy import zeros,fromfile
 from math import sqrt, log
 

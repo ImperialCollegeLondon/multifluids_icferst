@@ -55,7 +55,7 @@ module zoltan_global_variables
   type(integer_hash_table), save, public :: zoltan_global_universal_surface_number_to_element_owner
   type(integer_hash_table), save, public :: zoltan_global_universal_surface_number_to_surface_id
   integer, dimension(:), allocatable, save, public :: zoltan_global_universal_columns
-  type(halo_type), save, pointer, public :: zoltan_global_zz_ele_halo 
+  type(halo_type), save, pointer, public :: zoltan_global_zz_ele_halo
 
 
   ! Needed for zoltan_cb_unpack_nodes
@@ -86,7 +86,7 @@ module zoltan_global_variables
 
   ! Needed for zoltan_cb_pack_field_sizes
   type(state_type), save, dimension(:), allocatable, public :: zoltan_global_source_states, zoltan_global_target_states
-  integer, save, dimension(:), allocatable, public :: zoltan_global_ndets_in_ele  
+  integer, save, dimension(:), allocatable, public :: zoltan_global_ndets_in_ele
   integer, save, public :: zoltan_global_ndata_per_det
   type(detector_linked_list), dimension(:), allocatable, target, save, public :: zoltan_global_to_pack_detectors_list
 

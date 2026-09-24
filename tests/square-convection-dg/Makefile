@@ -6,7 +6,7 @@ MODEL = square-convection
 
 input: src/$(MESH).msh
 	cp src/$(MESH).msh .
-	
+
 clean: clean-mesh clean-run-debug
 clean-mesh:
 	rm -f $(MESH).edge $(MESH).ele $(MESH).face $(MESH).node

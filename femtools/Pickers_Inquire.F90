@@ -1,5 +1,5 @@
 !    Copyright (C) 2006 Imperial College London and others.
-!    
+!
 !    Please see the AUTHORS file in the main source directory for a full list
 !    of copyright holders.
 !
@@ -9,7 +9,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!    
+!
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation,
@@ -39,7 +39,7 @@ module pickers_inquire
   use fields
   use node_owner_finder
   use pickers_allocates
-  
+
   implicit none
 
   interface picker_inquire
@@ -62,7 +62,7 @@ contains
 
   subroutine picker_inquire_single_position_xyz(positions, coordx, coordy, coordz, ele, local_coord, global)
     !!< Find the owning elements in positions of the supplied coordinate
-  
+
     type(vector_field), intent(inout) :: positions
     real, intent(in) :: coordx
     real, optional, intent(in) :: coordy
@@ -73,9 +73,9 @@ contains
     !! If present and .false., do not perform a global inquiry across all
     !! processes
     logical, optional, intent(in) :: global
-   
+
     real, dimension(:), allocatable :: coord
-    
+
     if(present(coordy)) then
       if(present(coordz)) then
         allocate(coord(3))
@@ -89,16 +89,16 @@ contains
       allocate(coord(1))
       coord = (/coordx/)
     end if
-    
+
     call picker_inquire(positions, coord, ele, local_coord = local_coord, global = global)
-    
+
     deallocate(coord)
-        
+
   end subroutine picker_inquire_single_position_xyz
 
   subroutine picker_inquire_single_position(positions, coord, ele, local_coord, global)
     !!< Find the owning elements in positions of the supplied coordinate
-  
+
     type(vector_field), intent(inout) :: positions
     real, dimension(positions%dim), intent(in) :: coord
     integer, intent(out) :: ele
@@ -107,9 +107,9 @@ contains
     !! If present and .false., do not perform a global inquiry across all
     !! processes
     logical, optional, intent(in) :: global
-   
+
     call initialise_picker(positions)
-   
+
     call node_owner_finder_find(positions%picker%ptr%picker_id, positions, coord, ele, global = global)
     if(present(local_coord)) then
       if(ele > 0) then
@@ -120,12 +120,12 @@ contains
         local_coord = huge(0.0)
       end if
     end if
-        
+
   end subroutine picker_inquire_single_position
-  
+
   subroutine picker_inquire_multiple_positions_xyz(positions, coordsx, coordsy, coordsz, eles, local_coords, global)
     !!< Find the owning elements in positions of the supplied coordinates
-  
+
     type(vector_field), intent(inout) :: positions
     real, dimension(:), intent(in) :: coordsx
     real, dimension(size(coordsx)), optional, intent(in) :: coordsy
@@ -136,9 +136,9 @@ contains
     !! If present and .false., do not perform a global inquiry across all
     !! processes
     logical, optional, intent(in) :: global
-    
+
     real, dimension(:, :), allocatable :: coords
-    
+
     if(present(coordsy)) then
       if(present(coordsz)) then
         allocate(coords(3, size(coordsx)))
@@ -155,16 +155,16 @@ contains
       allocate(coords(1, size(coordsx)))
       coords(1, :) = coordsx
     end if
-    
+
     call picker_inquire(positions, coords, eles, local_coords = local_coords, global = global)
-    
+
     deallocate(coords)
-      
+
   end subroutine picker_inquire_multiple_positions_xyz
-  
+
   subroutine picker_inquire_multiple_positions(positions, coords, eles, local_coords, global)
     !!< Find the owning elements in positions of the supplied coordinates
-  
+
     type(vector_field), intent(inout) :: positions
     real, dimension(:, :), intent(in) :: coords
     integer, dimension(size(coords, 2)), intent(out) :: eles
@@ -173,13 +173,13 @@ contains
     !! If present and .false., do not perform a global inquiry across all
     !! processes
     logical, optional, intent(in) :: global
-    
+
     integer :: i
-   
+
     assert(size(coords, 1) == positions%dim)
 
     call initialise_picker(positions)
-   
+
     call node_owner_finder_find(positions%picker%ptr%picker_id, positions, coords, eles, global = global)
     if(present(local_coords)) then
       do i = 1, size(coords, 2)
@@ -199,15 +199,15 @@ contains
     !!< Find the owning elements in positions of the supplied coordinate
     !!< using an ownership tolerance. This performs a strictly local (this
     !!< process) ownership test.
-  
+
     type(vector_field), intent(inout) :: positions
     real, dimension(positions%dim), intent(in) :: coord
     type(integer_set), intent(out) :: ele
     real, intent(in) :: ownership_tolerance
-   
+
     call initialise_picker(positions)
     call node_owner_finder_find(positions%picker%ptr%picker_id, positions, coord, ele, ownership_tolerance = ownership_tolerance)
-        
+
   end subroutine picker_inquire_single_position_tolerance
 
   subroutine picker_inquire_multiple_positions_tolerance(positions, coords, eles, ownership_tolerance)
@@ -219,7 +219,7 @@ contains
     real, dimension(:, :), intent(in) :: coords
     type(integer_set), dimension(size(coords, 2)), intent(out) :: eles
     real, intent(in) :: ownership_tolerance
-   
+
     assert(size(coords, 1) == positions%dim)
 
     call initialise_picker(positions)
@@ -252,7 +252,7 @@ contains
 
   subroutine picker_inquire_nodes(positions_a, positions_b, ele_as, local_coords, global)
     !!< Find the owning elements in positions_a of the nodes in positions_b
-  
+
     type(vector_field), intent(inout) :: positions_a
     type(vector_field), intent(in) :: positions_b
     integer, dimension(node_count(positions_b)), intent(out) :: ele_as
@@ -296,14 +296,14 @@ contains
     assert(positions_a%dim == positions_b%dim)
 
     call picker_inquire(positions_a, node_val(positions_b, node_b), ele_a, ownership_tolerance = ownership_tolerance)
-    
+
   end subroutine picker_inquire_node_tolerance
 
   subroutine picker_inquire_nodes_tolerance(positions_a, positions_b, ele_as, ownership_tolerance)
     !!< Find the owning elements in positions_a of the nodes in positions_b
     !!< using an ownership tolerance. This performs a strictly local (this
     !!< process) ownership test.
-  
+
     type(vector_field), intent(inout) :: positions_a
     type(vector_field), intent(in) :: positions_b
     type(integer_set), dimension(node_count(positions_b)), intent(out) :: ele_as
@@ -324,15 +324,15 @@ contains
     deallocate(lpositions)
 
   end subroutine picker_inquire_nodes_tolerance
-  
+
   subroutine search_for_detectors(detectors, positions)
     !!< This subroutine establishes on which processor, in which element and at
     !!< which local coordinates each detector is to be found. A negative element
     !!< value indicates that no element could be found for that node.
     !!< Detectors are assumed to be local.
-    
+
     type(vector_field), intent(inout) :: positions
-    
+
     type(detector_linked_list), intent(inout) :: detectors
     type(detector_type), pointer :: node
 
@@ -340,14 +340,14 @@ contains
     real, dimension(:, :), allocatable :: local_coords, local_l_coords
     real, dimension(:, :), allocatable :: global_coords, global_l_coords
     integer, dimension(:), allocatable :: local_ele, global_ele
-       
+
     call initialise_picker(positions)
     assert(ele_numbering_family(positions, 1) == FAMILY_SIMPLEX)
 
     allocate(local_coords(positions%dim, detectors%length))
     allocate(local_l_coords(positions%dim+1, detectors%length))
     allocate(local_ele(detectors%length))
-        
+
     node => detectors%first
     do i = 1, detectors%length
       local_coords(:, i) = node%position
@@ -410,7 +410,7 @@ contains
     deallocate(global_coords)
     deallocate(global_l_coords)
     deallocate(global_ele)
-    
+
   end subroutine search_for_detectors
 
 end module pickers_inquire

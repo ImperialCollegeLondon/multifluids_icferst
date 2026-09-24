@@ -1,6 +1,6 @@
 # Phase interaction options for Fluidity's multiphase flow model.
 
-multiphase_interaction = 
+multiphase_interaction =
    (
       ## Phase interaction options for Fluidity's multiphase flow model.
       element multiphase_interaction {
@@ -8,7 +8,7 @@ multiphase_interaction =
          fluid_particle_drag?,
          heat_transfer?
       }
-   ) 
+   )
 
 fluid_particle_drag =
    (
@@ -37,10 +37,10 @@ drag_correlation =
          comment
       }
    )
-   
+
 heat_transfer =
    (
-      ## Heat transfer term for the 
+      ## Heat transfer term for the
       ## multiphase internal energy equation.
       ## Note: Only for fluid-particle phase pairs.
       element heat_transfer {

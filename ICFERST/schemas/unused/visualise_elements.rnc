@@ -39,7 +39,7 @@ start =
             ## Quadrature
             element quadrature {
                ## Quadrature degree
-               ## 
+               ##
                ## note: this specifies the degree of quadrature not
                ## the number of gauss points
                element degree {
@@ -162,7 +162,7 @@ mesh_info =
    )
 
 # Most common mesh choices
-mesh_choice = 
+mesh_choice =
    (
       element mesh {
          attribute name { xsd:string }
@@ -234,7 +234,7 @@ scalar_field_choice =
                velocity_mesh_choice
             }
          )
-      }   
+      }
    )
 
 
@@ -346,4 +346,4 @@ input_choice_real_dim_vector_contents =
    element python {
       python_code
    }
-      
+

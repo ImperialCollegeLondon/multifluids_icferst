@@ -1000,7 +1000,7 @@ for i in range(field.element_count):
   Sigma = numpy.zeros(3)
   Cp_l=4200.0
   Cp_g=1996.0
-  #Sigma[0] = Svap_l*(Tsat-T_l)+Gamma_l*2.26e6+Gamma_l*(h_l-Cp_l*T_l) 
+  #Sigma[0] = Svap_l*(Tsat-T_l)+Gamma_l*2.26e6+Gamma_l*(h_l-Cp_l*T_l)
   #Sigma[1] = Svap_g*(Tsat-T_g)+Gamma_g*(h_g-Cp_g*T_g)
   if Gamma_l&lt;0:
    Sigma[0] = Svap_l*Tsat+Gamma_l*h_l+Gamma_l*2.26e6#+Gamma_l*T_l
@@ -1008,7 +1008,7 @@ for i in range(field.element_count):
   else:
    Sigma[0] = Svap_l*Tsat+Gamma_l*h_l+Gamma_l*2.26e6+Gamma_l*T_l
    Sigma[1] = Svap_g*Tsat+Gamma_g*h_g#-Cp_g*Gamma_g*T_g
-  
+
   Sigma[2] = S[pnod]*1e6
   field.set(pnod, Sigma)</string_value>
         </algorithm>
@@ -1048,12 +1048,12 @@ for i in range(field.element_count):
  f_ele_nodes = field.ele_nodes(i)
  a_ele_nodes = A1.ele_nodes(i)
  for j in range(nloc):
-  fnod = f_ele_nodes[j] ; anod = a_ele_nodes[j] 
+  fnod = f_ele_nodes[j] ; anod = a_ele_nodes[j]
   U_l=max(abs(Ul.node_val(fnod)[:]))
   U_g=max(abs(Ug.node_val(fnod)[:]))
   a_l = A1.node_val(anod) ; a_g = A2.node_val(anod);a_s = A3.node_val(anod)
   [S_lg_l, S_lg_g, S_ls_l, S_gs_g]=heat.drag_3_phase(1000,0.5, U_l, U_g, 0, a_l, a_g, a_s, d_p, d_b,0.2)
-  
+
   Sigma = numpy.zeros((3, 3))
   #S_lg_l=a_g*1e6
   #S_lg_g=a_l*1e6
@@ -1063,7 +1063,7 @@ for i in range(field.element_count):
   Sigma[0][0] =  S_lg_l+S_ls_l; Sigma[0][1] = -S_lg_g;           Sigma[0][2] = -S_ls_l  #water
   Sigma[1][0] = -S_lg_g       ; Sigma[1][1] = S_gs_g+ S_lg_g;   Sigma[1][2] = -S_gs_g  #gas
   Sigma[2][0] =  0.0 ;          Sigma[2][1] = 0.0  ;            Sigma[2][2] =  1e8     #solid
-  
+
   field.set(fnod, Sigma)</string_value>
         </algorithm>
         <mesh name="VelocityMesh" />
@@ -1120,7 +1120,7 @@ for i in range(field.element_count):
   St_gl=1e3
   St_sl=5e4
   St_sg=1e4
-  
+
   Sigma = numpy.zeros((3, 3))
   Cp_l=4200.0
   Cp_g=1996.0
@@ -1130,16 +1130,16 @@ for i in range(field.element_count):
   else:
    Sigma[0][0] =  St_gl + St_sl +Svap_l# - Cp_l*Gamma_l
    Sigma[1][1] =  St_gl + St_sg +Svap_g - Cp_g*Gamma_g
-  
+
   if Sigma[0][0]&lt;0: print 'error Sigma00',Sigma[0][0],Gamma_l,'Svap_l',Svap_l,'Svap_g',Svap_g
   if Sigma[1][1]&lt;0: print 'error Sigma11',Sigma[1][1],Gamma_g,'Svap_l',Svap_l,'Svap_g',Svap_g
-  
-  Sigma[0][1] = -St_gl;    
+
+  Sigma[0][1] = -St_gl;
   Sigma[0][2] = -St_sl  #water
-  Sigma[1][0] = -St_gl;     
+  Sigma[1][0] = -St_gl;
   Sigma[1][2] = -St_sg  #gas
-  Sigma[2][0] = -St_sl ;     
-  Sigma[2][1] = -St_sg;    
+  Sigma[2][0] = -St_sl ;
+  Sigma[2][1] = -St_sg;
   Sigma[2][2] =  St_sl + St_sg  #solid
   field.set(unod, Sigma)</string_value>
         </algorithm>

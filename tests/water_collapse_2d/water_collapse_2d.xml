@@ -6,8 +6,8 @@
   <tags>flml 2dadapt</tags>
     <problem_definition length="medium" nprocs="1">
     <command_line>fluidity -v2 -l water_collapse.flml</command_line>
-  </problem_definition>  
-  <variables>  
+  </problem_definition>
+  <variables>
     <variable name="solvers_converged" language="python">
 import os
 files = os.listdir("./")
@@ -91,7 +91,7 @@ def get_head_pos(file):
   polydata = contour.GetOutput()
   bounding_box = polydata.GetBounds()
   return bounding_box
-  
+
 lower_contour_bounds= get_head_pos(get_last_dump())
     </variable>
     <variable name="mid_contour_bounds" language="python">
@@ -132,7 +132,7 @@ def get_head_pos(file):
   polydata = contour.GetOutput()
   bounding_box = polydata.GetBounds()
   return bounding_box
-  
+
 mid_contour_bounds= get_head_pos(get_last_dump())
     </variable>
     <variable name="upper_contour_bounds" language="python">
@@ -173,15 +173,15 @@ def get_head_pos(file):
   polydata = contour.GetOutput()
   bounding_box = polydata.GetBounds()
   return bounding_box
-  
+
 upper_contour_bounds= get_head_pos(get_last_dump())
     </variable>
     <variable name="insidecolumn" language="python">
 from fluidity_tools import stat_parser as stat
 insidecolumn= min(stat("water_collapse.detectors")["Dense"]["MaterialVolumeFraction"]["WaterColumn"])
     </variable>
-  </variables>    
-  <pass_tests> 
+  </variables>
+  <pass_tests>
     <test name="Solvers converged" language="python">
       assert(solvers_converged)
     </test>

@@ -4,7 +4,7 @@ xmax = 1;
 ymax = 0.1;
 zmax = 0.1;
 
-//Computational Domain 
+//Computational Domain
 
 Point(1) = {  0.0,  0.0,    0.0, resolution};
 Point(2) = {  xmax, 0.0,    0.0, resolution};
@@ -14,7 +14,7 @@ Point(5) = {  0.0,  ymax,   0.0, resolution};
 Point(6) = {  0.0,  ymax/2, 0.0, resolution};
 
 
-//Horizontal Lines // 
+//Horizontal Lines //
 Line(1) = {1, 2};
 Line(2) = {2, 3};
 Line(3) = {3, 4};

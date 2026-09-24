@@ -1,21 +1,23 @@
 #!/usr/bin/env python
-import sys
-import triangle
 import copy
+import sys
+
 import numpy
+import triangle
 from sets import Set
+
 #input surface_id, filename
 
 
 
-# This scripts removes superposed nodes, including elements and edges, in a triangle file set. 
+# This scripts removes superposed nodes, including elements and edges, in a triangle file set.
 # It should be called before seperate_internal_boundary2.py to avoid empty elements
-# 
-# Changelog: 
+#
+# Changelog:
 # 4.4.10 Initial version
 # 5.5.10 Some more detailed help
 # 5.5.10 Version 2 of this script can handle .edge with (more than just the boundary id) attributes.
-# 
+#
 
 
 # Here is an examle mesh4.geo file for this script:
@@ -30,35 +32,35 @@ from sets import Set
 # Point(8) = {0.500001, 1, 0, 2};
 # Point(9) = {0.4, -0.1, 0, 2};
 # Point(10) = {0.4, 1.1, 0, 2};
-# 
-# 
+#
+#
 # Line(1) = {4, 1};
 # Line(2) = {1, 9};
 # Line(3) = {9, 5};
 # Line(4) = {5, 6};
 # Line(9) = {6, 10};
 # Line(10) = {10, 4};
-# 
+#
 # Line(5) = {8, 7};
 # Line(6) = {7, 2};
 # Line(7) = {2, 3};
 # Line(8) = {3, 8};
-# 
+#
 # Physical Line(20) = {1};
 # Physical Line(21) = {2};
 # Physical Line(22) = {3};
 # Physical Line(23) = {4};
 # Physical Line(28) = {9};
 # Physical Line(29) = {10};
-# 
+#
 # Physical Line(24) = {5};
 # Physical Line(25) = {6};
 # Physical Line(26) = {7};
 # Physical Line(27) = {8};
-# 
+#
 # Line Loop(10) = {4, 9, 10, 1, 2, 3};
 # Line Loop(11) = {8, 5, 6, 7};
-# 
+#
 # Plane Surface(11) = {10};
 # Plane Surface(12) = {11};
 # Physical Surface(12) = {11, 12};
@@ -70,7 +72,7 @@ from sets import Set
 
 ########################################################################################################
 if not len(sys.argv)==3:
-        print "Usage: seperate_internal_boundary.py file boundary_id"        
+        print "Usage: seperate_internal_boundary.py file boundary_id"
         print ""
         print "output fixed .ele and .node file with removed superposed nodes on the given boundary"
         print ""
@@ -119,7 +121,7 @@ for nodeid in nodeid_to_test:
                                  if (len(Set(triangle.edges[index]))!=len(triangle.edges[index])): # We dont need edges with nodes k+1 and nodeid
                                         edgesid_del.add(index+1)
                                         print "Remove unnecessary edge ", index+1
-                        
+
 nodeid_delar=list(nodeid_del)
 edgeid_delar=list(edgeid_del)
 eleid_delar=list(eleid_del)
@@ -141,18 +143,12 @@ for e in eleid_delar:
 for n in nodeid_delar:
         triangle.delete_nodeid(n)
 
-if debug>0: 
+if debug>0:
         print "save node file as ", filename, "_nosup2.node"
 triangle.save_nodefile(triangle.nodes, 2, filename+"_nosup2.node")
-if debug>0: 
+if debug>0:
         print "save ele file as ", filename, "_nosup2.ele"
 triangle.save_elefile(triangle.eles, triangle.region_ids, filename+"_nosup2.ele")
-if debug>0: 
+if debug>0:
         print "save edge file as ", filename, "_nosup2.edge"
 triangle.save_edgefile2(triangle.edges, triangle.surface_ids, triangle.edge_attribute1, filename+"_nosup2.edge")
-
-
-
-
-
-

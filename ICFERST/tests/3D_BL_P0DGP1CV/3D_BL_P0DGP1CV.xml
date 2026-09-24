@@ -12,7 +12,7 @@
 with open("log", "r") as f:
     linelist = f.readlines()           # Read the first line.
     last = linelist[len(linelist)-1]   # The last line
-f.close 
+f.close
 
 if 'OK' in last: BL_3D_P0DGP1 = True
 

@@ -1,5 +1,5 @@
 !    Copyright (C) 2006 Imperial College London and others.
-!    
+!
 !    Please see the AUTHORS file in the main source directory for a full list
 !    of copyright holders.
 !
@@ -9,7 +9,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!    
+!
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation,
@@ -35,7 +35,7 @@ subroutine test_element_surface_integral
 
   type(element_type) :: element
   type(quadrature_type) :: quad, quad_s
-  
+
   character(len=500) :: error_message, test_message
   integer :: dim, degree, vertices, k
   logical :: fail
@@ -59,9 +59,9 @@ subroutine test_element_surface_integral
 
         do power=0,degree
 
-           ! surface 
+           ! surface
            if (.not.(abs(shape_integrate_surface(monic, element,1)&
-                )<eps)) then 
+                )<eps)) then
               write(error_message,'(e15.7)') &
                    shape_integrate_surface(monic, element,1)
               fail=.false.
@@ -80,7 +80,7 @@ subroutine test_element_surface_integral
            do k=1,dim+1
 
               if (.not.(abs(shape_integrate_surface(monic, element,1,k)&
-                   -line_answer(power, dim,k))<eps)) then 
+                   -line_answer(power, dim,k))<eps)) then
                  write(error_message,'(e15.7)') &
                       shape_integrate_surface(monic, element,1,k)&
                       -line_answer(power, dim,k)
@@ -101,7 +101,7 @@ subroutine test_element_surface_integral
 
            ! surface derivative
            if (.not.(abs(shape_integrate_surface_diff(monic, element,1)&
-                )<eps)) then 
+                )<eps)) then
               write(error_message,'(e15.7)') &
                    shape_integrate_surface_diff(monic, element,1)
               fail=.false.
@@ -120,7 +120,7 @@ subroutine test_element_surface_integral
            do k=1,dim+1
 
               if (.not.(abs(shape_integrate_surface_diff(monic, element,1,k)&
-                   -power*line_answer(power-1, dim,k))<eps)) then 
+                   -power*line_answer(power-1, dim,k))<eps)) then
                  write(error_message,'(e15.7)') &
                       shape_integrate_surface_diff(monic, element,1,k)&
                       -power*line_answer(power-1, dim,k)
@@ -163,7 +163,7 @@ subroutine test_element_surface_integral
     else
        line_answer=-0.5*(1.0)/(power+1)
     end if
-       
+
 
   end function line_answer
 
@@ -181,6 +181,5 @@ subroutine test_element_surface_integral
     end if
 
   end function factorial
-  
-end subroutine test_element_surface_integral
 
+end subroutine test_element_surface_integral

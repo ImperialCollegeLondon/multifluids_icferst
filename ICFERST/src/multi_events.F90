@@ -61,7 +61,7 @@ module multi_events
     public :: load_simulation_events
     public :: apply_event_timestep
 
-    
+
     real, allocatable, dimension(:), save :: event_times_s ! event times in seconds (absolute or within one period if periodic)
     integer, save :: n_events = 0 ! number of events loaded from csv
     logical, save :: events_active = .false. ! whether the events module is active (csv successfully loaded)

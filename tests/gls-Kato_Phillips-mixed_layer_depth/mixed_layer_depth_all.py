@@ -1,23 +1,25 @@
 #!/usr/bin/env python
 
-from numpy import arange,concatenate,array,argsort
-import os
-import sys
-import vtktools
-import math
-from pylab import *
-from matplotlib.ticker import MaxNLocator
-import re 
-from scipy.interpolate import UnivariateSpline
 import glob
+import math
+import os
+import re
+import sys
+
+import vtktools
+from matplotlib.ticker import MaxNLocator
+from numpy import arange, argsort, array, concatenate
+from pylab import *
+from scipy.interpolate import UnivariateSpline
+
 
 #### taken from http://www.codinghorror.com/blog/archives/001018.html  #######
-def sort_nicely( l ): 
-  """ Sort the given list in the way that humans expect. 
-  """ 
-  convert = lambda text: int(text) if text.isdigit() else text 
-  alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ] 
-  l.sort( key=alphanum_key ) 
+def sort_nicely( l ):
+  """ Sort the given list in the way that humans expect.
+  """
+  convert = lambda text: int(text) if text.isdigit() else text
+  alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ]
+  l.sort( key=alphanum_key )
 ##############################################################################
 
 
@@ -26,7 +28,7 @@ def MLD(filelist):
   x0 = 0.
   tke0 = 1.0e-5
   last_mld = 0
-  
+
   times = []
   depths = []
   for file in filelist:
@@ -35,7 +37,7 @@ def MLD(filelist):
      except:
        print "No such file: %s" % file
        sys.exit(1)
-     
+
      u=vtktools.vtu(file)
      time = u.GetScalarField('Time')
      tt = time[0]
@@ -52,7 +54,7 @@ def MLD(filelist):
      xyzkkarr = vtktools.arr(xyzkk)
      III = argsort(xyzkkarr[:,1])
      xyzkkarrsort = xyzkkarr[III,:]
-     # march down the column, grabbing the last value above tk0 and the first 
+     # march down the column, grabbing the last value above tk0 and the first
      # one less than tke0. Interpolate between to get the MLD
      kea = 1000
      keb = 0
@@ -106,7 +108,7 @@ files_to_look_through_kkl = [
 colours = ['r','g','b','#8000FF']
 
 times2 = arange(0, 10, 0.1)
-Dm = 1.05*1.0e-2*(1.0/sqrt(0.01))*sqrt((times2*60*60));
+Dm = 1.05*1.0e-2*(1.0/sqrt(0.01))*sqrt(times2*60*60);
 
 figke = figure(figsize=(9.172,4.5),dpi=90)
 ax = figke.add_subplot(111)
@@ -176,5 +178,3 @@ xlabel('Time (hours)')
 ylabel('ML Depth (m)')
 legend(loc=0)
 savefig(path + '/kkl.png', dpi=90,format='png')
-
-

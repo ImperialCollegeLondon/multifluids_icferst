@@ -93,7 +93,7 @@ contains
     !ewrite(3,*) 'Leaving SHAPE_CV_N'
 
   end subroutine shape_cv_n
-  
+
   !> This subrt defines the sub-control volume and FEM shape functions.
   !> Shape functions associated with volume integration using both CV basis
   !> functions CVN as well as FEM basis functions CVFEN (and its derivatives
@@ -2901,7 +2901,7 @@ contains
 
 
 !!!==============================================================
-  
+
   !> this subroutine calculates NEILOC which is the
   !> array containing information given a local node
   !> and an integration point what is the other opposing

@@ -266,22 +266,22 @@
         <initial_condition name="WholeMesh">
           <python>
             <string_value type="code" language="python" lines="20">def val(X,t):
-   
+
    x = X[0]
    y = X[1]
    x0 = 0.2
    y0 = 0.2
    d = 0.2
-   
+
    if ( abs ( x - x0 ) &lt;= 0.5 * d and abs ( y - y0 ) &lt;= 0.5 * d ):
 #   if ( (( x - x0 ) **2.0 + ( y - y0 ) **2.0 ) &lt;= (0.5*d) **2.0 ):
-   
+
       val = 1.0
-   
+
    else:
-   
+
       val = 0.0
-   
+
    return val</string_value>
             <comment>From the old compressible python script:
 def val(X, t):

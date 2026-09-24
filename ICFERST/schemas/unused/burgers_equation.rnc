@@ -33,7 +33,7 @@ start =
       }
    )
 
-geometry = 
+geometry =
    (
       ## Options dealing with the specification of geometry
       element geometry {
@@ -58,14 +58,14 @@ geometry =
          ## Quadrature
          element quadrature {
             ## Quadrature degree
-            ## 
+            ##
             ## note: this specifies the degree of quadrature,
             ## not the number of gauss points
             element degree {
                integer
             },
             ## Surface quadrature degree
-            ## 
+            ##
             ## note: this specifies the degree of surface
             ## quadrature not the number of surface gauss points
             element surface_degree {
@@ -75,14 +75,14 @@ geometry =
       }
    )
 
-mesh_choice_coordinate = 
+mesh_choice_coordinate =
    (
       element mesh {
          attribute name { "CoordinateMesh" }
       }
    )
 
-mesh_choice = 
+mesh_choice =
    (
       (
          element mesh {
@@ -107,7 +107,7 @@ mesh_info_fromfile =
               attribute name { "triangle" },
               comment
             }|
-            ## Read the mesh from a vtu. Note that the mesh will have no 
+            ## Read the mesh from a vtu. Note that the mesh will have no
             ## surface or region IDs.
             element format {
               attribute name { "vtu" },
@@ -127,7 +127,7 @@ mesh_info_fromfile =
 
 mesh_info_frommesh =
    (
-      ## Make mesh from existing mesh. 
+      ## Make mesh from existing mesh.
       element from_mesh {
          mesh_choice_coordinate,
          element mesh_shape {
@@ -168,7 +168,7 @@ timestepping =
                integer
             }?,
             ## Number of non-linear iterations.
-            ## 
+            ##
             ## Manual suggests 2
             element nonlinear_iterations {
                integer
@@ -179,11 +179,11 @@ timestepping =
             element steady_state {
                ### The convergence tolerance, in the L2 norm
                element tolerance { real }
-            }?               
+            }?
          }
    )
 
-material_phase = 
+material_phase =
    (
          ## The material phase options
          element material_phase {
@@ -193,14 +193,14 @@ material_phase =
                attribute name { "Velocity" },
                element prognostic {
                   element mesh {
-                     attribute name { "VelocityMesh" }      
+                     attribute name { "VelocityMesh" }
                   },
                   ## Options dealing with the temporal discretisation of velocity
                   element temporal_discretisation {
-                     ## The degree of implicitness in the timestepping. 
+                     ## The degree of implicitness in the timestepping.
                      ## 0 is fully explicit, 1 is implicit, 0.5 is Crank-Nicolson.
                      ## Recommended to be 0.5.
-                     element theta { 
+                     element theta {
                         real
                      },
                      ## The relaxation term in the nonlinear iterations at each timestep
@@ -254,7 +254,7 @@ material_phase =
          }
    )
 
-boundary_conditions = 
+boundary_conditions =
    (
          ## Boundary conditions
          element boundary_conditions {
@@ -274,7 +274,7 @@ prescribed_output_options = empty
 prescribed_detector_options = empty
 prescribed_scalar_stat_options = empty
 discrete_properties_algorithm_scalar = empty
-recalculation_options =                                                                                                                                                                                                                      
+recalculation_options =
    (
       ## Prevent this field from being recalculated at every timestep.
       ## This is cheaper especially if you are enforcing discrete properties on the field.
@@ -296,7 +296,7 @@ io =
      ## Dump format
      element dump_format { "vtk" },
      ## Dump period, in timesteps. Defaults to 1
-     element dump_period_in_timesteps { 
+     element dump_period_in_timesteps {
        element constant { integer }
      }?,
      (
@@ -311,6 +311,4 @@ io =
            attribute name { xsd:string }
         }
      )
-  } 
-
-
+  }

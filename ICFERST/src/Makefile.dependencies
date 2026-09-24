@@ -345,4 +345,3 @@ multi_tools.o ../include/multi_tools.mod: multi_tools.F90 \
 	@true
 
 xgb_interface.o ../include/xgb_interface.mod: xgb_interface.F90
-

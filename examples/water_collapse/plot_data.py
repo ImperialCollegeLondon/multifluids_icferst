@@ -1,14 +1,16 @@
 #!/usr/bin/env python
 
-import vtk
 import glob
-import sys
-import os
-import vtktools
 import operator
+import os
+import sys
+
+import fluidity_tools
 import numpy
 import pylab
-import fluidity_tools
+import vtk
+import vtktools
+
 
 # first extract the water gauge data from the vtus
 def get_water_depths(filelist, xarray, delta):
@@ -19,13 +21,13 @@ def get_water_depths(filelist, xarray, delta):
     except:
       print "No such file: %s" % f
       sys.exit(1)
-    
+
     y = numpy.arange(delta/2.0,2.0+delta/2.0,delta)[:,numpy.newaxis]
-    
+
     num = int(f.split(".vtu")[0].split('_')[-1])
     vtu = vtktools.vtu(f)
-    for name in vtu.GetFieldNames(): 
-      if name.endswith("Time"): 
+    for name in vtu.GetFieldNames():
+      if name.endswith("Time"):
         time = max(vtu.GetScalarRange(name))
         break
     waterdepths = []
@@ -34,9 +36,9 @@ def get_water_depths(filelist, xarray, delta):
     for x in range(len(xarray)):
       coordinates = numpy.concatenate((numpy.ones((len(y),1))*xarray[x], y, numpy.zeros((len(y),1))),1)
       waterdepths.append(sum(vtu.ProbeData(coordinates, "Water::MaterialVolumeFraction"))[0]*delta)
-    
+
     results.append(waterdepths)
-  
+
   results.sort(key=operator.itemgetter(1))
   results = numpy.array(results)
   return results

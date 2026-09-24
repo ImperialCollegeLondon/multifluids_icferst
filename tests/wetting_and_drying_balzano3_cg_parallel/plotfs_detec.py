@@ -1,22 +1,18 @@
 #!/usr/bin/env python
 
-import vtktools
-import sys
+import getopt
 import math
-import re 
+import re
+import sys
+
 import commands
 import matplotlib.pyplot as plt
-import getopt
-
-from scipy.special import erf
-from numpy import poly1d
-from matplotlib.pyplot import figure, show
-from numpy import pi, sin, linspace
-from matplotlib.mlab import stineman_interp
-from numpy import exp, cos
+import vtktools
 from fluidity_tools import stat_parser
-
-
+from matplotlib.mlab import stineman_interp
+from matplotlib.pyplot import figure, show
+from numpy import cos, exp, linspace, pi, poly1d, sin
+from scipy.special import erf
 
 
 def mirror(x):
@@ -47,25 +43,25 @@ def main(argv=None):
         save='' # If nonempty, we save the plots as images instead if showing them
         wetting=False
 
-        try:                                
+        try:
                 opts, args = getopt.getopt(sys.argv[1:], "", ['file=','save='])
-        except getopt.GetoptError:  
-                usage()                     
-                sys.exit(2)                     
-        for opt, arg in opts:                
-                if opt == '--file':      
+        except getopt.GetoptError:
+                usage()
+                sys.exit(2)
+        for opt, arg in opts:
+                if opt == '--file':
                         filename=arg
                 elif opt == '--save':
                         save=arg
         if filename=='':
                 print 'No filename specified. You have to give the detectors filename.'
-                usage()   
-                sys.exit(2) 
+                usage()
+                sys.exit(2)
 
-        
+
         ####################### Print time plot  ###########################
         print 'Generating time plot'
-      
+
         s = stat_parser(filename)
 
         timesteps=s["ElapsedTime"]["value"]
@@ -90,7 +86,7 @@ def main(argv=None):
         plot_end=581  # in timesteps
         plot_name=''
 
-        
+
 
         for t in range(0,len(timesteps)):
                 # ignore the first waveperiod
@@ -111,7 +107,7 @@ def main(argv=None):
 
                 # Plot Analytical solution
                 fsvalues_ana=[]
-                
+
                 offset=-bathymetry_function(0.0)+dzero
 
                 xcoords.sort()
@@ -146,10 +142,10 @@ def main(argv=None):
                                 plt.savefig(save+'.pdf', facecolor='white', edgecolor='black', dpi=100)
                         plt.cla()
                 t=t+1
-                
-        
+
+
 # Make video from the images:
-        
+
 # mencoder "mf://*.png" -mf type=png:fps=30 -ovc lavc -o output.avi
 
 
@@ -158,5 +154,3 @@ def main(argv=None):
 
 if __name__ == "__main__":
     main()
-
-

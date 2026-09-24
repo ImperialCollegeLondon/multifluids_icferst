@@ -19,4 +19,3 @@ DQMOM_node_source.o ../include/dqmom.mod: DQMOM_node_source.F90 \
    ../include/initialise_fields_module.mod ../include/solvers.mod \
    ../include/sparse_tools.mod ../include/state_fields_module.mod \
    ../include/state_module.mod ../include/vector_tools.mod
-

@@ -12,7 +12,7 @@
 with open("log", "r") as f:
     linelist = f.readlines()           # Read the first line.
     last = linelist[len(linelist)-1]   # The last line
-f.close 
+f.close
 
 if 'OK' in last: stokes_test_petsc_solver = True
 
@@ -20,4 +20,3 @@ assert(stokes_test_petsc_solver)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>
-

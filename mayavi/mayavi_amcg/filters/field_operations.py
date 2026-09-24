@@ -15,17 +15,28 @@
 
 # Author: Daryl Harrison
 
-# Enthought library imports
-from enthought.traits.api import Instance, Enum, Button, List, Tuple, Float, String, File, Code
-from enthought.traits.ui.api import View, Group, Item, ListEditor, TupleEditor
-from enthought.traits.ui.menu import OKButton
-
-from enthought.tvtk.api import tvtk
 from math import *
-from numpy import *
 
 # Local imports
 from enthought.mayavi.core.filter import Filter
+
+# Enthought library imports
+from enthought.traits.api import (
+    Button,
+    Code,
+    Enum,
+    File,
+    Float,
+    Instance,
+    List,
+    String,
+    Tuple,
+)
+from enthought.traits.ui.api import Group, Item, ListEditor, TupleEditor, View
+from enthought.traits.ui.menu import OKButton
+from enthought.tvtk.api import tvtk
+from numpy import *
+
 #from enthought.mayavi.core.traits import DEnum
 
 ################################################################################
@@ -248,7 +259,7 @@ class FieldOperations(Filter):
             custom_fn = True
             try:
                 function = lambda inputs: eval(self.custom_function)
-            except: 
+            except:
                 raise Exception, 'There is an error in your custom Python function.'
 
         else:

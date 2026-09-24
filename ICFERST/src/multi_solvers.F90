@@ -31,7 +31,7 @@ module solvers_module
 
     use state_module
     use halo_data_types
-#include "petsc/finclude/petsc.h" 
+#include "petsc/finclude/petsc.h"
     use petsc
 
     use Copy_Outof_State

@@ -1,5 +1,5 @@
 !    Copyright (C) 2006 Imperial College London and others.
-!    
+!
 !    Please see the AUTHORS file in the main source directory for a full list
 !    of copyright holders.
 !
@@ -9,7 +9,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!    
+!
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation,
@@ -29,8 +29,8 @@
 #define INLINE_MATMUL
 
 module implicit_solids
-! these 5 need to be on top and in this order, 
-! so as not to confuse silly old intel compiler 
+! these 5 need to be on top and in this order,
+! so as not to confuse silly old intel compiler
   use quadrature
   use elements
   use sparse_tools
@@ -99,7 +99,7 @@ module implicit_solids
      end subroutine y3d_populate_femdem
   end interface
 
-  interface 
+  interface
      subroutine y3dfemdem(ext_mesh_name, dt, rho_f, ibulk, &
           xs, ys, zs, fxs, fys, fzs, uf, vf, wf, us, vs, ws, af)
        real, intent(in) :: dt, rho_f
@@ -311,7 +311,7 @@ contains
           ! return to femdem: 1. ext_pos_fluid_vel (fluid or bulk velocity)
           !                   2. ext_pos_fluid (\alpha_f)
           call femdem_update(state)
- 
+
           ! interpolate the solid force from
           ! the femdem mesh to the fluidity mesh
           ! and update solid_local
@@ -441,7 +441,7 @@ contains
                 tet_A%v = ele_val(positions, ele_A)
                 planes_A = get_planes(tet_A)
              else
-                ! if fluid element is not a tetrahedra, 
+                ! if fluid element is not a tetrahedra,
                 ! assumed to be a hexahedra:
                 allocate(planes_A(6))
                 planes_A = get_planes(positions, ele_A)
@@ -561,7 +561,7 @@ contains
           do j = 1, absorption%dim
              call set(absorption, j, i, sigma)
           end do
-          
+
        end do
 
     end if
@@ -727,7 +727,7 @@ contains
 
     ! pointer to vector field of coordinates of fluids mesh:
     positions => extract_vector_field(state, "Coordinate")
-    ! figure out if we want to print out diagnostics and initialise files  
+    ! figure out if we want to print out diagnostics and initialise files
     do_print_diagnostics = have_option("/implicit_solids/one_way_coupling/print_diagnostics")
     do_print_multiple_solids_diagnostics = &
        & have_option("/implicit_solids/one_way_coupling/multiple_solids/print_diagnostics")
@@ -999,7 +999,7 @@ contains
     if (use_fluid_velocity) then
        ewrite(3, *) "calculating the bulk velocity"
        ! ext_pos_solid_vel is u_s, not \hat{u}_s, so multiply
-       ! by \alpha_s and then add to ext_pos_fluid_vel to 
+       ! by \alpha_s and then add to ext_pos_fluid_vel to
        ! form the bulk velocity (\hat{u}_f+\hat{u}_s)
        call scale(ext_pos_solid_vel, ext_pos_solid)
        ! this removes fluid velocity from the volume of the solid
@@ -1016,7 +1016,7 @@ contains
 
     ewrite(2, *) "about to call femdem"
 
-    ! in  :: ext_pos_fluid_vel, ext_pos_fluid = 1. - ext_pos_solid 
+    ! in  :: ext_pos_fluid_vel, ext_pos_fluid = 1. - ext_pos_solid
     ! out :: updated external_positions, ext_pos_solid_force
     call y3dfemdem(trim(external_mesh_name)//char(0), dt, rho_f, use_bulk, &
          external_positions%val(1,:), external_positions%val(2,:), &
@@ -1040,7 +1040,7 @@ contains
   !----------------------------------------------------------------------------
 
   subroutine femdem_interpolation(state, operation)
- 
+
     character(len=*), intent(in) :: operation
     type(state_type), intent(in) :: state
 
@@ -1137,7 +1137,7 @@ contains
 
     ! perform interpolations
     if (operation == "in") then
-  
+
        ! interpolate the solid force from
        ! the solid mesh to the fluidity mesh
        call interpolation_galerkin_femdem(alg_ext_v, alg_fl_v, field=solid_local)
@@ -1211,7 +1211,7 @@ contains
     positions => extract_vector_field(state, "Coordinate")
 
     call allocate(lumped_mass, positions%mesh, "LumpedMass")
-    call compute_lumped_mass(positions, lumped_mass)    
+    call compute_lumped_mass(positions, lumped_mass)
 
     call allocate(lumped_mass_velocity_mesh, velocity%mesh, "LumpedMassVelocityMesh")
     call remap_field(lumped_mass, lumped_mass_velocity_mesh)
@@ -1228,10 +1228,10 @@ contains
                   node_val(absorption, j, i) * node_val(velocity, j, i) * &
                   node_val(lumped_mass_velocity_mesh, i)
           end do
-          node1 => node1%next  
+          node1 => node1%next
        end do
     end do
-    
+
     do i = 1, number_of_solids
        call allsum(particle_force(i, :))
     end do
@@ -1260,14 +1260,14 @@ contains
     type(vector_field) :: temperature_grad
     type(scalar_field), pointer :: temperature
     type(tensor_field), pointer :: temperature_conductivity
-    type(scalar_field) :: lumped_mass    
+    type(scalar_field) :: lumped_mass
     real, dimension(:), allocatable :: solid_mass
     integer, dimension(:), allocatable :: face_nodes
     integer :: i, gi, particle
     type(inode), pointer :: node1, node2
     real, dimension(:, :), allocatable :: temperature_grad_at_quad, normal
     real, dimension(:), allocatable :: detwei, T_grad_dot_n_at_quad
-    type(element_type), pointer :: T_f_shape  
+    type(element_type), pointer :: T_f_shape
     real :: k_f
 
     ewrite(2, *) "inside implicit_solids_temperature_computation"
@@ -1275,7 +1275,7 @@ contains
     positions => extract_vector_field(state, "Coordinate")
 
     call allocate(lumped_mass, positions%mesh, "LumpedMass")
-    call compute_lumped_mass(positions, lumped_mass)    
+    call compute_lumped_mass(positions, lumped_mass)
 
     allocate(face_nodes(face_loc(positions, 1))); face_nodes = 0
     allocate(wall_temperature(number_of_solids)); wall_temperature = 0.
@@ -1353,7 +1353,7 @@ contains
     T_w_avg = 0.; q_avg = 0.
     do i = 1, number_of_solids
        T_w_avg = T_w_avg + wall_temperature(i)
-       q_avg = q_avg + q(i) 
+       q_avg = q_avg + q(i)
     end do
     T_w_avg = T_w_avg / number_of_solids
     q_avg = q_avg / number_of_solids
@@ -1384,7 +1384,7 @@ contains
     character(len=254) :: fmt, buffer
 
     ewrite(2, *) "inside implicit_solids_update"
-    
+
     ! Update the computation of the diagnostics
     ! Only one-way coupling for now
     if (one_way_coupling .and. do_print_diagnostics) then
@@ -1396,7 +1396,7 @@ contains
 
        ! Register the force on a solid body
        call set_diagnostic(name="Force", statistic="Value", value=(/ force /))
-       
+
        if (do_print_multiple_solids_diagnostics) then
           do j = 1, number_of_solids
              write(buffer, fmt) j
@@ -1410,7 +1410,7 @@ contains
           ! Register the diagnostics
           call set_diagnostic(name="WallTemperature", statistic="Value", value=(/ T_w_avg /))
           call set_diagnostic(name="HeatTransfer", statistic="Value", value=(/ q_avg /))
-          
+
           if (multiple_solids .and. do_print_multiple_solids_diagnostics) then
              do i = 1, number_of_solids
                 write(buffer, fmt) i
@@ -1471,7 +1471,7 @@ contains
        do nface = 1, size(faces)
           face = faces(nface)
 
-          ! this is the solid face 
+          ! this is the solid face
           if (all(face_val(solid_local, face) /= 0.)) then
 
              allocate(face_nodes(face_loc(x, face)))
@@ -1509,7 +1509,7 @@ contains
 
     type(scalar_field), pointer :: solid, old_solid, p
     type(vector_field), pointer :: x
-    type(element_type), pointer :: p_shape 
+    type(element_type), pointer :: p_shape
     type(element_type) :: test_function
     integer :: ele
 
@@ -1573,14 +1573,14 @@ contains
     logical, intent(in), optional :: femdem_out
 
     type(state_type), dimension(1) :: old_states, new_states
-    
+
     old_states = (/old_state/)
     new_states = (/new_state/)
     call interpolation_galerkin_femdem(old_states, &
          new_states, field=field, femdem_out=femdem_out)
     old_state = old_states(1)
     new_state = new_states(1)
-    
+
   end subroutine interpolation_galerkin_single_state_femdem
 
   subroutine interpolation_galerkin_multiple_states_femdem(old_states, &
@@ -1773,8 +1773,8 @@ contains
               basis_at_quad_A(:nloc,:) = 1.0
               basis_at_quad_B(:nloc,:) = 1.0
             elseif (element_degree(new_fields(mesh,1),ele_B)==1) then
-              basis_at_quad_A(:nloc,:) = pos_at_quad_A 
-              basis_at_quad_B(:nloc,:) = pos_at_quad_B 
+              basis_at_quad_A(:nloc,:) = pos_at_quad_A
+              basis_at_quad_B(:nloc,:) = pos_at_quad_B
             else
               do loc=1,nloc
                 do j=1,ele_ngi(intersection, ele_C)
@@ -1818,7 +1818,7 @@ contains
 
       call deallocate(intersection)
 
-   end do ! nintersection loop, i.e. ele_A loop 
+   end do ! nintersection loop, i.e. ele_A loop
 
    if (.not.femdem_out) then
 !!-PY changed it for correct the solidconcentration
@@ -1830,7 +1830,7 @@ contains
 
    if (femdem_out) then
      ! Check for supermeshing failures.
-     if (abs(vol_B - vols_C)/vol_B > conservation_tolerance .and. & 
+     if (abs(vol_B - vols_C)/vol_B > conservation_tolerance .and. &
 #ifdef DOUBLEP
        & abs(vol_B - vols_C) > 100.0 * 1.0e-12) then
 #else
@@ -1859,10 +1859,10 @@ contains
     integer :: ele_B
     integer :: ele_A
     integer :: name, no_names, priority, f, field, field2, max_field_count
-    
+
     type(scalar_field), dimension(:,:), allocatable :: old_fields, new_fields
     integer, dimension(size(old_fields_state)) :: field_counts
-    
+
     type(scalar_field), dimension(:,:), allocatable :: named_fields, named_rhs
     character(len=FIELD_NAME_LEN), dimension(:), allocatable :: field_names
     integer, dimension(:), allocatable :: named_counts, priorities, named_indices
@@ -1893,7 +1893,7 @@ contains
     type(csr_sparsity) :: M_B_sparsity
     type(scalar_field), dimension(:), allocatable :: M_B_L
     type(scalar_field) :: inverse_M_B_L
-    
+
     ! Boundedness stuff
     logical, dimension(:,:), allocatable :: bounded, lumped
     logical, dimension(:), allocatable :: coupled
@@ -1906,12 +1906,12 @@ contains
     integer, dimension(:), pointer :: ele_nodes_B
     integer :: stat, statp
     logical :: l_apply_globally, u_apply_globally
-    
+
     logical :: l_force_bounded
-    
+
     integer :: max_loc, max_degree, nloc
     integer :: mesh, mesh_count
-    
+
     real :: conservation_tolerance, tmp_tol
 
     type(element_type), pointer :: shape_B
@@ -1941,12 +1941,12 @@ contains
     end if
 
     l_force_bounded=.true.
-    
+
     ! Linear positions -- definitely linear positions.
     assert(old_position%mesh%shape%degree == 1)
     assert(continuity(old_position) >= 0)
     assert(continuity(new_position) >= 0)
-    
+
     mesh_count = size(old_fields_state)
     max_field_count = 0
     field_counts = 0
@@ -1962,10 +1962,10 @@ contains
     allocate(new_fields(mesh_count, max_field_count))
     allocate(force_bc(mesh_count, max_field_count))
     allocate(bc_nodes(mesh_count, max_field_count))
-    
+
     shape_B => ele_shape(new_position, 1)
     new_positions_simplicial = (shape_B%numbering%family == FAMILY_SIMPLEX)
-    
+
     dim = mesh_dim(new_position)
 
     dg = .false.
@@ -1974,7 +1974,7 @@ contains
     conservation_tolerance = 1.0
     do mesh = 1, size(old_fields_state)
       if(field_counts(mesh)>0) then
-      
+
         do field = 1, field_counts(mesh)
           old_fields(mesh, field) = extract_scalar_field(old_fields_state(mesh), field)
           new_fields(mesh, field) = extract_scalar_field(new_fields_state(mesh), field)
@@ -2009,19 +2009,19 @@ contains
             end do
           end if
         end do
-        
+
         dg(mesh) = (continuity(new_fields(mesh,1)) < 0)
         if(dg(mesh)) then
-          bounded(mesh,:) = .false. ! not possible to have a bounded or lumped dg field 
+          bounded(mesh,:) = .false. ! not possible to have a bounded or lumped dg field
           lumped(mesh,:) = .false.  ! so just to make sure set it to false
         end if
-        
+
         max_degree = max(max_degree, element_degree(new_fields(mesh,1), 1))
         max_loc = max(max_loc, ele_loc(new_fields(mesh,1), 1))
-      
+
       end if
     end do
-    
+
     allocate(local_rhs(mesh_count, max_field_count, max_loc))
     allocate(little_mass_matrix(mesh_count, max_loc, max_loc))
 
@@ -2038,16 +2038,16 @@ contains
         end if
       end do
     end if
-    
+
     allocate(little_rhs(max_loc, max_field_count))
 
     if(any(.not.dg)) then
       ! if any meshes are not dg then we need a lhs matrix and a global rhs
-      
+
       allocate(rhs(mesh_count, max_field_count))
       allocate(M_B(mesh_count))
       allocate(M_B_L(mesh_count))
-      
+
       do mesh = 1, mesh_count
         if(.not.dg(mesh)) then
           if(field_counts(mesh)>0) then
@@ -2055,17 +2055,17 @@ contains
               call allocate(rhs(mesh,field), new_fields(mesh,field)%mesh, name = trim(new_fields(mesh,field)%name)//"RHS")
               call zero(rhs(mesh,field))
             end do
-      
+
             if(.not.all(lumped(mesh,1:field_counts(mesh)))) then
               M_B_sparsity = make_sparsity(new_fields(mesh,1)%mesh, new_fields(mesh,1)%mesh, name="MassMatrixBSparsity")
-            
+
               call allocate(M_B(mesh), M_B_sparsity, &
                             name=trim(new_fields(mesh,1)%mesh%name)//"MassMatrixB")
               call zero(M_B(mesh))
-              
+
               call deallocate(M_B_sparsity)
             end if
-            
+
             if(any(bounded(mesh,:)).or.any(lumped(mesh,:))) then
               call allocate(M_B_L(mesh), new_fields(mesh,1)%mesh, &
                             name=trim(new_fields(mesh,1)%mesh%name)//"LumpedMassMatrixB")
@@ -2074,9 +2074,9 @@ contains
           end if
         end if
       end do
-      
+
     end if
-    
+
     supermesh_quad = make_quadrature(vertices=ele_loc(new_position, 1), dim=dim, degree=max(max_degree+max_degree, 1))
     supermesh_shape = make_element_shape(vertices=ele_loc(new_position, 1), dim=dim, degree=1, quad=supermesh_quad)
 
@@ -2149,7 +2149,7 @@ contains
               if (any(force_bc(mesh,1:field_counts(mesh)))) then
                 little_inverse_mass_matrix_copy=little_inverse_mass_matrix
               end if
-            
+
               if (new_positions_simplicial) then
                 do field=1,field_counts(mesh)
                   if (force_bc(mesh,field)) then
@@ -2178,7 +2178,7 @@ contains
               else
                 call solve(little_mass_matrix(mesh,:nloc,:nloc), little_rhs(:nloc,:field_counts(mesh)))
               end if
-            
+
               if (any(force_bc(mesh,1:field_counts(mesh)))) then
                 little_inverse_mass_matrix=little_inverse_mass_matrix_copy
               end if
@@ -2188,15 +2188,15 @@ contains
               end do
 
             else
-    
+
               do field=1,field_counts(mesh)
                 call addto(rhs(mesh,field), ele_nodes_B, local_rhs(mesh,field,:nloc))
               end do
-          
+
               if(.not.all(lumped(mesh,1:field_counts(mesh)))) then
                 call addto(M_B(mesh), ele_nodes_B, ele_nodes_B, little_mass_matrix(mesh,:nloc,:nloc))
               end if
-          
+
               if(any(bounded(mesh,:)).or.any(lumped(mesh,:))) then
                 call addto(M_B_L(mesh), ele_nodes_B, sum(little_mass_matrix(mesh,:nloc,:nloc), 2))
               end if
@@ -2212,12 +2212,12 @@ contains
     do mesh = 1, mesh_count
       if(field_counts(mesh)>0) then
         if(.not.dg(mesh)) then
-        
+
           if(any(bounded(mesh,:)).or.any(lumped(mesh,:))) then
             call allocate(inverse_M_B_L, M_B_L(mesh)%mesh, "InverseLumpedMass")
             call invert(M_B_L(mesh), inverse_M_B_L)
           end if
-          
+
           do field=1,field_counts(mesh)
             if(lumped(mesh,field)) then
               call set(new_fields(mesh, field), rhs(mesh, field))
@@ -2238,12 +2238,12 @@ contains
           end do
 
           if(any(bounded(mesh,:))) then
-          
+
             nnlist => extract_nnlist(new_fields(mesh,1))
-            
-            ! Ok. All that above was more or less the same as Galerkin projection. Here is 
+
+            ! Ok. All that above was more or less the same as Galerkin projection. Here is
             ! where we bound.
-            
+
             ! to be able to couple the fields together we first need to group the fields by name
             ! and order them by priority
             ! so... let's get the priorities
@@ -2252,7 +2252,7 @@ contains
             do field = 1, field_counts(mesh)
               call get_option(trim(new_fields(mesh,field)%option_path)//"/prognostic/priority", priorities(field), default=0)
             end do
-              
+
             ! let's allocate some space (too much in fact but it's our best guess) for the counts of each name
             allocate(named_counts(field_counts(mesh)))
             named_counts = 0
@@ -2262,7 +2262,7 @@ contains
             ! the indices of each name
             allocate(tmp_named_indices(field_counts(mesh), field_counts(mesh)))
             tmp_named_indices = 0
-            
+
             ! now loop through the fields collecting the actual number of fields with the same
             ! names and where they are located (their indices) in the current lists
             f = 0
@@ -2283,12 +2283,12 @@ contains
               end if
             end do
             no_names = f
-            
+
             ! allocate the real space for them (still too much to avoid ragged arrays)
             allocate(named_fields(no_names, maxval(named_counts)))
             allocate(named_rhs(no_names, maxval(named_counts)))
             allocate(named_indices(maxval(named_counts)))
-            
+
             do name = 1, no_names
               ! sort out their indices in order of priority
               f = 0
@@ -2301,68 +2301,68 @@ contains
                   end if
                 end do
               end do
-              
+
               ! and finally put them into a new list of fields sorted by name
               do field = 1, named_counts(name)
                 named_fields(name, field) = new_fields(mesh, named_indices(field))
                 named_rhs(name, field) = rhs(mesh, named_indices(field))
               end do
             end do
-            
+
             do name = 1, no_names
-            
+
               allocate(coupled(named_counts(name)))
               coupled = .false.
               do field = 1, named_counts(name)
                 coupled(field) = have_option(trim(complete_field_path(named_fields(name,field)%option_path, stat=statp))// &
                   & "/galerkin_projection/continuous/bounded[0]/bounds/upper_bound/coupled")
               end do
-          
+
               do field=1,named_counts(name)
-              
+
                 ewrite(2,*) 'Bounding field:', trim(named_fields(name,field)%name)
-            
+
                 ! Step 0. Compute bounds
                 call get_option(trim(complete_field_path(named_fields(name,field)%option_path, stat=statp))// &
                   & "/galerkin_projection/continuous/bounded[0]/bounds/upper_bound", &
                   & upper_bound, default=huge(0.0)*epsilon(0.0))
-                  
+
                 u_apply_globally = have_option(trim(complete_field_path(named_fields(name,field)%option_path, stat=statp))// &
                   & "/galerkin_projection/continuous/bounded[0]/bounds/upper_bound/apply_globally")
-                  
+
                 call get_option(trim(complete_field_path(named_fields(name,field)%option_path, stat=statp))// &
                   & "/galerkin_projection/continuous/bounded[0]/bounds/lower_bound", &
                   & lower_bound, default=-huge(0.0)*epsilon(0.0))
-                  
+
                 l_apply_globally = have_option(trim(complete_field_path(named_fields(name,field)%option_path, stat=statp))// &
                   & "/galerkin_projection/continuous/bounded[0]/bounds/lower_bound/apply_globally")
-                
+
                 if((.not.u_apply_globally).or.(coupled(field))) then
                   call allocate(max_bound, named_fields(name,1)%mesh, "MaxBound")
                 else
                   call allocate(max_bound, named_fields(name,1)%mesh, "MaxBound", field_type=FIELD_TYPE_CONSTANT)
                 end if
-                
+
                 if(.not.l_apply_globally) then
                   call allocate(min_bound, named_fields(name,1)%mesh, "MinBound")
                 else
                   call allocate(min_bound, named_fields(name,1)%mesh, "MinBound", field_type=FIELD_TYPE_CONSTANT)
                 end if
-                
+
                 call set(max_bound, upper_bound)
                 if(coupled(field)) then
                   do field2 = 1, field-1
                     if(coupled(field2)) call addto(max_bound, named_fields(name,field2), -1.0)
                   end do
                 end if
-                
+
                 call set(min_bound, lower_bound)
-                
+
                 call allocate(bounded_soln, named_fields(name,1)%mesh, "BoundedSolution")
                 call set(bounded_soln, named_rhs(name,field))
                 call scale(bounded_soln, inverse_M_B_L)
                 call halo_update(bounded_soln)
-                
+
                 do node_B=1,node_count(named_fields(name,1)%mesh)
                   patch => row_m_ptr(nnlist, node_B)
                   if(.not.u_apply_globally) then
@@ -2382,22 +2382,22 @@ contains
 
                 call halo_update(min_bound)
                 ewrite_minmax(min_bound)
-                
+
                 call bound_field(named_fields(name, field), max_bound, min_bound, &
                                  M_B(mesh), M_B_L(mesh), inverse_M_B_L, bounded_soln, &
                                  new_position)
 
-                
+
                 call deallocate(max_bound)
                 call deallocate(min_bound)
                 call deallocate(bounded_soln)
-                
+
               end do
-              
+
               deallocate(coupled)
-              
+
             end do
-            
+
             deallocate(priorities)
             deallocate(named_counts)
             deallocate(field_names)
@@ -2407,14 +2407,14 @@ contains
             deallocate(named_indices)
 
           end if
-          
+
           if(any(bounded(mesh,:)).or.any(lumped(mesh,:))) then
             call deallocate(inverse_M_B_L)
             call deallocate(M_B_L(mesh))
           end if
 
         end if
-      
+
         do field = 1, field_counts(mesh)
           if(have_option(trim(complete_field_path(new_fields(mesh,field)%option_path, stat=statp)) // &
                                                 "/galerkin_projection/supermesh_conservation/print_field_integral")) then
@@ -2435,7 +2435,7 @@ contains
         end do
 
       end if
-      
+
     end do
 
     call deallocate(supermesh_shape)
@@ -2478,18 +2478,18 @@ contains
     call rtree_intersection_finder_reset()
 
     ewrite(1, *) "Exiting interpolation_galerkin_scalars"
-    
+
   end subroutine interpolation_galerkin_scalars
 
   !----------------------------------------------------------------------------
 
   subroutine implicit_solids_register_diagnostic
-    
+
     integer :: i, str_size, ndim
     character(len=254) :: fmt, buffer
 
     if (.not. have_option("/implicit_solids")) return
-    
+
     ! figure out if we want to print out diagnostics and initialise files
     do_print_diagnostics = &
          have_option("/implicit_solids/one_way_coupling/print_diagnostics")
@@ -2524,15 +2524,15 @@ contains
        if (have_temperature) then
           call register_diagnostic(dim=1, name="WallTemperature", statistic="Value")
           call register_diagnostic(dim=1, name="HeatTransfer", statistic="Value")
- 
+
           if (do_print_multiple_solids_diagnostics) then
              do i = 1, number_of_solids
                 write(buffer, fmt) i
                 call register_diagnostic(dim=1, name="WallTemperatureOnSolid"//buffer, statistic="Value")
                 call register_diagnostic(dim=1, name="HeatTransferAtSolid"//buffer, statistic="Value")
              end do
-          end if 
- 
+          end if
+
        end if
     end if
 
@@ -2542,7 +2542,7 @@ contains
 
   subroutine implicit_solids_check_options
      integer :: ndim
-     
+
      ! Get dimension:
      call get_option("/geometry/dimension", ndim)
      ! Check options for Implicit Solids:

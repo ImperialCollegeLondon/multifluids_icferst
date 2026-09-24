@@ -1,7 +1,7 @@
-name: icferst 
-base: core20 
-version: '20.06' 
-summary: Flow simulator with unstructured dynamic mesh optimisation technology 
+name: icferst
+base: core20
+version: '20.06'
+summary: Flow simulator with unstructured dynamic mesh optimisation technology
 description: |
   Flow simulator with unstructured dynamic mesh optimisation technology, focused on multiphase flows such as porous media, navier-stokes, stokes, magma, ...
 
@@ -16,10 +16,10 @@ parts:
     configflags: ['--enable-2d-adaptivity']
     build-packages:
       - gcc
-      - g++ 
+      - g++
       - gfortran
       - libblas-dev
-      - liblapack-dev 
+      - liblapack-dev
       - fluidity-dev
       - python-dev
       - python3.8
@@ -71,7 +71,7 @@ plugs:
     interface: home
     write:
     - $HOME
-    
+
 package-repositories:
   - type: apt
     ppa: fluidity-core/ppa

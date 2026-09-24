@@ -1,5 +1,5 @@
 !    Copyright (C) 2006 Imperial College London and others.
-!    
+!
 !    Please see the AUTHORS file in the main source directory for a full list
 !    of copyright holders.
 !
@@ -9,7 +9,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!    
+!
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation,
@@ -29,10 +29,10 @@
 
 subroutine test_identify_triangle_file
   !!< Test reading of triangle file meta data
-  
+
   use read_triangle
   use unittest_tools
-  
+
   implicit none
 
   integer :: dim, loc, nodes, element_count, node_attributes, selement_count, selement_boundaries

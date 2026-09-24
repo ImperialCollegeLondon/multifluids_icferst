@@ -2136,7 +2136,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
       call get_option('/timestepping/adaptive_timestep/minimum_timestep/python', pyfunc)
       call real_from_python(pyfunc, acctim, auxR)
     end if
-    
+
     if (auxI == 0) min_ts = min(min_ts, auxR)
 
     if (have_option('/timestepping/adaptive_timestep/maximum_timestep/constant')) then

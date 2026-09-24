@@ -20,9 +20,9 @@ module xgb_interface
          integer(c_int64_t), value :: ncol    ! Number columns
          real(c_float), value      :: missing ! Which value to represent missing value
          type(c_ptr)               :: out     ! Created dmatrix
-         ! End parameters 
+         ! End parameters
       end function
-   end interface    
+   end interface
 
    interface
    !>@brief Create xgboost learner
@@ -33,10 +33,10 @@ module xgb_interface
          type(c_ptr), value        :: dmats ! Matrices that are set to be cached
          integer(c_int64_t), value :: len   ! Length of dmats
          type(c_ptr)               :: out   ! Handle to the result booster
-         ! End parameters 
+         ! End parameters
       end function
-   end interface   
-   
+   end interface
+
    interface
    !>@brief Load model from existing file.
    !> Returns 0 when success, -1 when failure happens
@@ -45,11 +45,11 @@ module xgb_interface
          ! Parameters
          type(c_ptr), value                          :: handle ! Handle
          character(len=1, kind=c_char), dimension(*) :: fname  ! File URI or file name (*needs to be in the right c format - use trim(name_in_fortran)//c_null_char)
-         ! End parameters 
+         ! End parameters
       end function
    end interface
 
-   
+
    interface
    !>@brief Save model into existing file.
    !> Returns 0 when success, -1 when failure happens
@@ -61,7 +61,7 @@ module xgb_interface
          ! End parameters
       end function
    end interface
-   
+
    interface
    !>@brief Make prediction based on dmatrix
    !> Returns 0 when success, -1 when failure happens
@@ -75,10 +75,10 @@ module xgb_interface
          integer(c_int), value     :: training     ! Whether the prediction function is used as part of the training loop
          integer(c_int64_t)        :: out_len      ! Used to store length of returning result
          type(c_ptr)               :: out_result   ! Used to set a pointer to array
-         ! End parameters 
+         ! End parameters
       end function
    end interface
-   
+
    interface
    !>@brief Free obj in handle
    !> Returns 0 when success, -1 when failure happens
@@ -86,7 +86,7 @@ module xgb_interface
          use iso_c_binding, only: c_int, c_ptr
          ! Parameters
          type(c_ptr), value :: handle ! Handle to be freed
-         ! End parameters 
+         ! End parameters
       end function
    end interface
 
@@ -99,8 +99,8 @@ module xgb_interface
          type(c_ptr), value                          :: handle ! Handle
          character(len=1, kind=c_char), dimension(*) :: name   ! parameter name
          character(len=1, kind=c_char), dimension(*) :: value  ! value of parameter
-         ! End parameters 
+         ! End parameters
       end function
-   end interface   
-   
+   end interface
+
 end module

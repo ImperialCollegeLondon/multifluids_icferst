@@ -3,17 +3,18 @@
 
 # Author: Daryl Harrison
 
-# Enthought library imports.
-from enthought.traits.api import Instance, List, String, Int, Bool
-from enthought.traits.ui.api import View, Group, Item
-
-from enthought.tvtk.api import tvtk
 from math import *
-from numpy import *
 
 # Local imports.
 from enthought.mayavi.core.filter import Filter
 from enthought.mayavi.core.traits import DEnum
+
+# Enthought library imports.
+from enthought.traits.api import Bool, Instance, Int, List, String
+from enthought.traits.ui.api import Group, Item, View
+from enthought.tvtk.api import tvtk
+from numpy import *
+
 
 ################################################################################
 # `TensorEigenvectorsEigenvalues` class.

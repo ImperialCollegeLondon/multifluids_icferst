@@ -9,6 +9,7 @@ else:
 
 from numpy import arange, zeros
 
+
 def create(missingdata = False, missingdimension = False, missingvariable = False, incorrectdimension = False, incorrectvariable = False):
 
   if (missingdata):
@@ -34,7 +35,7 @@ def create(missingdata = False, missingdimension = False, missingvariable = Fals
 
   f = netcdf_file(filename, 'w')
   f.description = 'Example free surface height' + description
-  
+
   if (missingdata):
     offset = -0.4
   else:
@@ -87,6 +88,3 @@ create(missingdimension=True)
 create(missingvariable=True)
 create(incorrectdimension=True)
 create(incorrectvariable=True)
-
-
-

@@ -35,7 +35,7 @@ module solvers
 #include "petsc/finclude/petsc.h"
   use petsc
 #include <petsc/finclude/petscksp.h>
-  use petscksp  
+  use petscksp
   use Sparse_Tools
   use Fields
   use profiler
@@ -49,9 +49,9 @@ module solvers
   use MeshDiagnostics
 
 
-! Module to provide explicit interfaces to matrix solvers.  
+! Module to provide explicit interfaces to matrix solvers.
 #include "petsc_legacy.h"
-implicit none 
+implicit none
 
 #if PETSC_VERSION_MINOR>12
        external KSPMONITORDEFAULT
@@ -998,7 +998,7 @@ type(vector_field), intent(in), optional :: positions
     ! same for the matrix, kspgetoperators returns the matrix reference
     ! owned by the ksp - make it a separate reference
     call PetscObjectReferenceWrapper(A, ierr)
-    
+
   end if
 
   b=PetscNumberingCreateVec(petsc_numbering)
@@ -1830,7 +1830,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
         call PetscViewerAndFormatCreate(PETSC_VIEWER_STDOUT_WORLD, &
            PETSC_VIEWER_DEFAULT,vf,ierr)
 #if PETSC_VERSION_MINOR<=12
-        call KSPMonitorSet(ksp, KSPMonitorDefault, vf, &  
+        call KSPMonitorSet(ksp, KSPMonitorDefault, vf, &
            PetscViewerAndFormatDestroy, ierr)
 #endif
     end if
@@ -1839,7 +1839,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
         call PetscViewerAndFormatCreate(PETSC_VIEWER_STDOUT_WORLD, &
            PETSC_VIEWER_DEFAULT,vf,ierr)
 #if PETSC_VERSION_MINOR<=12
-        call KSPMonitorSet(ksp, KSPMonitorTrueResidualNorm, vf, &   
+        call KSPMonitorSet(ksp, KSPMonitorTrueResidualNorm, vf, &
            PetscViewerAndFormatDestroy, ierr)
 #endif
     end if
@@ -2002,7 +2002,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
   recursive subroutine setup_pc_from_options(ksp, pc, pmat, option_path, &
     petsc_numbering, prolongators, surface_node_list, matrix_csr, &
     internal_smoothing_option, is_subpc)
-  KSP, intent(inout) :: ksp  
+  KSP, intent(inout) :: ksp
   PC, intent(inout):: pc
   Mat, intent(in):: pmat
   character(len=*), intent(in):: option_path
@@ -2016,7 +2016,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
   ! if present and true, don't setup sor and eisenstat as subpc (again)
   logical, optional, intent(in) :: is_subpc
   character( len = option_path_len ) :: opt
-  
+
 
     KSP:: subksp
     KSP,pointer      ::   subksp_array(:) => null()
@@ -2106,7 +2106,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
       ! need to call this before the subpc can be retrieved:
       call PCSetup(pc, ierr)
 
-#if PETSC_VERSION_MINOR>=14 
+#if PETSC_VERSION_MINOR>=14
       call KSPSetUp(ksp,ierr)
       if (pctype==PCBJACOBI) then
         call PCBJacobiGetSubKSP(pc,n_local,first_local, PETSC_NULL_KSP,ierr)
@@ -2147,7 +2147,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
          matrix_csr=matrix_csr, internal_smoothing_option=internal_smoothing_option, &
          is_subpc=.true.)
       ewrite(2,*) "Finished setting up subpc."
-#endif      
+#endif
 
 
     else if (IsParallel() .and. (pctype==PCSOR .or. &
@@ -2171,7 +2171,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
        call PCBJacobiGetSubKSP(pc, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, subksp, ierr)
        call KSPGetPC(subksp, subpc, ierr)
 #endif
-       
+
        call PCSetType(subpc, pctype, ierr)
 
     else if (pctype==PCFIELDSPLIT) then
@@ -2228,7 +2228,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
 
         !We always get issues with unsymmetric graphs, forcing symmetry seems not to be that expensive and should help with this
         ! call PCGAMGSetSymGraph(pc, PETSC_TRUE, ierr)
-        
+
         ! we think this is a more useful default - the default value of 0.0
         ! causes spurious "unsymmetric" failures as well
 #if PETSC_VERSION_MINOR<8
@@ -2285,7 +2285,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
     IS:: index_set
     PetscErrorCode:: ierr
     integer:: i
-    PetscInt :: n  
+    PetscInt :: n
     call PCSetType(pc, "fieldsplit", ierr)
 
     call PCFieldSplitGetSubKSP(pc, n, subksps, ierr)

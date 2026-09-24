@@ -220,7 +220,7 @@ INTEGER FUNCTION GetDumpStringLineCount(id)
     GetDumpStringLineCount = GetDumpStringLineCountF(id)
     return
 END FUNCTION GetDumpStringLineCount
-    
+
 SUBROUTINE GetDumpStringLine(id, n, line)
     USE ISO_C_BINDING
     IMPLICIT NONE
@@ -423,7 +423,7 @@ SUBROUTINE GetLogStringLine(id, n, line)
     call GetLogStringLineF(id, n, line, len(line))
     return
 END SUBROUTINE GetLogStringLine
-   
+
 LOGICAL FUNCTION GetLogStringOn(id)
     USE ISO_C_BINDING
     IMPLICIT NONE
@@ -682,7 +682,7 @@ INTEGER FUNCTION GetSelectedOutputValue(id, row, col, vtype, dvalue, svalue, sle
             IMPLICIT NONE
             INTEGER(KIND=C_INT), INTENT(in) :: id, row, col
             INTEGER(KIND=C_INT), INTENT(inout) :: sz
-            INTEGER(KIND=C_INT), INTENT(out) :: vtype 
+            INTEGER(KIND=C_INT), INTENT(out) :: vtype
             REAL(KIND=C_DOUBLE), INTENT(out) :: dvalue
             CHARACTER(KIND=C_CHAR), INTENT(out) :: svalue(*)
         END FUNCTION GetSelectedOutputValueF
@@ -701,7 +701,7 @@ INTEGER FUNCTION GetSelectedOutputValue(id, row, col, vtype, dvalue, svalue, sle
         if (sz < sz_fortran) then
             slength = sz
         endif
-    endif        
+    endif
     return
 END FUNCTION GetSelectedOutputValue
 
@@ -907,9 +907,9 @@ INTEGER FUNCTION SetBasicFortranCallback(id, fcn)
            END INTERFACE
         END FUNCTION SetBasicFortranCallbackF
     END INTERFACE
-    INTEGER, INTENT(in) :: id     
+    INTEGER, INTENT(in) :: id
     INTERFACE
-        DOUBLE PRECISION FUNCTION fcn(x1, x2, str, l) 
+        DOUBLE PRECISION FUNCTION fcn(x1, x2, str, l)
             INTEGER, INTENT(in)          :: l
             DOUBLE PRECISION, INTENT(in) :: x1, x2
             CHARACTER, INTENT(in) :: str(*)
@@ -939,7 +939,7 @@ INTEGER FUNCTION SetBasicFortranCallback(id, fcn)
            END INTERFACE
         END FUNCTION SetBasicFortranCallbackF
     END INTERFACE
-    INTEGER, INTENT(in) :: id     
+    INTEGER, INTENT(in) :: id
     INTERFACE
         REAL(KIND=C_DOUBLE) FUNCTION fcn(x1, x2, str, l) BIND(C)
             USE ISO_C_BINDING

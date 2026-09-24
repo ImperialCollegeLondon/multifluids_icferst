@@ -29,7 +29,7 @@ RUN echo "Europe/London" > /etc/timezone
 RUN apt-get -y install fluidity-dev
 
 RUN mkdir /tmp/tex-install
-WORKDIR /tmp/tex-install 
+WORKDIR /tmp/tex-install
 ADD installation.profile /tmp/tex-install/
 RUN curl -L http://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz | tar -zxvf - --strip-component=1
 RUN ./install-tl --profile=installation.profile
@@ -51,4 +51,3 @@ RUN adduser --disabled-password --gecos "" -u $userid fluidity
 
 USER fluidity
 WORKDIR /home/fluidity
-

@@ -24,7 +24,7 @@
 !!!!==============================================!!!!
 
 
-!>Shape function subroutines for multi-dimensions for 
+!>Shape function subroutines for multi-dimensions for
 !>Quadrilaterals, Triangles, Hexaedra and Tetrahedra
 module shape_functions_Linear_Quadratic
 
@@ -563,7 +563,7 @@ contains
 
     return
   end subroutine re2dn9
-  
+
   !> Quadratic variation (3D) for velocity -- 27 node brick element.
   !> Linear variation (3D) for pressure -- 8 node brick element.
   !> NB.: We may need to define surface elements for p and (u,v,w).
@@ -1851,10 +1851,10 @@ contains
   END SUBROUTINE DETNLXR3
 
 
-  
+
   !> Computes the inverse of the Jacobian of a Finite element
-  !> Example of calling this: 
-  !> 
+  !> Example of calling this:
+  !>
   !> Calculate DETWEI, RA, NX, NY, NZ for element ELE
   !> call DETNLXR_INVJAC( ELE, X_ALL, ndgln%x, CV_funs%scvfeweigh, CV_funs%scvfen, CV_funs%scvfenlx_all, SdevFuns)
   SUBROUTINE DETNLXR_INVJAC1( ELE, X_ALL, XONDGL, weight, nshape, nshapelx, DevFuns)
@@ -9203,7 +9203,7 @@ contains
        QUAPOS(IG)=COS(PIE*REAL(J)/REAL(NDGI-1))
     END DO
   END SUBROUTINE CHEROT
-  
+
   !> This computes the weight and points for Chebyshev-Gauss-Lobatto quadrature.
   !> See page 69 of:Spectral Methods in Fluid Dynamics, C.Canuto
   !> IF(GETNDP) then get the POSITION OF THE NODES
@@ -9804,11 +9804,11 @@ contains
 
 
   !> COMPUTES THE GAUSS-LOBATTO COLLOCATION POINTS FOR JACOBI POLYNOMIALS
-  !> 
+  !>
   !> N:       DEGREE OF APPROXIMATION
   !> ALPHA:   PARAMETER IN JACOBI WEIGHT
   !> BETA:    PARAMETER IN JACOBI WEIGHT
-  !> 
+  !>
   !> XJAC:    OUTPUT ARRAY WITH THE GAUSS-LOBATTO ROOTS
   !> THEY ARE ORDERED FROM LARGEST (+1.0) TO SMALLEST (-1.0)
   SUBROUTINE JACOBL(N,ALPHA,BETA,XJAC)
@@ -9894,10 +9894,10 @@ contains
   END SUBROUTINE JACOBL
 
 
-  !> 
+  !>
   !> COMPUTES THE JACOBI POLYNOMIAL (POLY) AND ITS DERIVATIVE
   !> (PDER) OF DEGREE  N  AT  X
-  !> 
+  !>
   SUBROUTINE JACOBF(N,POLY,PDER,POLYM1,PDERM1,POLYM2,PDERM2,X)
     IMPLICIT NONE
     INTEGER , intent(in):: N

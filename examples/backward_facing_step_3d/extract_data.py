@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
 import glob
-import sys
 import os
-import vtktools
+import sys
+
 import numpy
+import vtktools
 
 pwd=os.getenv('PWD')
 print pwd
@@ -102,7 +103,7 @@ def ercoftacvelocityprofiles():
   for line in range(1): datafile.readline()
   for line in datafile: y10.append(float(line.split()[0])); U10.append(float(line.split()[1]))
   datafile = open(str(mydir)+'/Ercoftac-test31-BFS/BFS-SEM-ERCOFTAC744-table.dat', 'r')
-  for line in range(1): datafile.readline()  
+  for line in range(1): datafile.readline()
   for line in datafile: y19.append(float(line.split()[0])); U19.append(float(line.split()[1]))
 
   return y4,U4,y6,U6,y10,U10,y19,U19
@@ -114,7 +115,7 @@ def ercoftacrestressprofiles():
   # ignore header line
   for line in range(1):
     datafile.readline()
-  
+
   y=[];U=[];uu=[];vv=[];uv=[]
   for line in datafile:
     y.append(1.0+float(line.split()[0]))
@@ -144,6 +145,3 @@ def panjwaniprofiles(variable):
   pj_y4 = [float(line.split()[1]) for line in pj]
 
   return pj_u1,pj_y1,pj_u2,pj_y2,pj_u3,pj_y3,pj_u4,pj_y4
-
-
-

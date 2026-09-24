@@ -36,11 +36,11 @@ CC  = @CC@
 CFLAGS  = @CFLAGS@ -I../../include
 
 CXX = @CXX@
-CXXFLAGS= @CPPFLAGS@ @CXXFLAGS@ -I../include -I../../include 
+CXXFLAGS= @CPPFLAGS@ @CXXFLAGS@ -I../include -I../../include
 
 LDFLAGS  = @LDFLAGS@
 
-LIBS =  @LIBS@ 
+LIBS =  @LIBS@
 FLIBS = @FLIBS@
 LIBFLUIDITY=../../lib/lib$(FLUIDITY).a
 LIBMPHASE= ../lib/libmphase.a

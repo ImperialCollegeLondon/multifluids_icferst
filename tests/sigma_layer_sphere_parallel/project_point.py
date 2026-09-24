@@ -1,7 +1,9 @@
 #!/usr/bin/env python
-import matplotlib
-import math
 import argparse
+import math
+
+import matplotlib
+
 
 def main():
     def coords(s):
@@ -18,13 +20,13 @@ def main():
          )
 
     parser.add_argument(
-            'coord', 
+            'coord',
             help="Lat/lon tuple, e.g. 5,90",
             type=coords,
             )
 
     args = parser.parse_args()
-    coord = args.coord    
+    coord = args.coord
 
     point = project(coord)
     print str(coord) +"->" +str(point)

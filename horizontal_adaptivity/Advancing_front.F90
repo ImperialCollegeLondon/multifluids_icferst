@@ -18,16 +18,16 @@ module hadapt_advancing_front
   use halos
 
   implicit none
-  
+
   private
-  
+
   public :: generate_layered_mesh, create_columns_sparsity
 
   contains
 
   subroutine generate_layered_mesh(mesh, h_mesh)
     !! Given a columnar mesh with the positions of the vertical
-    !! nodes, fill in the elements. 
+    !! nodes, fill in the elements.
     type(vector_field), intent(inout) :: mesh
     type(vector_field), intent(inout) :: h_mesh
 
@@ -35,7 +35,7 @@ module hadapt_advancing_front
     type(scalar_field) :: height_field
     type(mesh_type) :: in_mesh
     type(integer_hash_table):: old2new_ele
- 
+
     ! the maximum amount of faces you could possibly want to add is
     ! number of elements in the extruded mesh (ele_count(mesh))
     ! x number of faces per element (in the absence of face_count, use ele_loc)
@@ -46,17 +46,17 @@ module hadapt_advancing_front
     real, dimension(:), allocatable :: heights
     integer, dimension(:), allocatable :: hanging_node, column_size, column_count
     integer, dimension(mesh_dim(mesh) - 1) :: other_column_heads
-    
+
     integer, dimension(:), allocatable :: region_ids
     integer, dimension(:), allocatable:: halo_level
     integer, dimension(:), pointer :: ndglno_ptr, h_elements, h_ndglno
     integer, dimension(:), pointer :: nodes, faces, neigh
-    
+
     logical:: adjacent_to_owned_element, adjacent_to_owned_column, shared_face
     logical :: top_element, bottom_element
     logical :: apply_region_ids, propagate_region_ids
     integer, dimension(:), allocatable :: old_element_data
-    
+
     integer, dimension(2) :: shape_option
     integer, dimension(1) :: other_node
     integer :: top_surface_id, bottom_surface_id
@@ -67,9 +67,9 @@ module hadapt_advancing_front
     integer :: i, j, k, l
 
     logical :: radial_layering
-    
+
     real :: vol
-    
+
     ! allocate our arrays
     allocate(element_owners(ele_count(mesh) * ele_loc(mesh, 1)))
     allocate(boundary_ids(ele_count(mesh) * ele_loc(mesh, 1)))
@@ -83,7 +83,7 @@ module hadapt_advancing_front
     allocate(column_count(node_count(h_mesh)))
 
     dim = mesh_dim(mesh)
-    
+
     nelist => extract_nelist(h_mesh)
 
     radial_layering = have_option('/geometry/spherical_earth')
@@ -106,7 +106,7 @@ module hadapt_advancing_front
     if (radial_layering) then
       call deallocate( height_field )
     end if
-    
+
     if (associated(h_mesh%mesh%halos)) then
       assert(has_faces(h_mesh%mesh)) ! needed for halo1 element recognition
       allocate(halo_level(1:element_count(mesh)))
@@ -129,7 +129,7 @@ module hadapt_advancing_front
     apply_region_ids = (n_regions>1)
 
     do r = 0, n_regions-1
-    
+
       if(apply_region_ids) then
         shape_option=option_shape(trim(mesh%mesh%option_path)//&
                                   "/from_mesh/extrude/regions["//int2str(r)//&
@@ -139,25 +139,25 @@ module hadapt_advancing_front
                         "/from_mesh/extrude/regions["//int2str(r)//&
                         "]/region_ids", region_ids)
       end if
-      
+
       call get_option(trim(mesh%mesh%option_path)// &
                       '/from_mesh/extrude/regions['//int2str(r)//&
                       ']/top_surface_id', top_surface_id, default=0)
       call get_option(trim(mesh%mesh%option_path)// &
                       '/from_mesh/extrude/regions['//int2str(r)//&
                       ']/bottom_surface_id', bottom_surface_id, default=0)
-                      
+
       do h_ele = 1, size(top_surface_ids)
         if(apply_region_ids) then
           if(.not. any(h_mesh%mesh%region_ids(h_ele)==region_ids)) cycle
         end if
-        
+
         top_surface_ids(h_ele) = top_surface_id
         bottom_surface_ids(h_ele) = bottom_surface_id
       end do
-      
+
       if(apply_region_ids) deallocate(region_ids)
-      
+
     end do
 
     faces_seen = 0
@@ -172,9 +172,9 @@ module hadapt_advancing_front
       column = mesh%mesh%columns(node)
       column_size(column) = column_size(column) + 1
     end do
-      
+
     ! for each column keep track what the last added node is
-    hanging_node = 0    
+    hanging_node = 0
     ! we start with the top nodes
     l = 0
     do i = 1, size(sorted)
@@ -186,20 +186,20 @@ module hadapt_advancing_front
       end if
       if (l==size(hanging_node)) exit
     end do
-      
+
     ! for each column keep track how many nodes we've added already,
     ! at the moment that's just the top node in each column:
     column_count = 1
-    
+
     ! The main loop.
     ele = 0
     do i=1, size(sorted)
-      
+
       node = sorted(i)
-      
+
       ! Get the column we're dealing with
       column = mesh%mesh%columns(node)
-      
+
       if (hanging_node(column)==node) then
         if (column_count(column)==1) then
           ! this is simply the top node, we only start adding elements
@@ -211,7 +211,7 @@ module hadapt_advancing_front
           FLAbort("Internal error in mesh extrustion, generate_layered_mesh")
         end if
       end if
-      
+
       ! So we're going to form an element.
       ! It's going to have nodes
       ! [node, hanging_node(column), [others]]
@@ -248,7 +248,7 @@ module hadapt_advancing_front
         ndglno_ptr(2) = node
         ndglno_ptr(3:dim+1) = other_column_heads
 
-        ! Now we have to orient the element. 
+        ! Now we have to orient the element.
 
         vol = simplex_volume(mesh, ele)
         assert(abs(vol) /= 0.0)
@@ -257,12 +257,12 @@ module hadapt_advancing_front
           ndglno_ptr(1) = ndglno_ptr(2)
           ndglno_ptr(2) = l
         end if
-        
+
         ! if the horizontal mesh has region_ids these may as well be preserved here
         if(propagate_region_ids) then
           mesh%mesh%region_ids(ele) = h_mesh%mesh%region_ids(h_ele)
         end if
-        
+
         ! we now know the relationship between the mesh element and the h_mesh surface element
         ! save this for later...
         mesh%mesh%element_columns(ele) = h_ele
@@ -318,17 +318,17 @@ module hadapt_advancing_front
             end if
           end do
         end if
-        
+
         if (associated(h_mesh%mesh%halos)) then
           if(element_owned(h_mesh%mesh, h_ele)) then
-            ! element ownership (based on the process with lowest rank 
+            ! element ownership (based on the process with lowest rank
             ! owning any node in the element), nicely transfers to the columns
             halo_level(ele)=0
           else if (adjacent_to_owned_element) then
             ! this is not true for halo1 - only those that directly face owned elements
             halo_level(ele)=1
           else if (adjacent_to_owned_column) then
-            ! extruded halo2 elements are necessarily in a column under 
+            ! extruded halo2 elements are necessarily in a column under
             ! a halo1 element
             halo_level(ele)=2
           else
@@ -344,19 +344,19 @@ module hadapt_advancing_front
       column_count(column) = column_count(column) + 1
       assert( column_count(column)<=column_size(column) )
     end do
-      
+
     assert(ele==element_count(mesh))
     assert(all(mesh%mesh%element_columns>0))
-    
+
     if (associated(h_mesh%mesh%halos)) then
       ! now reorder the elements according to halo level
-    
+
       ! preserve %ndglno on in_mesh
       in_mesh = mesh%mesh
       ! get a new one for mesh
       allocate(mesh%mesh%ndglno(size(in_mesh%ndglno)))
       call allocate( old2new_ele )
-      
+
       ! first the owned elements
       ele = 0 ! new element nr. in mesh
       do i=0, 3
@@ -369,15 +369,15 @@ module hadapt_advancing_front
           end if
         end do
       end do
-        
+
       deallocate(in_mesh%ndglno)
       deallocate(halo_level)
-    
+
       ! renumber element ownership of faces
       do i=1, faces_seen
         element_owners(i) = fetch(old2new_ele, element_owners(i))
       end do
-      
+
       ! renumber the element columns
       allocate(old_element_data(size(mesh%mesh%element_columns)))
       old_element_data = mesh%mesh%element_columns
@@ -385,7 +385,7 @@ module hadapt_advancing_front
         mesh%mesh%element_columns(fetch(old2new_ele, i)) = old_element_data(i)
       end do
       deallocate(old_element_data)
-      
+
       ! renumber the region_ids
       if(propagate_region_ids) then
         allocate(old_element_data(size(mesh%mesh%region_ids)))
@@ -395,9 +395,9 @@ module hadapt_advancing_front
         end do
         deallocate(old_element_data)
       end if
-      
+
       call deallocate(old2new_ele)
-      
+
       call derive_other_extruded_halos(h_mesh%mesh, mesh%mesh)
     end if
 
@@ -418,7 +418,7 @@ module hadapt_advancing_front
           allow_duplicate_internal_facets=.true.)
       end if
     end if
-    
+
     if (associated(h_mesh%mesh%halos)) then
       ! make sure we obey zoltan's ordering convention
       call reorder_element_numbering(mesh)
@@ -446,41 +446,41 @@ module hadapt_advancing_front
     type(mesh_type), intent(in):: mesh
     ! pass in the positions if you want to guarantee that the columns are sorted in descending order
     type(vector_field), intent(in), optional :: positions
-    
+
     type(csr_sparsity):: node2column_sparsity
     integer:: i, no_nodes, no_columns
-    
+
     integer, dimension(:), pointer :: column_nodes
     integer, dimension(:), allocatable :: permutation
-    
+
     if (.not. associated(mesh%columns)) then
       FLAbort("Called create_columns_sparsity on a mesh without columns")
     end if
-    
+
     no_nodes=node_count(mesh)
     if (no_nodes==0) then
       no_columns = 0
     else
       no_columns=maxval(mesh%columns)
     end if
-    
+
     ! first create trivial node to column sparsity
     call allocate(node2column_sparsity, no_nodes, no_columns, no_nodes, &
       diag=.false., name="Node2ColumnSparsity")
-    
+
     ! each row (corresp. to a node) only has one entry
     do i=1, no_nodes+1
       node2column_sparsity%findrm(i)=i
     end do
-      
+
     node2column_sparsity%colm=mesh%columns
-    
-    ! now "columns" is the transpose of that:    
+
+    ! now "columns" is the transpose of that:
     columns=transpose(node2column_sparsity)
     columns%name=trim(mesh%name)//"ColumnsSparsity"
-    
+
     call deallocate(node2column_sparsity)
-    
+
     if(present(positions)) then
       do i = 1, no_columns
         column_nodes => row_m_ptr(columns, i)
@@ -491,27 +491,27 @@ module hadapt_advancing_front
         call apply_reverse_permutation(column_nodes, permutation)
         deallocate(permutation)
       end do
-      
+
       columns%sorted_rows = .false.
     end if
-    
+
   end subroutine create_columns_sparsity
-    
+
   subroutine parallel_consistent_ordering(values, halo, index)
 
     real, dimension(:), intent(in):: values
     type(halo_type), intent(in):: halo
     integer, dimension(:), intent(out):: index
-    
+
     real :: minv, maxv, int_base, int_range
     integer, dimension(size(values)):: ints, unn, reindex
     integer :: i, int1, int2, start
-    
+
     minv=minval(values)
     maxv=maxval(values)
     call allmin(minv)
     call allmax(maxv)
-    
+
     ! range of floats that can be rounded to integers
     ! we use -huge/2 to +huge/2, just to be sure
     int_base=-real(huge(1)/2)
@@ -519,22 +519,22 @@ module hadapt_advancing_front
     ! ah what the heck, heterogenous cluster computing is all the rage
     call allmax(int_base)
     call allmin(int_range)
-    
+
     ! round the real values to integer with as much precision as possible
     ints=floor( int_base+(values-minv)/(maxv-minv)*int_range )
-    
+
     call halo_update(halo, ints)
-    
+
     call qsort(ints, index)
-    
+
     call get_universal_numbering(halo, unn)
-    
+
     if (size(values)==0) then
       ! we deal with this case for flredecomp, where non-active processes may have nothing to do
       ! it's only safe to return here to avoid parallel dead-locks
       return
     end if
-    
+
     ! now go through to order equal heights on universal node number
     start=1
     int1=ints(index(1))
@@ -557,26 +557,26 @@ module hadapt_advancing_front
         FLAbort("Something went wrong in sorting")
       end if
     end do
-    
+
   end subroutine parallel_consistent_ordering
-    
+
   subroutine derive_other_extruded_halos(h_mesh, out_mesh)
     ! after having derived the 2nd node halo before,
     ! now derive 1st nodal halo and the element halos
     type(mesh_type), intent(in):: h_mesh
     type(mesh_type), intent(inout):: out_mesh
-    
+
     call derive_l1_from_l2_halo(out_mesh, &
       ordering_scheme=halo_ordering_scheme(h_mesh%halos(2)))
     assert(halo_valid_for_communication(out_mesh%halos(1)))
-    
+
     allocate(out_mesh%element_halos(2))
     call derive_element_halo_from_node_halo(out_mesh, &
       ordering_scheme=halo_ordering_scheme(h_mesh%halos(2)))
-    
+
     assert(halo_valid_for_communication(out_mesh%element_halos(1)))
     assert(halo_valid_for_communication(out_mesh%element_halos(2)))
-    
+
   end subroutine derive_other_extruded_halos
-  
+
 end module hadapt_advancing_front

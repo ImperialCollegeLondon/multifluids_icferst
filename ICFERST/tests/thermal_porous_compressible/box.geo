@@ -27,5 +27,3 @@ Physical Surface(1) = {16};         // bottom
 Physical Surface(2) = {5,20,28,29}; //sides
 Physical Surface(3) = {24};         // top
 Physical Volume (4) = {1};          // volume
-
-

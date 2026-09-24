@@ -1,7 +1,6 @@
-from enthought.mayavi.core.registry import registry
+from enthought.mayavi.core.metadata import FilterMetadata, SourceMetadata
 from enthought.mayavi.core.pipeline_info import PipelineInfo
-from enthought.mayavi.core.metadata import FilterMetadata
-from enthought.mayavi.core.metadata import SourceMetadata
+from enthought.mayavi.core.registry import registry
 
 # Metadata for the new filters we want to add
 boundary_marker_editor = FilterMetadata(

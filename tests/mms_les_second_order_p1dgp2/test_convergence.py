@@ -1,9 +1,10 @@
 #!/usr/bin/python
 
+from math import log
+
+import numpy as np
 from fluidity_tools import stat_parser as stat
 from vtktools import *
-from math import log
-import numpy as np
 
 meshes = [['A','B'], ['B','C']]#, ['C','D']]
 

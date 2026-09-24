@@ -1,12 +1,14 @@
 #!/usr/bin/env python
+import os
+import pdb
+import random
+import sys
+
 import matplotlib as m
 import matplotlib.pyplot as plt
-from matplotlib.mlab import griddata
 import numpy as np
-import sys
-import pdb
-import os
-import random
+from matplotlib.mlab import griddata
+
 
 def file_len(full_path):
         """ Count number of lines in a file."""
@@ -15,7 +17,7 @@ def file_len(full_path):
         f.close()
         return nr_of_lines
 
-# Program Options 
+# Program Options
 xres=200 # Number of Grid points in x direction
 yres=200 # Number of Grid points in y direction
 #decreaseDataSet=100000 # Set 0 to load all data
@@ -36,7 +38,7 @@ scatterColorMap = m.colors.LinearSegmentedColormap('my_colormap', cdict, 1024)
 
 """ Main Function """
 if not len(sys.argv)>=2:
-        print "Usage: plotbathymetry.py Bathymetry.grd [Title]"        
+        print "Usage: plotbathymetry.py Bathymetry.grd [Title]"
         exit()
 if len(sys.argv)==3:
         title=sys.argv[2]
@@ -109,11 +111,10 @@ colbar.set_label('[cm]')
 plt.xlim((0, 5.448))
 plt.ylim((0, 3.402))
 
-#plt.savefig( "BODC_plot.pdf", format='pdf' ) 
+#plt.savefig( "BODC_plot.pdf", format='pdf' )
 
 #plt.title(title)
 plt.show()
 
 if s=="1\n":
         os.popen("rm " + tempfile)
-

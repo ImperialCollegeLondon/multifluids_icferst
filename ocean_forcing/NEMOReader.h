@@ -1,5 +1,5 @@
 /*  Copyright (C) 2006 Imperial College London and others.
-    
+
     Please see the AUTHORS file in the main source directory for a full list
     of copyright holders.
 
@@ -9,7 +9,7 @@
     Imperial College London
 
     amcgsoftware@imperial.ac.uk
-    
+
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
     License as published by the Free Software Foundation,
@@ -75,7 +75,7 @@ class NEMOReader{
  public:
   NEMOReader();
   ~NEMOReader();
-  
+
   void AddFieldOfInterest(std::string);
   void ClearFields();
   bool Enabled() const;
@@ -101,7 +101,7 @@ class NEMOReader{
 
   int NProcs, MyRank, NParts;
   std::deque<std::string> NEMO_data_files;
-  
+
   //
   // NEMO data file specification
   //
@@ -116,8 +116,8 @@ class NEMOReader{
 
   // Grid space and time dimensions
   long vdimension[2];
-  long ndepth, ntime;      
-  
+  long ndepth, ntime;
+
   std::string simulation_time_units, data_time_units;
   Calendar *calendar;
 
@@ -126,7 +126,7 @@ class NEMOReader{
   //
   int time_fore, time_aft;
   int hour_index;
-  
+
   // Fields of interest
   std::deque<std::string> fields_of_interest;
 

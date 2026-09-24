@@ -1,19 +1,21 @@
-from numpy import arange,concatenate,array,argsort,zeros
-import os
-import sys
-import vtktools
 import math
-import re 
+import os
+import re
+import sys
 from math import sqrt
+
+import vtktools
+from numpy import arange, argsort, array, concatenate, zeros
 from scipy.interpolate import UnivariateSpline
 
+
 #### taken from http://www.codinghorror.com/blog/archives/001018.html  #######
-def sort_nicely( l ): 
-  """ Sort the given list in the way that humans expect. 
-  """ 
-  convert = lambda text: int(text) if text.isdigit() else text 
-  alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ] 
-  l.sort( key=alphanum_key ) 
+def sort_nicely( l ):
+  """ Sort the given list in the way that humans expect.
+  """
+  convert = lambda text: int(text) if text.isdigit() else text
+  alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ]
+  l.sort( key=alphanum_key )
 ##############################################################################
 
 
@@ -22,7 +24,7 @@ def MLD(filelist):
   x0 = 0.
   tke0 = 1.0e-5
   last_mld = 0
-  
+
   times = []
   depths = []
   Dm = []
@@ -32,7 +34,7 @@ def MLD(filelist):
      except:
        print "No such file: %s" % file
        sys.exit(1)
-     
+
      u=vtktools.vtu(file)
      time = u.GetScalarField('Time')
      tt = time[0]
@@ -50,7 +52,7 @@ def MLD(filelist):
      xyzkkarr = vtktools.arr(xyzkk)
      III = argsort(xyzkkarr[:,1])
      xyzkkarrsort = xyzkkarr[III,:]
-     # march down the column, grabbing the last value above tk0 and the first 
+     # march down the column, grabbing the last value above tk0 and the first
      # one less than tke0. Interpolate between to get the MLD
      kea = 1000
      keb = 0
@@ -77,4 +79,3 @@ def MLD(filelist):
 
 
   return times, depths, Dm
-

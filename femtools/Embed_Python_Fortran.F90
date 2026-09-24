@@ -1,5 +1,5 @@
 !    Copyright (C) 2006 Imperial College London and others.
-!    
+!
 !    Please see the AUTHORS file in the main source directory for a full list
 !    of copyright holders.
 !
@@ -9,7 +9,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!    
+!
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation; either
@@ -33,7 +33,7 @@ module embed_python
   use iso_c_binding
 
   implicit none
-  
+
   interface set_scalar_field_from_python
     module procedure set_scalar_field_from_python_sp
 
@@ -52,7 +52,7 @@ module embed_python
       integer, intent(out) :: stat
     end subroutine set_scalar_field_from_python
   end interface set_scalar_field_from_python
-  
+
   interface set_integer_array_from_python
     module procedure set_integer_array_from_python_sp
 
@@ -71,7 +71,7 @@ module embed_python
       integer, intent(out) :: stat
     end subroutine set_integer_array_from_python
   end interface set_integer_array_from_python
-    
+
   interface set_vector_field_from_python
     module procedure set_vector_field_from_python_sp
 
@@ -92,7 +92,7 @@ module embed_python
       integer, intent(out) :: stat
     end subroutine set_vector_field_from_python
   end interface set_vector_field_from_python
-  
+
   interface set_tensor_field_from_python
     module procedure set_tensor_field_from_python_sp
 
@@ -112,7 +112,7 @@ module embed_python
       integer, intent(out) :: stat
     end subroutine set_tensor_field_from_python
   end interface set_tensor_field_from_python
-     
+
   interface set_particle_sfield_from_python
     module procedure set_particle_sfield_from_python_sp
 
@@ -129,7 +129,7 @@ module embed_python
       integer, intent(out) :: stat
     end subroutine set_particle_sfield_from_python
   end interface set_particle_sfield_from_python
-    
+
   interface set_particle_vfield_from_python
     module procedure set_particle_vfield_from_python_sp
 
@@ -147,7 +147,7 @@ module embed_python
       integer, intent(out) :: stat
     end subroutine set_particle_vfield_from_python
   end interface set_particle_vfield_from_python
-        
+
   interface set_detectors_from_python
     module procedure set_detectors_from_python_sp
 
@@ -165,7 +165,7 @@ module embed_python
       integer, intent(out) :: stat
     end subroutine set_detectors_from_python
   end interface set_detectors_from_python
-    
+
   interface real_from_python
     module procedure real_from_python_sp, real_from_python_interface
 
@@ -179,7 +179,7 @@ module embed_python
       integer, intent(out) :: stat
     end subroutine real_from_python
   end interface real_from_python
-  
+
   interface real_vector_from_python
     module procedure real_vector_from_python_interface, real_vector_from_python_sp
 
@@ -246,9 +246,9 @@ module embed_python
       integer, intent(out) :: stat
     end subroutine string_from_python
   end interface string_from_python
-  
+
   private
-  
+
   public :: set_scalar_field_from_python, set_integer_array_from_python, &
     & set_vector_field_from_python, set_tensor_field_from_python, &
     & set_particle_sfield_from_python, set_particle_vfield_from_python, &
@@ -311,7 +311,7 @@ contains
     real(kind = c_float), dimension(:), intent(out) :: result_y
     real(kind = c_float), dimension(:), intent(out) :: result_z
     integer, intent(out) :: stat
-   
+
     real(kind = c_double), dimension(size(result_x)) :: lresult_x
     real(kind = c_double), dimension(size(result_y)) :: lresult_y
     real(kind = c_double), dimension(size(result_z)) :: lresult_z
@@ -370,7 +370,7 @@ contains
     result_z = lresult_z
 
   end subroutine set_detectors_from_python_sp
-   
+
   subroutine set_particle_sfield_from_python_sp(function, function_len,&
     & nparticles,t, result, stat)
     integer, intent(in) :: function_len
@@ -387,7 +387,7 @@ contains
     result = lresult
 
   end subroutine set_particle_sfield_from_python_sp
-    
+
   subroutine set_particle_vfield_from_python_sp(function, function_len, &
     & nparticles, t, result_x, result_y, result_z,&
     & stat)
@@ -451,7 +451,7 @@ contains
     end if
 
   end subroutine real_from_python_interface
- 
+
   subroutine real_vector_from_python_sp(function, current_time,  result, stat)
     character(len = *), intent(in) :: function
     real(kind=c_float), intent(in) :: current_time
@@ -459,7 +459,7 @@ contains
     integer, optional, intent(out) :: stat
 
     real(kind=c_double), dimension(:), pointer :: lresult
-    
+
     call real_vector_from_python(function, real(current_time, kind=c_double),&
          & lresult, stat)
 
@@ -477,7 +477,7 @@ contains
     real(kind=c_double), dimension(:), pointer, intent(out) :: result
     integer, optional, intent(out) :: stat
 
-    
+
     type(c_ptr) :: c_result
     integer(kind=c_int) :: c_result_len
     real, dimension(:), pointer :: tmp_result
@@ -508,7 +508,7 @@ contains
 
     call free_c_vector(c_result)
 
-  end subroutine real_vector_from_python_interface  
+  end subroutine real_vector_from_python_interface
 
   subroutine integer_vector_from_python_interface(function, current_time,  result, stat)
     character(len = *), intent(in) :: function
@@ -516,7 +516,7 @@ contains
     integer, dimension(:), pointer, intent(out) :: result
     integer, optional, intent(out) :: stat
 
-    
+
     type(c_ptr) :: c_result
     integer(kind=c_int) :: c_result_len
     integer, dimension(:), pointer :: tmp_result
@@ -547,7 +547,7 @@ contains
 
     call free_c_vector(c_result)
 
-  end subroutine integer_vector_from_python_interface  
+  end subroutine integer_vector_from_python_interface
 
   subroutine integer_from_python_sp(function, function_len, t, result, stat)
     integer, intent(in) :: function_len
@@ -559,7 +559,7 @@ contains
     call integer_from_python(function, function_len, real(t, kind = c_double), result, stat)
 
   end subroutine integer_from_python_sp
- 
+
   subroutine integer_from_python_interface(function, current_time, result, stat)
     character(len = *), intent(in) :: function
     real, intent(in) :: current_time
@@ -584,7 +584,7 @@ contains
     end if
 
   end subroutine integer_from_python_interface
-  
+
   subroutine string_from_python_sp(function, function_len, result_len, t, result, stat)
     integer, intent(in) :: function_len
     character(len = function_len), intent(in) :: function
@@ -609,7 +609,7 @@ contains
     result_len = len(result)
 
     call string_from_python(function, len_trim(function), result_len, t, result, lstat)
-  
+
     if(lstat /= 0) then
       if(present(stat)) then
         stat = lstat

@@ -28,7 +28,7 @@ ndim                  1                                                       /g
 # nlev --> controls u_snloc  -------------------------------------------|
 nlev                  3                                                 |
                                                                         |
-# Number of velocity nodes                                              |-->  Not explicitly specified, information obtained via tools in 
+# Number of velocity nodes                                              |-->  Not explicitly specified, information obtained via tools in
 u_nloc                6                                                 |     femtools/Fields_Data_Types.F90
                                                                         |
 # Number of spatial nodes associated w velocity                         |
@@ -99,7 +99,7 @@ ntime               160                                                       us
 
 # Frequency in which files will be output into *.d.* files                    Option is controlled in /io. The user can specify: A constant dump period
 ntime_dump           20                                                       in time-units, /io/dump_period/constant . A dump period in time-units via
-                                                                              a python function, /io/dump_period/python . A constant dump period in 
+                                                                              a python function, /io/dump_period/python . A constant dump period in
                                                                               time-steps, /io/dump_period_in_timesteps/constant . A dump period in
                                                                               time-steps via a python function, /io/dump_period_in_timesteps/python .
 
@@ -112,7 +112,7 @@ nits_internal         1                                                       pr
                                                                               needs to be activated should the user want to. As indicated in the path,
                                                                               this option is set separately for each field in each phase.
 
-# noit_dim : dimension of the arrays to be defined in later stage             The dimension of corresponding variables/arrays is not explicitly 
+# noit_dim : dimension of the arrays to be defined in later stage             The dimension of corresponding variables/arrays is not explicitly
 # (e.g., Field_error, Field_relax, Field_relax_diag, Field_relax_row          specified, it is calculated by fluidity itself. However, options related
 # and Field_relax_number_iterations, with                                     to the matrix solver of each prognostic field are specified under the
 # Field = volfra, scalar, velocity, global, pressure, mass_matrix)            solver part of the options tree, eg. /material_phase::phase1/
@@ -139,15 +139,15 @@ p_ini                 0.
 # Initial temperature (or any scalar field, not in use)
 t_ini                 0.
 
-# Conservative(1.)/non-conservative(0.) flag for CV discretisation           Specified for each prognostic field, obtained from options path 
+# Conservative(1.)/non-conservative(0.) flag for CV discretisation           Specified for each prognostic field, obtained from options path
 t_beta                0.                                                     /material_phase::phase1/scalar_field::whatever_field/prognostic/
                                                                              spatial_discretisation/conservative_advection .
 
-# Conservative(1.)/non-conservative(0.) flag for Volfra discretisation       Specified for each prognostic field, obtained from options path 
+# Conservative(1.)/non-conservative(0.) flag for Volfra discretisation       Specified for each prognostic field, obtained from options path
 v_beta                1.                                                     /material_phase::phase1/scalar_field::whatever_field/prognostic/
                                                                              spatial_discretisation/conservative_advection .
 
-# Time-stepping discretisation parameter                                     Specified for each prognostic field, obtained from options path 
+# Time-stepping discretisation parameter                                     Specified for each prognostic field, obtained from options path
 t_theta               0.                                                     /material_phase::phase1/scalar_field::whatever_field/prognostic/
                                                                              temporal_discretisation/theta .
 
@@ -172,7 +172,7 @@ u_disopt              1                                                      pro
 v_disopt              8
 
 #  t_dg_vel_int_opt: interface scalar field calculation option between elements  !! Not sure !! Fluidity allows for meshes to be created, based on
-t_dg_vel_int_opt      0                                                      existing meshes, via options at path /geometry/mesh::some_mesh/from_mesh. 
+t_dg_vel_int_opt      0                                                      existing meshes, via options at path /geometry/mesh::some_mesh/from_mesh.
                                                                              Fields can then be created on such meshes.
 
 #  u_dg_vel_int_opt: interface velocity calculation option between elements  !! Not sure !! Fluidity allows for meshes to be created, based on
@@ -197,7 +197,7 @@ volfra_get_theta_flux        T
 volfra_use_theta_flux        F
 
 # Domain length                                                              Not explicitly specified, the user specifies a file containing the mesh at
-domain_length         4.                                                     option with path /geometry/mesh::CoordinateMesh/from_file . The grid is 
+domain_length         4.                                                     option with path /geometry/mesh::CoordinateMesh/from_file . The grid is
                                                                              loaded by fluidity and relevant information is extracted.
 
 # Capillary pressure option (for now we just have option = 1)                An arbitrary number of diagnostic fields can be created by the user, a
@@ -210,6 +210,6 @@ capil_pres_opt        0                                                      typ
 
 # Polynomial representation for the cappilary pressure - order (length of the matrix)  An arbitrary number of diagnostic fields can be created by the
 ncapil_pres_coef      0                                                      user, a typical options path is then /material_phase::phase1/
-                                                                             scalar_field::whatever_diagnostic_field/diagnostic . The user can then 
-                                                                             choose the algorithm to calculate the diagnostic, and specify related 
+                                                                             scalar_field::whatever_diagnostic_field/diagnostic . The user can then
+                                                                             choose the algorithm to calculate the diagnostic, and specify related
                                                                              options

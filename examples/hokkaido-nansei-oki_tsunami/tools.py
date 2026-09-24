@@ -1,11 +1,13 @@
-from fluidity_tools import stat_parser
-import sys
 import csv
+import sys
+
+from fluidity_tools import stat_parser
+
 
 # does a linear interpolation of the input data
 def get_measurement(mea_filename, t):
   reader = csv.reader(open(mea_filename, 'rb'), delimiter=',')
- 
+
   data=[]
   for (time, gauge1, gauge2, gauge3) in reader:
     data.append((float(time), float(gauge1), float(gauge2), float(gauge3)))
@@ -30,12 +32,12 @@ def get_measurement(mea_filename, t):
 def gage_error_integral(detector_filename):
 
   mea_filename='raw_data/WaveGages.csv'
- 
+
   s = stat_parser(detector_filename)
   timesteps=s["ElapsedTime"]["value"]
   timestep=timesteps[1]-timesteps[0]
   print "Found ", len(timesteps), " timesteps with dt=", timestep, " starting at t0=", timesteps[0]-timestep
-  
+
   fs=s["water"]["FreeSurface"]
   print "Found ", len(fs), " free surface detectors."
 
@@ -56,7 +58,6 @@ def gage_error_integral(detector_filename):
   error_integral[0]+=0.5*abs(gauges[0])*timestep
   error_integral[1]+=0.5*abs(gauges[1])*timestep
   error_integral[2]+=0.5*abs(gauges[2])*timestep
- 
+
   return error_integral
-        
 

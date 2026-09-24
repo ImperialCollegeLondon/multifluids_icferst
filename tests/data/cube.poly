@@ -1,4 +1,4 @@
-# Part 1 - node list 
+# Part 1 - node list
 # node count, 3 dim, no attribute, no boundary marker
 8  3  0  0
 # Node index, node coordinates
@@ -27,10 +27,9 @@
 4  3 4 8 7   # top
 1  0  6
 4  4 1 5 8   # left
- 
+
 # Part 3 - hole list
 0            # no hole
 
 # Part 4 - region list
 0            # no region
-

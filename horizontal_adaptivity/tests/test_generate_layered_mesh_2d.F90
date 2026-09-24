@@ -31,7 +31,7 @@ subroutine test_generate_layered_mesh_2d
 
   fail = node_count(z_mesh) /= 3
   call report_test("[z_mesh: node_count]", fail, .false., "Should be 3")
-  
+
   allocate( z_meshes(1:node_count(z_mesh)) )
 
   call allocate(h_mesh, z_mesh%dim, z_mesh%mesh, "HMeshCoordinate")
@@ -49,7 +49,7 @@ subroutine test_generate_layered_mesh_2d
   call deallocate(quad)
   call combine_z_meshes(h_mesh, z_meshes, out_mesh, &
     full_shape, "Mesh", option_path="")
-  
+
   fail = node_count(out_mesh) /= 9
   call report_test("[out_mesh: node_count]", fail, .false., "Should be 9")
   fail = ele_count(out_mesh) /= 8
@@ -60,5 +60,5 @@ subroutine test_generate_layered_mesh_2d
   call generate_layered_mesh(out_mesh, h_mesh)
 
   call vtk_write_fields("data/layered_mesh", 2, out_mesh, out_mesh%mesh, vfields=(/out_mesh/))
-  
+
 end subroutine test_generate_layered_mesh_2d

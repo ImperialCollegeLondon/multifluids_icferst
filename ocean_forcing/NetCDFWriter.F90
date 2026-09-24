@@ -31,7 +31,7 @@
 module NetCDFWriter
   private
   public::NetCDFWriter_init, NetCDFWriter_write_variable
-  
+
   integer, save::ncid
   integer, save::latitude_dim, longitude_dim, time_dim
   character(len=4096), save::ncfilename
@@ -71,12 +71,12 @@ contains
     ! executed.
     character(len=*), optional, intent(in)::source
 
-    
+
     ! Published or web-based references that describe the data or
     ! methods used to produce it.
     character(len=*), optional, intent(in)::references
-    
-    ! Miscellaneous information about the data or methods used to produce it.     
+
+    ! Miscellaneous information about the data or methods used to produce it.
     character(len=*), optional, intent(in)::comment
 
 #ifdef HAVE_LIBNETCDF
@@ -102,7 +102,7 @@ contains
     ncfilename = filename
     ncid = nccre(filename, NCCLOB, ierr)
     assert(ierr.eq.0)
-    
+
     call ncaptc(ncid, NF_GLOBAL, "Conventions", NCCHAR, &
          len_trim(conventions), conventions, ierr)
     assert(ierr.eq.0)
@@ -142,17 +142,17 @@ contains
             len_trim(comment), comment, ierr)
        assert(ierr.eq.0)
     end if
-    
+
     time_dim = ncddef(ncid, 'time', NCUNLIM, ierr)
     assert(ierr.eq.0)
-    
+
     dims(1) = time_dim
     varid = ncvdef(ncid, "time", ncreal, 1, dims, ierr)
     assert(ierr.eq.0)
-    
+
     call ncaptc(ncid, varid, "long_name", NCCHAR, 4, "time", ierr)
     assert(ierr.eq.0)
-    
+
     ! Variables representing time must always explicitly include
     ! the units attribute; there is no default value. The units
     ! attribute takes a string value formatted as per the
@@ -165,32 +165,32 @@ contains
             27, "seconds since 0-01-01 0:0:0", ierr)
     end if
     assert(ierr.eq.0)
-    
+
     ! Define the latitude dimension
     latitude_dim = ncddef(ncid, 'latitude', size(latitude), ierr)
     assert(ierr.eq.0)
-    
+
     dims(1) = latitude_dim
     varid = ncvdef(ncid, "latitude", ncreal, 1, dims, ierr)
     assert(ierr.eq.0)
-    
+
     call ncaptc(ncid, varid, "long_name", NCCHAR, 8, "latitude", ierr)
     assert(ierr.eq.0)
-    
+
     call ncaptc(ncid, varid, "units", NCCHAR, len_trim(units_latitude), units_latitude, ierr)
     assert(ierr.eq.0)
 
     ! Define the longitude dimension
     longitude_dim = ncddef(ncid, 'longitude', size(longitude), ierr)
     assert(ierr.eq.0)
-    
+
     dims(1) = longitude_dim
     varid = ncvdef(ncid, "longitude", ncreal, 1, dims, ierr)
     assert(ierr.eq.0)
-    
+
     call ncaptc(ncid, varid, "long_name", NCCHAR, 9, "longitude", ierr)
     assert(ierr.eq.0)
-    
+
     call ncaptc(ncid, varid, "units", NCCHAR, len_trim(units_longitude), units_longitude, ierr)
     assert(ierr.eq.0)
 
@@ -227,7 +227,7 @@ contains
 #else
     call ncvptf(ncid, varid, start1, count1, latitude, ierr)
 #endif
-    
+
     varid = ncvid(ncid, "longitude", ierr)
     count1(1) = size(longitude)
 #ifdef DOUBLEP
@@ -235,14 +235,14 @@ contains
 #else
     call ncvptf(ncid, varid, start1, count1, longitude, ierr)
 #endif
-    
+
     call ncclos(ncid, ierr)
     assert(ierr.eq.0)
 
 #endif
     return
   end subroutine NetCDFWriter_init
-  
+
   subroutine NetCDFWriter_write_variable(name, long_name, variable, units)
     use FLDebug
     implicit none
@@ -279,20 +279,20 @@ contains
 
     varid = ncvdef(ncid, name, ncshort, 3, dims, ierr)
     assert(ierr.eq.0)
-    
+
     varid = ncvid(ncid, name, ierr)
     call ncaptc(ncid, varid, "long_name", NCCHAR, &
          len_trim(long_name), long_name, ierr)
     assert(ierr.eq.0)
-    
+
     call ncaptc(ncid, varid, "units", NCCHAR, &
          len_trim(units), units, ierr)
     assert(ierr.eq.0)
-    
+
     call ncapts(ncid, varid, "_FillValue", NCSHORT, &
          1, fillvalue, ierr)
     assert(ierr.eq.0)
-    
+
     call ncapts(ncid, varid, "missing_value", NCSHORT, &
          1, fillvalue, ierr)
     assert(ierr.eq.0)
@@ -300,21 +300,21 @@ contains
     ! Packing algorithm
     max_v = maxval(variable)
     min_v = minval(variable)
-    
+
     add_offset = (max_v + min_v)*0.5
     call ncaptd(ncid, varid, "add_offset", NCDOUBLE, &
          1, add_offset, ierr)
     assert(ierr.eq.0)
-    
+
     scale_factor = (max_v - min_v)/(2**16 - 5)
     call ncaptd(ncid, varid, "scale_factor", NCDOUBLE, &
          1, scale_factor, ierr)
     assert(ierr.eq.0)
-    
+
     ! Finish defining metadata
     call ncendf(ncid, ierr)
     assert(ierr.eq.0)
-    
+
     start = 1
     count(1) = size(variable, 1)
     count(2) = size(variable, 2)
@@ -336,5 +336,5 @@ contains
     assert(ierr.eq.0)
 #endif
   end subroutine NetCDFWriter_write_variable
-  
+
 end module NetCDFWriter

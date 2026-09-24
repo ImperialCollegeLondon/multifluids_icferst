@@ -1,5 +1,5 @@
 
-default:	Model_Documentation.pdf 
+default:	Model_Documentation.pdf
 
 Model_Documentation.pdf:	Model_Documentation.tex
 Model_Documentation.idx:	Model_Documentation.idx
@@ -33,5 +33,5 @@ htclean_%:
 	rm $*.4ct $*.4tc $*.css $*.idv $*.lg $*.tmp $*.xref $*.html $*.nav $*.snm \
 $*.lot $*.tex~ $*.bib~ 2>/dev/null||true
 
-clean-pdf: 
-		rm Model_Documentation.pdf 
+clean-pdf:
+		rm Model_Documentation.pdf

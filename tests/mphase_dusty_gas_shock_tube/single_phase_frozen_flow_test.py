@@ -1,7 +1,8 @@
-import pylab
 import numpy
+import pylab
 import shocktube
 import vtktools
+
 params = {'text.fontsize': 6,
          'legend.fontsize': 8,
          'xtick.labelsize': 8,
@@ -49,12 +50,12 @@ p=sol[:,0]
 u=sol[:,1]
 rho=sol[:,2]
 ie=p/rho/(shocktube.gamma-1.0)
-  
+
 pylab.subplot(321)
 pylab.plot( x/0.0271002710027, p,'-g', label='Frozen flow')
 pylab.title('Normalised Pressure')
 pylab.legend(loc=2)
-  
+
 pylab.subplot(322)
 pylab.plot( x/0.0271002710027, u,'g-', label='Frozen flow (Air)')
 pylab.title('Normalised Velocity')

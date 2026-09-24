@@ -1,5 +1,5 @@
 !    Copyright (C) 2006 Imperial College London and others.
-!    
+!
 !    Please see the AUTHORS file in the main source directory for a full list
 !    of copyright holders.
 !
@@ -9,7 +9,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!    
+!
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation,
@@ -31,16 +31,16 @@ module detector_data_types
 
   use fldebug
   use global_parameters, only : FIELD_NAME_LEN
-  
+
   implicit none
-  
+
   private
-  
+
   public :: detector_type, rk_gs_parameters, detector_linked_list, &
             detector_list_ptr, stringlist, &
             STATIC_DETECTOR, LAGRANGIAN_DETECTOR
 
-  integer, parameter :: STATIC_DETECTOR=1, LAGRANGIAN_DETECTOR=2  
+  integer, parameter :: STATIC_DETECTOR=1, LAGRANGIAN_DETECTOR=2
 
   type stringlist
      !!< Container type for a list of strings.
@@ -52,7 +52,7 @@ module detector_data_types
      !! Physical location of the detector.
      real, dimension(:), allocatable :: position
      !! Name of the detector in input and output.
-     character(len=FIELD_NAME_LEN) :: name 
+     character(len=FIELD_NAME_LEN) :: name
      !! Element number in which the detector lies.
      integer :: element
      !! Local coordinates of the detector in that element.
@@ -71,7 +71,7 @@ module detector_data_types
      logical :: search_complete
      !! Pointers for detector linked lists
      TYPE (detector_type), POINTER :: next=> null()
-     TYPE (detector_type), POINTER :: previous=> null() 
+     TYPE (detector_type), POINTER :: previous=> null()
   end type detector_type
 
   ! Parameters for lagrangian detector movement

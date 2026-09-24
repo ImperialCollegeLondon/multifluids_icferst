@@ -111,7 +111,7 @@ void pvtu_fix_path(const char* pFilename, const char *dir){
   bool loadOkay = doc.LoadFile();
   if(loadOkay){
     pvtu_search_and_replace(&doc, dir);
-    
+
         // NEW: Remove corrupt binary FieldData and re-inject as clean ASCII.
     // TinyXML corrupts binary base64 text nodes when saving by escaping
     // newlines as &#x0A;, making TimeValue unreadable by ParaView.
@@ -141,7 +141,7 @@ void pvtu_fix_path(const char* pFilename, const char *dir){
         }
       }
     }
-    
+
   }else{
     cerr<<"ERROR: Failed to load file "<<pFilename<<endl;
   }

@@ -3,6 +3,7 @@
 # by Miloslav Feistauer, Jiri Felcman and Ivan Straskraba, 2003
 # eqn numbers below refer to this books
 from math import sqrt
+
 from scipy.optimize import newton
 
 # ratio of specific heats
@@ -21,7 +22,7 @@ ier=2.5
 # this eos is assumed in the eqns below (so can't change this):
 def p_eos(ie, rho):
   return rho*ie*(gamma-1.0)
-  
+
 def rho_eos(ie, p):
   return p/ie/(gamma-1.0)
 
@@ -39,13 +40,13 @@ ar=sqrt(gamma*pr/rhor)
 def F1l(p):
   """Function F1l defines difference between us and ul:
      us=ul+F1l(p)    eqn. (3.1.159)"""
-     
+
   # eqn. (3.1.160)
   if p<=pl:
     return 2.*al/(gamma-1.)*(1.-(p/pl)**((gamma-1.)/(2.*gamma)))
   else:
     return -(p-pl)*sqrt((2./(gamma+1.)/rhol)/(p+(gamma-1.)/(gamma+1.)*pl))
-    
+
 def F1lprime(p):
   # derivative of the above
   if p<=pl:
@@ -57,13 +58,13 @@ def F1lprime(p):
 def F3r(p):
   """Function F3r defines difference between us and ur:
      us=ur+F3r(p)    eqn. (3.1.161)"""
-     
+
   # eqn. (3.1.162)
   if p<=pr:
     return -2.*ar/(gamma-1.)*(1.-(p/pr)**((gamma-1.)/(2.*gamma)))
   else:
     return (p-pr)*sqrt((2./(gamma+1.)/rhor)/(p+(gamma-1.)/(gamma+1.)*pr))
-    
+
 def F3rprime(p):
   # derivative of the above
   if p<=pr:
@@ -75,10 +76,10 @@ def F3rprime(p):
 def F(p):
   # eqn (3.1.165)
   return F3r(p)-F1l(p)+ur-ul
-  
+
 def Fprime(p):
   return F3rprime(p)-F1lprime(p)
-  
+
 # inital guess:
 p=(pl+pr)/2.
 
@@ -113,9 +114,9 @@ iesr=ps/rhosr/(gamma-1.)
 asr=sqrt(gamma*pr/rhosr)
 
 def solution(x,t):
-  if x/t<us:    
+  if x/t<us:
     # before the contact discontinuity:
-    
+
     if ps<pl:
       # u-a is a rarefaction wave
       if x/t<ul-al: # left
@@ -133,10 +134,10 @@ def solution(x,t):
         return (pl, ul, rhol)
       else: # between u-a shock and contact disc.
         return (psl, us, rhosl)
-        
+
   else:
     # after the contact discontinuity:
-        
+
     if ps<pr:
       # u+a is a rarefaction wave
       if x/t>ur+ar: # right
@@ -154,4 +155,3 @@ def solution(x,t):
         return (pr, ur, rhor)
       else: # between contact disc. and u-a shock
         return (ps, us, rhosr)
-

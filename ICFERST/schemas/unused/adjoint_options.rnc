@@ -9,12 +9,12 @@ adjoint_options =
       ## A functional to be computed.
       ## If the functional_value is supplied by the user, then the functional gets
       ## evaluated and printed in the .stat files.
-      ## 
+      ##
       ## If the functional_derivative is supplied by the user, then that is always used.
       ## for the right-hand side of the adjoint computation.
       ## If no functional_derivative is supplied, then automatic differentiation is applied
       ## to compute it from the functional_value.
-      ## 
+      ##
       ## In short, you must supply at least one of functional_value or functional_derivative,
       ## and you may supply both.
       element functional {
@@ -29,10 +29,10 @@ adjoint_options =
             ##   states[0]["MaterialPhase"].vector_fields["Coordinate"], or
             ##   states[n-1]["MyOtherMaterialPhase"].scalar_fields["Pressure"], etc.
             ##  states will only contain those fields that have been specified in the functional_dependencies element.
-            ## 
+            ##
             ##  This code must compute a real number J, which is the value of the functional associated with this particular
             ##  timestep.
-            ##  
+            ##
             ##  Here is a simple example for the functional that evaluates the L2-norm of a field "LayerThickness" at time T=1:
             ##  <span font_desc="monospace 10" foreground="blue">
             ##  J = 0.0
@@ -41,12 +41,12 @@ adjoint_options =
             ##    import numpy
             ##    eta_prev = states[n-1]["Fluid"].scalar_fields["LayerThickness"]
             ##    eta      = states[n]["Fluid"].scalar_fields["LayerThickness"]
-            ##    
+            ##
             ##    # We want to temporally interpolate to evaluate eta at t=1.0
             ##    alpha = (time + dt - T) / dt
             ##    assert 0 &lt;= alpha &lt; 1
             ##    tmp_eta = alpha * eta_prev.val + (1-alpha) * eta.val
-            ##    
+            ##
             ##    # Now we want to integrate that over space
             ##    coord = states[0]["Fluid"].vector_fields["Coordinate"]
             ##    assert eta.element_count == eta_prev.element_count == coord.element_count
@@ -57,7 +57,7 @@ adjoint_options =
             ##      nodes = eta_prev.ele_nodes(ele)
             ##      J = J + numpy.dot(tmp_eta[nodes], numpy.dot(mass, tmp_eta[nodes]))
             ##  </span>
-            ## 
+            ##
             ##  <span weight="bold">
             ##  If you intend to use automatic differentiation, and want to use
             ##  primitives such as sin, cos, exp, etc., you must use those
@@ -87,7 +87,7 @@ adjoint_options =
             ##   states[n]["MyOtherMaterialPhase"].scalar_fields["Pressure"], etc.
             ##  states will only contain those fields that have been specified in the functional_dependencies element.
             ##  derivative, which is a scalar/vector/tensor field associated with the derivative to be computed.
-            ## 
+            ##
             ##  This code must set the entries of derivative.val. The code should check which variable we are differentiating
             ##  with respect to by inspecting derivative.name.
             element algorithm {
@@ -118,19 +118,19 @@ adjoint_options =
          },
          ## Disables the adjoint run for this functional.
          ## The functional values are still computed during the forward run.
-         ## The resulting stat file is equivalent to the one with this option disabled, 
+         ## The resulting stat file is equivalent to the one with this option disabled,
          ## but all adjoint related entries will be zeroed.
          element disable_adjoint_run {
            empty
-         }? 
+         }?
       }+,
-      ## Specifies any control variables 
+      ## Specifies any control variables
       element controls {
           element control {
             (
               attribute name { xsd:string },
                 (
-                  ## Initial condition 
+                  ## Initial condition
                   element type {
                     attribute name { "initial_condition" },
                     attribute field_name { xsd:string },
@@ -164,16 +164,16 @@ adjoint_options =
           ## This is used for optimality only and should be left disabled.
           element load_controls {
              empty
-          }? 
+          }?
       }?,
       ## Debugging options for adjoint model development
       element debug {
-         ## Rerun the forward equation using libadjoint. 
+         ## Rerun the forward equation using libadjoint.
          ## This is a debugging option to check if the libadjoint callbacks are implemented correctly.
          element replay_forward_run {
            empty
          }?,
-         ## Activate the visualisation of the forward and adjoint equations solved. 
+         ## Activate the visualisation of the forward and adjoint equations solved.
          ## This option creates an html file for both the forward and adjoint system.
          element html_output {
             empty
@@ -211,4 +211,3 @@ adjoint_storage =
          )
       }
    )
-

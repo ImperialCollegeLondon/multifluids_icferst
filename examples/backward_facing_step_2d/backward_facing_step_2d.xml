@@ -2,7 +2,7 @@
 <testproblem>
    <name>Backward-facing step 2D example</name>
    <!--Runs a reference and kepsilon 2D backward-facing step problems.-->
-   <!-- this seems to be a fragile test. Anyone with experience of BFS think of a better one-->   
+   <!-- this seems to be a fragile test. Anyone with experience of BFS think of a better one-->
   <owner userid="asc"/>
   <tags>flml</tags>
   <!-- uses flml -->
@@ -41,4 +41,3 @@ assert(abs(kepsilon_reattachment_length[-1,0]/kepsilon_reattachment_length[-2,0]
   </pass_tests>
   <warn_tests/>
 </testproblem>
-

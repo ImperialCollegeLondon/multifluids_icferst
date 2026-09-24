@@ -1,20 +1,22 @@
 #!/usr/bin/env python
 
 import glob
-import sys
 import os
-import vtktools
+import re
+import sys
+from math import log
+
+import extract_data
 import numpy
 import pylab
-import re
-import extract_data
-from math import log
+import vtktools
+
 
 def get_filelist(sample, start):
 
     def key(s):
         return int(s.split('_')[-1].split('.')[0])
-   
+
     list = glob.glob("*vtu")
     list = [l for l in list if 'checkpoint' not in l]
     vtu_nos = [float(s.split('_')[-1].split('.')[0]) for s in list]
@@ -36,7 +38,7 @@ def get_filelist(sample, start):
       vtu_no = float(file.split('_')[-1].split('.')[0])
       #if ((max(vtu_nos)-start)/sample > 10):
       #  sample=int((max(vtu_nos)-start)/10)
-      
+
       if vtu_no > start:
         if (vtu_no%sample==0):
           shortlist.append(file)
@@ -52,7 +54,7 @@ def tryint(s):
         return int(s)
     except:
         return s
-    
+
 def alphanum_key(s):
     """ Turn a string into a list of string and number chunks.
         "z23a" -> ["z", 23, "a"]
@@ -304,4 +306,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-

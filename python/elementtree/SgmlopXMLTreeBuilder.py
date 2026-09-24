@@ -60,6 +60,7 @@ import ElementTree
 #
 # @see elementtree.ElementTree
 
+
 class TreeBuilder:
 
     def __init__(self, html=0):
@@ -70,6 +71,7 @@ class TreeBuilder:
         self.__builder = ElementTree.TreeBuilder()
         if html:
             import htmlentitydefs
+
             self.entitydefs.update(htmlentitydefs.entitydefs)
         self.__parser = sgmlop.XMLParser()
         self.__parser.register(self)

@@ -87,7 +87,7 @@ Temperature = state.scalar_fields["Temperature"]
 #Loop over all the nodes of the input field
 for i in range(field.node_count):
  c = Temperature.node_val(i)
- 
+
  #Formula
  val0=0.0
  val = ((1.45*c**(3/2))/(c+110))*(1.0*10**(-6.0))+val0 #Sutherland's Formula
@@ -115,7 +115,7 @@ for i in range(field.node_count):
           <python>
             <string_value type="code" language="python" lines="20">def val(X, t):
   val=0.1
-  if (X[0]&lt;0.5): 
+  if (X[0]&lt;0.5):
     val=1
   return val</string_value>
           </python>

@@ -1,36 +1,36 @@
 # The radiation options
 
-radiation = 
+radiation =
    (
-      ## Radiation model 
+      ## Radiation model
       element radiation {
          comment,
-                  
-         particle_type_neutron?, 
-         
+
+         particle_type_neutron?,
+
          particle_type_photon?
       }
-   )         
+   )
 
 
-particle_type_neutron = 
+particle_type_neutron =
    (
       ## Particle type neutron
       element particle_type {
          comment,
 
          attribute name { "Neutron" },
-                                      
+
          equation_type_neutron,
 
-         particle_type_generic, 
-                           
-         delayed_precursor?             
+         particle_type_generic,
+
+         delayed_precursor?
       }
-   )  
+   )
 
 
-particle_type_photon = 
+particle_type_photon =
    (
       ## Particle type photon
       element particle_type {
@@ -39,73 +39,73 @@ particle_type_photon =
          attribute name { "Photon" },
 
          equation_type_photon,
-                                      
-         particle_type_generic                           
-      }
-   )  
-   
 
-equation_type_neutron = 
+         particle_type_generic
+      }
+   )
+
+
+equation_type_neutron =
    (
       eigenvalue_equation|
-         
+
       time_equation
    )
-   
 
-equation_type_photon = 
+
+equation_type_photon =
    (
       time_equation
    )
 
 
-particle_type_generic = 
+particle_type_generic =
    (
-      
+
       energy_discretisation,
-                            
+
       radiation_material_data_set+,
-         
+
       radiation_material_mapping
    )
 
 
-energy_discretisation = 
+energy_discretisation =
    (
       ## The energy discretisation for the whole spatial mesh
       element energy_discretisation {
-         comment, 
-         
-         attribute name { "WholeSpatialMesh" },
-         
-         energy_continuity,
-         
-         energy_degree,
-         
-         energy_group_set+         
-      }         
-   )
-
-
-energy_continuity = 
-   (
-      ## The energy discretisation continuity
-      element continuity {
          comment,
-         
-         element string_value {
-            "discontinuous"
-         }           
+
+         attribute name { "WholeSpatialMesh" },
+
+         energy_continuity,
+
+         energy_degree,
+
+         energy_group_set+
       }
    )
 
 
-energy_degree = 
+energy_continuity =
+   (
+      ## The energy discretisation continuity
+      element continuity {
+         comment,
+
+         element string_value {
+            "discontinuous"
+         }
+      }
+   )
+
+
+energy_degree =
    (
       ## The energy discretisation degree
       element degree {
-         comment, 
-         
+         comment,
+
          element integer_value {
             attribute rank { "0" },
             ("0")
@@ -113,82 +113,82 @@ energy_degree =
       }
    )
 
-energy_group_set = 
+energy_group_set =
    (
-      ## Define a group set of consecutive energy groups, where each group 
-      ## within the set shares the group set options. The global 
-      ## group numbering starts at 1 from the first group within 
-      ## the first group set then increases in the order the group 
+      ## Define a group set of consecutive energy groups, where each group
+      ## within the set shares the group set options. The global
+      ## group numbering starts at 1 from the first group within
+      ## the first group set then increases in the order the group
       ## sets are defined.
       element energy_group_set {
-         comment, 
-         
+         comment,
+
          attribute name { xsd:string },
-         
+
          number_of_energy_groups,
-         
-         angular_discretisation         
+
+         angular_discretisation
       }
    )
 
 
-number_of_energy_groups = 
+number_of_energy_groups =
    (
       ## The number of energy groups
       element number_of_energy_groups {
-         comment, 
-         
+         comment,
+
          integer
-      }     
+      }
    )
 
 
-angular_discretisation = 
+angular_discretisation =
    (
-      ## The angular discetisation for the whole spatial mesh 
+      ## The angular discetisation for the whole spatial mesh
       ## assoicated with this energy group set
       element angular_discretisation {
-         comment, 
-         
+         comment,
+
          attribute name { "WholeSpatialMesh" },
-                  
+
          angular_discretisation_method
       }
    )
-   
 
-angular_discretisation_method = 
+
+angular_discretisation_method =
    (
-      ## The spherical harmonic angular discretisation method 
+      ## The spherical harmonic angular discretisation method
       element method {
-         comment, 
-         
+         comment,
+
          attribute name { "SphericalHarmonic" },
-         
-         angular_parity  
-      }      
-   )
 
-
-angular_parity = 
-   (
-      ## Solve for the even parity flux
-      ## of this angular discretisation 
-      element parity {
-         comment, 
-         
-         attribute name { "Even" },
-         
-         even_parity_source_options,
-         
-         calculate_current?,
-         
-         angular_moment_set_even_parity  
+         angular_parity
       }
    )
 
 
-even_parity_source_options = 
+angular_parity =
+   (
+      ## Solve for the even parity flux
+      ## of this angular discretisation
+      element parity {
+         comment,
+
+         attribute name { "Even" },
+
+         even_parity_source_options,
+
+         calculate_current?,
+
+         angular_moment_set_even_parity
+      }
+   )
+
+
+even_parity_source_options =
    (
       ##  Exclude the odd parity time source
       ##  NOT RELEVANT FOR EQUATION(EIGENVALUE)
@@ -198,40 +198,40 @@ even_parity_source_options =
    )
 
 
-calculate_current = 
+calculate_current =
    (
-      ## The particle current vector field calculated 
+      ## The particle current vector field calculated
       ## diagnostically from the even parity solution.
       ## This is for each energy group with in this
-      ## energy group set. 
+      ## energy group set.
       element vector_field {
          comment,
          attribute name { "ParticleCurrent" },
-                  
+
          current_internal_algorithm_diagnostic_vector_field_no_adapt
-      }          
+      }
    )
 
 
-current_internal_algorithm_diagnostic_vector_field_no_adapt = 
-   ( 
+current_internal_algorithm_diagnostic_vector_field_no_adapt =
+   (
       element diagnostic {
          comment,
-         
+
          internal_algorithm,
 
          current_mesh_choice,
-         
+
          radiation_output_options,
-      
+
          radiation_stat_options,
-      
-         diagnostic_detector_options                  
-      }            
+
+         diagnostic_detector_options
+      }
    )
 
 
-current_mesh_choice = 
+current_mesh_choice =
    (
       ## THE CURRENT MESH MUST BE DISCONTINUOUS
       element mesh {
@@ -244,53 +244,53 @@ current_mesh_choice =
       ## THE CURRENT MESH MUST BE DISCONTINUOUS
       element mesh {
          attribute name { string }
-      }   
-   )
-
-
-angular_moment_set_even_parity = 
-   (
-      ## Define a consecutive angular moment set, where each 
-      ## moment within the set shares the same options. Global
-      ## moment numbering starts from moment 1 of the first set
-      ## then increases in the order that the moment sets are defined.
-      ## The moment sets defined are only for the prognostically 
-      ## calculated parity flux moments (e.g. for even parity only
-      ## define the necessary even parity moments)
-      element angular_moment_set {
-         comment, 
-         
-         attribute name { "AllMoments" },
-         
-         number_of_angular_moments,
-
-         particle_type_material_mesh_choice, 
-         
-         angular_moment_set_diffusivity_field,
-         
-         angular_moment_set_absorption_field,
-         
-         particle_flux_diffusion_field
-           
       }
    )
 
 
-number_of_angular_moments = 
+angular_moment_set_even_parity =
+   (
+      ## Define a consecutive angular moment set, where each
+      ## moment within the set shares the same options. Global
+      ## moment numbering starts from moment 1 of the first set
+      ## then increases in the order that the moment sets are defined.
+      ## The moment sets defined are only for the prognostically
+      ## calculated parity flux moments (e.g. for even parity only
+      ## define the necessary even parity moments)
+      element angular_moment_set {
+         comment,
+
+         attribute name { "AllMoments" },
+
+         number_of_angular_moments,
+
+         particle_type_material_mesh_choice,
+
+         angular_moment_set_diffusivity_field,
+
+         angular_moment_set_absorption_field,
+
+         particle_flux_diffusion_field
+
+      }
+   )
+
+
+number_of_angular_moments =
    (
       ## The number of angular moments
       element number_of_angular_moments {
-         comment, 
-         
+         comment,
+
          element integer_value {
             attribute rank { "0" },
             ("1")
          }
-      }     
+      }
    )
-   
-   
-particle_type_material_mesh_choice = 
+
+
+particle_type_material_mesh_choice =
    (
       ## THE PARTICLE MATERIAL MESH MUST BE DISCONTINUOUS
       element mesh {
@@ -300,116 +300,116 @@ particle_type_material_mesh_choice =
       element mesh {
          attribute name { string }
       }
-   
+
    )
 
 
-angular_moment_set_diffusivity_field = 
+angular_moment_set_diffusivity_field =
    (
       ## The tensor field used during assemble for the moments of this set
-      ## associated with the diffusivity term. 
+      ## associated with the diffusivity term.
       element tensor_field {
          comment,
-         
+
          attribute name { "Diffusivity" },
-         
+
          element diagnostic {
             comment,
-            
+
             ## Calculated via interpolation of a prescribed data set.
             element algorithm {
                comment,
-               
+
                attribute name { "Internal" }
             },
-            
+
             rotate_diffusivity_tensor*,
-            
+
             field_exclude_all_output
-         }  
+         }
       }
    )
 
 
-rotate_diffusivity_tensor = 
+rotate_diffusivity_tensor =
    (
-      ##  Apply successive rotations of the diffusivity tensor around a 
+      ##  Apply successive rotations of the diffusivity tensor around a
       ##  chosen dimension axis (XYZ). This induces a counter-clockwise
-      ##  rotation when the axis about which they occur points towards an observer  
+      ##  rotation when the axis about which they occur points towards an observer
       ##  (ie. the right hand rule for positive sign of angles).
       ##  Intrinsic rotations are applied to the mobile (co-moving) axis frame.
       ##  In 1 dimension this is pointless, in 2 dimensions only rotations about
       ##  the Z axis are appropriate. The rotation angle unit is degree.
       element rotation {
          comment,
-         
+
          attribute name { string },
-                  
+
          (
             ## The axis of the mobile frame to rotate about
             element axis {
                comment,
-            
+
                attribute name { "X" }
             }|
             ## The axis of the mobile frame to rotate about
             element axis {
                comment,
-            
+
                attribute name { "Y" }
             }|
             ## The axis of the mobile frame to rotate about
             element axis {
                comment,
-            
+
                attribute name { "Z" }
             }
          ),
-         
+
          ## The rotation angle field in degree units
          element scalar_field {
             comment,
-            
+
             attribute name { "Angle" },
-            
+
             ## Field Type
             element prescribed {
                comment,
-         
+
                particle_type_material_mesh_choice,
-         
+
                prescribed_scalar_field_no_adapt_exclude_all_output
-            }            
+            }
          }
       }
    )
 
 
-angular_moment_set_absorption_field = 
+angular_moment_set_absorption_field =
    (
       ## The scalar field used during assemble for the moments of this set
-      ## associated with the absorption term. 
+      ## associated with the absorption term.
       element scalar_field{
          comment,
-         
+
          attribute name { "Absorption" },
-         
+
          element diagnostic {
             comment,
-            
+
             ## Calculated via interpolation of a prescribed data set.
             element algorithm {
                comment,
-               
+
                attribute name { "Internal" }
             },
-            
+
             field_exclude_all_output
-         }  
+         }
       }
    )
 
-   
+
 particle_flux_diffusion_field =
    (
       ## The particle flux scalar field for the angular discretised
@@ -417,46 +417,46 @@ particle_flux_diffusion_field =
       element scalar_field {
          comment,
          attribute name { "ParticleFlux" },
-                  
-         prognostic_particle_diffusion_removal_source_scalar_field
-      }          
-   )
-      
 
-prognostic_particle_diffusion_removal_source_scalar_field = 
+         prognostic_particle_diffusion_removal_source_scalar_field
+      }
+   )
+
+
+prognostic_particle_diffusion_removal_source_scalar_field =
    (
       ## Field Type
       element prognostic {
          comment,
 
          particle_type_mesh_choice,
-         
+
          radiation_spatial_diffusion_equation,
-                           
+
          radiation_diffusion_spatial_discretisation,
 
          radiation_temporal_discretisation,
-               
+
          radiation_diffusion_inner_solver_options,
-      
+
          radiation_initial_conditions+,
-      
+
          radiation_diffusion_boundary_conditions*,
-         
+
          radiation_diffusion_prescribed_source?,
-           
+
          radiation_output_options,
-      
+
          radiation_stat_options,
-      
+
          prognostic_detector_options,
          adaptivity_options_scalar_field,
          interpolation_algorithm_scalar
       }
    )
-   
 
-particle_type_mesh_choice = 
+
+particle_type_mesh_choice =
    (
       element mesh {
          attribute name { "ParticleMesh" }
@@ -464,53 +464,53 @@ particle_type_mesh_choice =
       element mesh {
          attribute name { string }
       }
-   
+
    )
 
 
-radiation_spatial_diffusion_equation = 
+radiation_spatial_diffusion_equation =
    (
       ## The equation to solve for this scalar field
       element equation {
-         comment, 
-         
+         comment,
+
          attribute name { "AdvectionDiffusion" }
       }
    )
-   
-   
-radiation_diffusion_spatial_discretisation = 
+
+
+radiation_diffusion_spatial_discretisation =
    (
       ## Spatial discretisation options
       element spatial_discretisation {
          comment,
-         
+
          radiation_diffusion_continuous_galerkin_options,
-         
+
          radiation_diffusion_conservative_advection_option
-      }   
+      }
    )
 
 
-radiation_diffusion_continuous_galerkin_options = 
+radiation_diffusion_continuous_galerkin_options =
    (
       ## Continuous galerkin formulation
       element continuous_galerkin {
-         comment, 
+         comment,
 
          radiation_diffusion_cg_advection_terms,
-         
+
          radiation_diffusion_cg_mass_terms
-      }              
+      }
    )
 
 
-radiation_diffusion_cg_advection_terms = 
+radiation_diffusion_cg_advection_terms =
    (
       ## Discretisation options for the advection terms.
       element advection_terms {
-         comment, 
-         
+         comment,
+
          ## EXCLUDE THE ADVECTION TERMS FROM THE GENERAL ADVECTIONDIFFUSION SCALAR FIELD SOLVER
          element exclude_advection_terms {
             comment
@@ -519,7 +519,7 @@ radiation_diffusion_cg_advection_terms =
    )
 
 
-radiation_diffusion_cg_mass_terms = 
+radiation_diffusion_cg_mass_terms =
    (
       ##  FOR EQUATION(EIGENVALUE) THE MASS TERMS MUST BE REMVOVED
       ##  Discretisation options for the mass terms.
@@ -534,27 +534,27 @@ radiation_diffusion_cg_mass_terms =
          element exclude_mass_terms {
             empty
          }?
-      }   
+      }
    )
 
 
-radiation_diffusion_conservative_advection_option = 
+radiation_diffusion_conservative_advection_option =
    (
       ##  THIS OPTION IS NOT USED BUT IS NEEDED FOR THE GENERAL ADVECTIONDIFFUSION SCALAR FIELD SOLVER
       element conservative_advection {
          comment,
-         
+
          element real_value {
             attribute rank { "0" },
             ("1.0")
          }
-      }      
+      }
    )
 
 
-radiation_temporal_discretisation = 
+radiation_temporal_discretisation =
    (
-      ##  The temporal discretisation options 
+      ##  The temporal discretisation options
       ##  FOR EQUATION(EIGENVALUE) THIS MUST BE SET TO 1.0 FOR THE GENERAL ACCELERATION SOLVER
       element temporal_discretisation {
          comment,
@@ -563,28 +563,28 @@ radiation_temporal_discretisation =
             comment,
             real
          }
-      }   
+      }
    )
-   
 
-radiation_diffusion_inner_solver_options = 
+
+radiation_diffusion_inner_solver_options =
    (
       ## The inner solver options
       element solver {
          comment,
          linear_solver_options_sym
-      }   
+      }
    )
-   
-   
-radiation_initial_conditions = 
+
+
+radiation_initial_conditions =
    (
       ## Initial condition for WholeSpatialMesh associated with this
       ## angular moment set (itself associated with a energy group set)
       element initial_condition {
          comment,
          attribute name { "WholeMesh" },
-     
+
          (
             ## Constant value
             element constant {
@@ -592,8 +592,8 @@ radiation_initial_conditions =
             }|
             ## Initialise the field from an existing file (indended
             ## primarily for use in checkpointing). The file mesh must match
-            ## the mesh of this field  (except for piecewise constant fields 
-            ## which will be remapped back from the discontinuous nodal values). 
+            ## the mesh of this field  (except for piecewise constant fields
+            ## which will be remapped back from the discontinuous nodal values).
             ## In parallel the process number is
             ## appended to the filename, e.g. if the file_name attribute is
             ## set to "input.vtu", process 0 reads from "input-0.vtu".
@@ -603,51 +603,51 @@ radiation_initial_conditions =
                   vtu_input_format
                ),
                comment
-            } 
-         )  
+            }
+         )
       }
    )
-   
-   
-radiation_diffusion_boundary_conditions = 
+
+
+radiation_diffusion_boundary_conditions =
    (
       ## The problem boundary conditions associated with this
       ## angular moment set (itself associated with a energy group set)
       element boundary_conditions {
          comment,
-         
-         attribute name { xsd:string },
-         
-         surface_ids,
-         
-         diffusion_bc_type
-      }   
-   )
-   
 
-surface_ids = 
+         attribute name { xsd:string },
+
+         surface_ids,
+
+         diffusion_bc_type
+      }
+   )
+
+
+surface_ids =
    (
       ## The surface id associated with this boundary condition
       element surface_ids {
          comment,
-         
-         integer_vector
-      }   
-   )
-   
 
-diffusion_bc_type = 
+         integer_vector
+      }
+   )
+
+
+diffusion_bc_type =
    (
       ## Type
       (
          diffusion_robin|
          diffusion_dirichlet|
          diffusion_neumann
-      )   
+      )
    )
-   
-      
-diffusion_robin = 
+
+
+diffusion_robin =
    (
       ##  A robin boundary condition of the form
       ##  C1*T + n.(k*grad(T)) = C0
@@ -657,7 +657,7 @@ diffusion_robin =
       ##  C0 is the input order zero coefficient and
       ##  C1 is the input order one coefficient.
       ##  THIS WILL ONLY WORK FOR CONTINUOUS GALERKIN SPATIAL DISCRETISATION
-      ##  
+      ##
       ##  This can be used for vacuum and more general albedo.
       ##  For a vacuum BC set the order_zero_coefficient to 0.0 and the order_one_coefficient
       ##  to 0.5. For a albedo BC set the order_zero_coefficient to 0.0 and the order_one_coefficient
@@ -665,7 +665,7 @@ diffusion_robin =
       ##  being a perfect reflective and alpha equal 0.0 a perfect vacuum.
       element type {
          comment,
-         
+
          attribute name { "robin" },
 
          ##  The order zero coefficient represented as C0 in
@@ -682,49 +682,49 @@ diffusion_robin =
    )
 
 
-diffusion_dirichlet = 
+diffusion_dirichlet =
    (
-      ## Dirichlet boundary condition. This is typically used for an approximation to a 
-      ## vacuum BC via a zero dirichlet for special benchmarks. Not recommended for anything else. 
+      ## Dirichlet boundary condition. This is typically used for an approximation to a
+      ## vacuum BC via a zero dirichlet for special benchmarks. Not recommended for anything else.
       element type {
          comment,
-         
+
          attribute name { "dirichlet" },
-         
+
          input_choice_real
       }
    )
 
 
-diffusion_neumann = 
+diffusion_neumann =
    (
-      ## Neumann boundary condition. This is a isotropic particle source boundary condition. 
-      ## This value specifies the actually current into the domain NOT the total isotropic 
-      ## source strength located on the surface (the total source strength is twice the value input here) 
+      ## Neumann boundary condition. This is a isotropic particle source boundary condition.
+      ## This value specifies the actually current into the domain NOT the total isotropic
+      ## source strength located on the surface (the total source strength is twice the value input here)
       element type {
          comment,
-         
+
          attribute name { "neumann" },
-         
+
          input_choice_real
       }
    )
-   
 
-radiation_output_options = 
+
+radiation_output_options =
    (
       ## Specify what is written to vtu dump files
       element output {
-         comment, 
+         comment,
          ## Exclude this field from dump files
          element exclude_from_vtu {
             comment
          }?
       }
    )
-   
-   
-radiation_stat_options = 
+
+
+radiation_stat_options =
    (
       ## Specify what is added to the .stat file
       element stat {
@@ -738,55 +738,55 @@ radiation_stat_options =
 
 
 radiation_diffusion_prescribed_source =
-   (     
+   (
       ##  Prescribed isotropic source term
       ##  NOT RELEVANT FOR EQUATION(EIGENVALUE)
       element scalar_field {
          comment,
-         
+
          attribute name { "Source" },
-         
+
          attribute rank { "0" },
-         
+
          (
             element prescribed {
                comment,
-               
+
                radiation_diffusion_prescribed_source_scalar_field
             }
          )
       }
    )
-   
 
-radiation_diffusion_prescribed_source_scalar_field = 
-   (      
+
+radiation_diffusion_prescribed_source_scalar_field =
+   (
       prescribed_values_scalar_field,
-      
+
       radiation_output_options,
-      
+
       radiation_stat_options,
-      
-      prescribed_detector_options   
+
+      prescribed_detector_options
    )
 
 
-eigenvalue_equation = 
+eigenvalue_equation =
    (
       ## Select the equation type to solve.
       element equation {
          comment,
-         
+
          attribute name { "Eigenvalue" },
-         
+
          eigenvalue_equation_solver,
-         
+
          flux_normalisation_options
-      }         
+      }
    )
 
 
-eigenvalue_equation_solver = 
+eigenvalue_equation_solver =
    (
       ## Eigen Solver Algorithm
       (
@@ -795,52 +795,52 @@ eigenvalue_equation_solver =
             comment,
             power_iteration_element
          }
-      )   
+      )
    )
-   
-      
-flux_normalisation_options = 
+
+
+flux_normalisation_options =
    (
       ##  The particle flux normalisation
       ##  to a total flux
-      element flux_normalisation { 
-         comment,           
-         
-         attribute name { "TotalFlux" }, 
-         
+      element flux_normalisation {
+         comment,
+
+         attribute name { "TotalFlux" },
+
          flux_norm_value_and_symmetry
       }|
       ##  The particle flux normalisation
       ##  to a total flux
-      element flux_normalisation { 
-         comment,           
-         
-         attribute name { "TotalProduction" }, 
-         
+      element flux_normalisation {
+         comment,
+
+         attribute name { "TotalProduction" },
+
          flux_norm_value_and_symmetry
       }|
       ##  The particle flux normalisation
       ##  to a total flux
-      element flux_normalisation { 
-         comment,           
-         
-         attribute name { "TotalFission" }, 
-         
+      element flux_normalisation {
+         comment,
+
+         attribute name { "TotalFission" },
+
          flux_norm_value_and_symmetry
       }|
       ##  The particle flux normalisation
       ##  to a total flux
-      element flux_normalisation { 
-         comment,           
-         
-         attribute name { "TotalPower" }, 
-         
+      element flux_normalisation {
+         comment,
+
+         attribute name { "TotalPower" },
+
          flux_norm_value_and_symmetry
       }
    )
 
 
-flux_norm_value_and_symmetry = 
+flux_norm_value_and_symmetry =
    (
       ## Normalisation value
       element value {
@@ -852,11 +852,11 @@ flux_norm_value_and_symmetry =
       element domain_symmetry_factor {
          comment,
          integer
-      }?   
+      }?
    )
 
 
-power_iteration_element = 
+power_iteration_element =
    (
       ## The maximum number of power iterations
       element maximum {
@@ -881,37 +881,37 @@ power_iteration_element =
       element terminate_if_not_converged {
          comment,
          empty
-      }?            
-   )   
+      }?
+   )
 
 
-accelerate_flux = 
+accelerate_flux =
    (
       ## Accelerate the flux calculation via a relaxation parameter in range (0,2.0)
       element flux_acceleration {
-         comment, 
-         
+         comment,
+
          attribute name { "Relaxation" },
-         
+
          real
       }
    )
 
 
-accelerate_keff = 
+accelerate_keff =
    (
       ## Accelerate the Keff calculation via the Aitkens Delta Squared process
       element keff_acceleration {
-         comment, 
-         
+         comment,
+
          attribute name { "AitkensDeltaSquared" }
       }
    )
-      
 
-scatter_group_iteration_options = 
+
+scatter_group_iteration_options =
    (
-      ## The scatter group iteration options 
+      ## The scatter group iteration options
       ## (if not present then only one iteration of all energy groups from high to low)
       element scatter_group_iteration {
          comment,
@@ -924,7 +924,7 @@ scatter_group_iteration_options =
          element flux_tolerance_absolute {
             comment,
             real
-         },                  
+         },
          scatter_energy_solve_direction_options,
          ## The highest upscatter group, if enabled scatter iterations after the
          ## first will start sweeping down from this group
@@ -938,57 +938,57 @@ scatter_group_iteration_options =
             comment
          }?,
          whole_domain_energy_group_rebalance_options?
-      }        
+      }
    )
 
 
-scatter_energy_solve_direction_options = 
+scatter_energy_solve_direction_options =
    (
-      ## Within each scatter iteration after the first 
-      ## sweep from high to low energy 
+      ## Within each scatter iteration after the first
+      ## sweep from high to low energy
       element energy_solve_direction {
          comment,
-         
+
          attribute name { "HighToLow" }
       }|
-      ## Within each scatter iteration after the first 
-      ## sweep from low to high energy 
+      ## Within each scatter iteration after the first
+      ## sweep from low to high energy
       element energy_solve_direction {
          comment,
-         
+
          attribute name { "LowToHigh" }
       }|
-      ## Within each scatter iteration after the first 
+      ## Within each scatter iteration after the first
       ## sweep from high to low then back to high energy
       element energy_solve_direction {
          comment,
-         
+
          attribute name { "HighToLowToHigh" }
       }|
-      ## Within each scatter iteration after the first 
-      ## sweep from low to high then back to low energy 
+      ## Within each scatter iteration after the first
+      ## sweep from low to high then back to low energy
       element energy_solve_direction {
          comment,
-         
-         attribute name { "LowToHighToLow" }
-      }       
-   )  
- 
 
-time_equation = 
+         attribute name { "LowToHighToLow" }
+      }
+   )
+
+
+time_equation =
    (
       ## Select the equation type to solve.
-      element equation { 
+      element equation {
          comment,
-         
+
          attribute name { "TimeDependent" },
-         
+
          energy_group_iteration_options
-      }      
+      }
    )
-   
-   
-energy_group_iteration_options = 
+
+
+energy_group_iteration_options =
    (
       ## Set the energy group iteration
       element energy_group_iteration {
@@ -998,7 +998,7 @@ energy_group_iteration_options =
             comment,
             integer
          },
-         ## The energy group iteration absolute flux tolerance 
+         ## The energy group iteration absolute flux tolerance
          element flux_tolerance_absolute {
             comment,
             real
@@ -1010,56 +1010,56 @@ energy_group_iteration_options =
             comment
          }?,
          whole_domain_energy_group_rebalance_options?
-      }      
+      }
    )
 
 
-whole_domain_energy_group_rebalance_options = 
+whole_domain_energy_group_rebalance_options =
    (
-      ## Whole domain rebalance acceleration of 
-      ## all energy groups together    
+      ## Whole domain rebalance acceleration of
+      ## all energy groups together
       element whole_domain_group_rebalance {
          comment,
-         
+
          attribute name { "AllEnergyGroup" }
       }|
-      ## Whole domain rebalance acceleration of 
+      ## Whole domain rebalance acceleration of
       ## each energy group individually
       element whole_domain_group_rebalance {
          comment,
-         
+
          attribute name { "EachEnergyGroup" }
-      }                       
+      }
    )
-   
-     
+
+
 radiation_material_data_set =
    (
-      ## Define a radiation material data set 
+      ## Define a radiation material data set
       element material_data_set {
          comment,
          attribute name { xsd:string },
-         
+
          ## Read the radiation material data set from a file
          ## (Include any file name extensions in the file name as well as the path if needed)
          element from_file {
             comment,
-            
-            attribute file_name { xsd:string },    
-                    
+
+            attribute file_name { xsd:string },
+
             number_of_scatter_moments,
-            
+
             radiation_material_data_set_format,
-            
+
             radiation_physical_material+
          }
-      }        
+      }
    )
 
 
-radiation_material_data_set_format = 
-   (   
-      ## A keyword based embedded radiation data type format file, of which a subset 
+radiation_material_data_set_format =
+   (
+      ## A keyword based embedded radiation data type format file, of which a subset
       ## includes the formatted file produced via a LISTTO from WIMS9
       element format_radmats {
          comment,
@@ -1068,26 +1068,26 @@ radiation_material_data_set_format =
             comment,
             integer
          }
-      }                                             
+      }
    )
 
 
-radiation_physical_material = 
+radiation_physical_material =
    (
       ## Define each physical material
       element physical_material {
          comment,
-         
+
          attribute name { xsd:string },
-         
+
          ## define the tabulated interpolation dimensions for this physical material
          element interpolation_dimension {
             comment,
-            
+
             attribute name { xsd:string },
-            
+
             ## set the interpolation attribute for this dimension
-            ( 
+            (
                ## No attribute so the first radmat of this dimension of this physical material will be used
                element interpolation_attribute_none{
                   comment
@@ -1102,31 +1102,31 @@ radiation_physical_material =
                   comment,
                   attribute name { xsd:string }
                }
-            ),                  
+            ),
             ## define the interpolation values for this dimension as a float list
             element interpolation_values {
                comment,
                real_vector
-            }               
+            }
          }+
-      }   
-   )  
+      }
+   )
 
 
-number_of_scatter_moments = 
+number_of_scatter_moments =
    (
       ## The number of scatter moments associated with this material data set
       element number_of_scatter_moments {
-         comment, 
+         comment,
          integer
-      }     
+      }
    )
 
 
 radiation_material_mapping =
    (
-      ## The region id to radiation physical material mapping. This option is intended for radiation alone with no consideration of 
-      ## the rest of the fluids state. This must be used with a prescribed physical material interpolation attribute. 
+      ## The region id to radiation physical material mapping. This option is intended for radiation alone with no consideration of
+      ## the rest of the fluids state. This must be used with a prescribed physical material interpolation attribute.
       element region_id_material_mapping {
          comment,
          element region_to_physical_radiation_material_map {
@@ -1135,19 +1135,19 @@ radiation_material_mapping =
             region_id,
             radiation_material
          }+
-      }?,      
+      }?,
       ## Link with multimaterial model
       element link_with_multimaterial {
          comment,
          ## The fluids material_phase to radiation physical material mapping
          element fluids_material_phase_to_physical_radiation_material_map {
             comment,
-            radiation_material,   
-            Rad_MaterialVolumeFraction,        
+            radiation_material,
+            Rad_MaterialVolumeFraction,
             attribute name { xsd:string }
          }+,
          Rad_MaterialTemperature?
-      }?,         
+      }?,
       ## Link with the porous media model
       element link_with_porous_media {
          comment,
@@ -1158,12 +1158,12 @@ radiation_material_mapping =
             radiation_material
          }+,
          Rad_Porosity,
-         Rad_PorousTemperature?           
-      }?   
+         Rad_PorousTemperature?
+      }?
    )
-   
-       
-radiation_material = 
+
+
+radiation_material =
    (
       ## Data set name
       element data_set {
@@ -1174,11 +1174,11 @@ radiation_material =
       element physical_material {
          comment,
          attribute name { xsd:string }
-      }      
+      }
    )
 
 
-region_id = 
+region_id =
    (
       ## the region id
       element region_id {
@@ -1187,7 +1187,7 @@ region_id =
       }
    )
 
-         
+
 Rad_MaterialVolumeFraction =
    (
       ## The material volume fraction scalar field
@@ -1196,9 +1196,9 @@ Rad_MaterialVolumeFraction =
          comment,
          attribute name { "RadMaterialVolumeFraction" },
          ## Field Type
-         prescribed_or_scalar_diagnostic_algorithms_scalar_field        
-      }          
-   )   
+         prescribed_or_scalar_diagnostic_algorithms_scalar_field
+      }
+   )
 
 
 Rad_MaterialTemperature =
@@ -1209,24 +1209,24 @@ Rad_MaterialTemperature =
          comment,
          attribute name { "RadMaterialTemperature" },
          ## Field Type
-         prescribed_or_scalar_diagnostic_algorithms_scalar_field         
-      }          
-   )   
+         prescribed_or_scalar_diagnostic_algorithms_scalar_field
+      }
+   )
 
 
-Rad_Porosity = 
+Rad_Porosity =
    (
       ## The porosity scalar field that is used for the cross section interpolation
       element scalar_field {
          comment,
          attribute name { "RadPorosity" },
          ## Field Type
-         prescribed_or_scalar_diagnostic_algorithms_scalar_field         
-      }          
-   )   
+         prescribed_or_scalar_diagnostic_algorithms_scalar_field
+      }
+   )
 
 
-Rad_PorousTemperature = 
+Rad_PorousTemperature =
    (
       ## The porous temperature scalar field
       ## that is used for the cross section interpolation
@@ -1234,47 +1234,47 @@ Rad_PorousTemperature =
          comment,
          attribute name { "RadPorousTemperature" },
          ## Field Type
-         prescribed_or_scalar_diagnostic_algorithms_scalar_field     
-      }          
-   )   
+         prescribed_or_scalar_diagnostic_algorithms_scalar_field
+      }
+   )
 
 
-prescribed_or_scalar_diagnostic_algorithms_scalar_field = 
-   ( 
+prescribed_or_scalar_diagnostic_algorithms_scalar_field =
+   (
       element prescribed {
          comment,
-         
+
          particle_type_material_mesh_choice,
-         
+
          prescribed_scalar_field
-      }|            
+      }|
       element diagnostic {
          comment,
-         
+
          scalar_diagnostic_algorithms,
-         
+
          particle_type_material_mesh_choice,
-         
+
          diagnostic_scalar_field
-      }            
+      }
    )
 
 
 delayed_precursor =
    (
-      ## Delayed neutron precursor 
-      element delayed_neutron_precursor {  
-         comment,  
+      ## Delayed neutron precursor
+      element delayed_neutron_precursor {
+         comment,
          ## The number of delayed neutron precursor groups
          element number_delayed_neutron_precursor_groups {
             comment,
             integer
-         },   
+         },
          ## The dataset from which to read the delayed lambda and spectrum from
          element read_delayed_lambda_spectrum_from_data_set {
             comment,
             attribute name { xsd:string }
-         },      
+         },
          ## link with region id, requires the neutron object to be linked with region id also
          element link_with_region_id {
             comment,
@@ -1284,16 +1284,16 @@ delayed_precursor =
          element link_with_multimaterial {
             comment,
             prompt_delayed_coupling_option,
-            delayed_neutron_precursor_prognostic_or_diagnostic                
-         }?,               
+            delayed_neutron_precursor_prognostic_or_diagnostic
+         }?,
          ## link with porous media, requires the neutron object to be linked with porous media also
          element link_with_porous_media {
             comment,
-            delayed_neutron_precursor_diagnostic            
+            delayed_neutron_precursor_diagnostic
          }?
-      }               
+      }
    )
-   
+
 
 prompt_delayed_coupling_option =
    (
@@ -1302,24 +1302,24 @@ prompt_delayed_coupling_option =
    )
 
 
-prompt_delayed_coupling_semi_implicit_option = 
+prompt_delayed_coupling_semi_implicit_option =
    (
       ## Semi-implicit coupling between prompt and delayed neutron equations
       element prompt_delayed_coupling_semi_implicit {
          comment
-      }   
+      }
    )
 
 
-prompt_delayed_coupling_explicit_option = 
+prompt_delayed_coupling_explicit_option =
    (
       ## Explicit coupling between prompt and delayed neutron equations
       element prompt_delayed_coupling_explicit {
          comment
-      }         
-   )       
+      }
+   )
 
-   
+
 delayed_neutron_precursor_prognostic_or_diagnostic =
    (
       ##  The delayed neutron precursor scalar field
@@ -1328,49 +1328,49 @@ delayed_neutron_precursor_prognostic_or_diagnostic =
       ##   - use diagnostic for eigenvalue run
       element scalar_field {
          comment,
-         
+
          attribute name { "DelayedNeutronPrecursor" },
-                  
+
          (
             prognostic_delayed_neutron_advection_decay_source_scalar_field|
             delayed_internal_algorithm_diagnostic_scalar_field_no_adapt
-         )         
+         )
       }
    )
 
-   
+
 delayed_neutron_precursor_diagnostic =
    (
       ## The delayed neutron precursor scalar field
       element scalar_field {
          comment,
-         
+
          attribute name { "DelayedNeutronPrecursor" },
-         
+
          delayed_internal_algorithm_diagnostic_scalar_field_no_adapt
       }
    )
 
 
-delayed_internal_algorithm_diagnostic_scalar_field_no_adapt = 
-   ( 
+delayed_internal_algorithm_diagnostic_scalar_field_no_adapt =
+   (
       element diagnostic {
          comment,
-         
+
          internal_algorithm,
 
          delayed_particle_type_mesh_choice,
-         
+
          radiation_output_options,
-      
+
          radiation_stat_options,
-      
-         diagnostic_detector_options                  
-      }            
+
+         diagnostic_detector_options
+      }
    )
 
 
-prognostic_delayed_neutron_advection_decay_source_scalar_field = 
+prognostic_delayed_neutron_advection_decay_source_scalar_field =
    (
       element prognostic {
          comment,
@@ -1395,11 +1395,11 @@ prognostic_delayed_neutron_advection_decay_source_scalar_field =
                element discontinuous_galerkin {
                   dg_advection_scheme,
                   dg_upwind_stabilisation
-               }            
+               }
             ),
             conservative_advection_option
          },
-         ## The temporal discretisation options 
+         ## The temporal discretisation options
          element temporal_discretisation {
             comment,
             ## the theta value
@@ -1414,9 +1414,9 @@ prognostic_delayed_neutron_advection_decay_source_scalar_field =
             comment,
             linear_solver_options_asym
          },
-         
+
          radiation_initial_conditions+,
-         
+
          prognostic_scalar_output_options,
          prognostic_scalar_stat_options,
          scalar_convergence_options,
@@ -1428,7 +1428,7 @@ prognostic_delayed_neutron_advection_decay_source_scalar_field =
    )
 
 
-delayed_particle_type_mesh_choice = 
+delayed_particle_type_mesh_choice =
    (
       element mesh {
          attribute name { "DelayedParticleMesh" }
@@ -1436,35 +1436,35 @@ delayed_particle_type_mesh_choice =
       element mesh {
          attribute name { string }
       }
-   
+
    )
 
 
-field_exclude_all_output = 
+field_exclude_all_output =
    (
       field_exclude_vtu,
-      
+
       field_exclude_stat,
-      
+
       field_exclude_detectors
    )
-   
-   
 
-field_exclude_vtu = 
+
+
+field_exclude_vtu =
    (
       ## Specify what is written to vtu dump files
       element output {
-         comment, 
+         comment,
          ## Exclude this field from dump files
          element exclude_from_vtu {
             comment
          }
       }
    )
-   
-   
-field_exclude_stat = 
+
+
+field_exclude_stat =
    (
       ## Specify what is added to the .stat file
       element stat {
@@ -1475,9 +1475,9 @@ field_exclude_stat =
          }
       }
    )
-   
-   
-field_exclude_detectors = 
+
+
+field_exclude_detectors =
    (
       ## Specify what is added to the detector files
       element detectors {

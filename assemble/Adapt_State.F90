@@ -195,7 +195,7 @@ contains
     call deallocate(stripped_metric)
     call deallocate(stripped_positions)
 
-    contains 
+    contains
     !> @brief: Show message when the Fail-safe of DMO is activated
     subroutine show_fail_safe_message()
       implicit none

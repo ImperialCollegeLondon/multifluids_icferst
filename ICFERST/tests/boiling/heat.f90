@@ -105,7 +105,7 @@ subroutine drag_3_phase(rho_l, rho_g, u_l, u_g, u_s, a_l, a_g, a_s, d_p, d_b, D,
 !           liquid    gas     solid
 !   liquid            S_lg_l  S_ls_l
 !   gas     S_lg_g            S_gs_g
-!   solid   none      none    inf      
+!   solid   none      none    inf
    implicit none
    !f2py intent(in) rho_l, rho_g, u_l, u_g, u_s, a_l,a_g,a_s,d_b,d_p,D
    !f2py intent(out) S_lg_l, S_lg_g, S_ls_l, S_gs_g
@@ -123,8 +123,8 @@ subroutine drag_3_phase(rho_l, rho_g, u_l, u_g, u_s, a_l, a_g, a_s, d_p, d_b, D,
 
    Re_gl = max(rho_l*u_gl*d_b/mu_l, 1.0e-5); Re_lg = Re_gl
    Re_sl = rho_l*abs(u_s - u_l)*d_p/mu_l
-    
-   S_ls_l = 150.0 * (a_ls*mu_l) / (a_sl*d_p**2*(a_l+a_s)) + 1.75 * (rho_l*u_ls) / (d_p*(a_l+a_s)) 
+
+   S_ls_l = 150.0 * (a_ls*mu_l) / (a_sl*d_p**2*(a_l+a_s)) + 1.75 * (rho_l*u_ls) / (d_p*(a_l+a_s))
    S_gs_g = 150.0 * (a_gs*mu_g) / (a_sg*d_p**2*(a_g+a_s)) + 1.75 * (rho_g*u_gs) / (d_p*(a_g+a_s))
 
    if (a_gl <= 0.25) then
@@ -208,7 +208,7 @@ subroutine drag_3_phase2(rho_l, rho_g, u_l, u_g, u_s, a_l, a_g, a_s, d_p, D, S_l
 !           liquid    gas     solid
 !   liquid            S_lg_l  S_ls_l
 !   gas     S_lg_g            S_gs_g
-!   solid   none      none    inf      
+!   solid   none      none    inf
    implicit none
    !f2py intent(in) rho_l, rho_g, u_l, u_g, u_s, a_l,a_g,a_s,d_b,d_p,D
    !f2py intent(out) S_lg_l, S_lg_g, S_ls_l, S_gs_g
@@ -224,9 +224,9 @@ subroutine drag_3_phase2(rho_l, rho_g, u_l, u_g, u_s, a_l, a_g, a_s, d_p, D, S_l
    mu_g = 1.0e-5 ! gas viscosity
    u_gs = abs(u_g - u_s); u_ls = abs(u_l - u_s); u_gl = abs(u_g - u_l)
 
-   
+
    !Ergun equation
-   S_ls_l = 150.0 * (a_ls*mu_l) / (a_sl*d_p**2*(a_l+a_s)) + 1.75 * (rho_l*u_ls) / (d_p*(a_l+a_s)) 
+   S_ls_l = 150.0 * (a_ls*mu_l) / (a_sl*d_p**2*(a_l+a_s)) + 1.75 * (rho_l*u_ls) / (d_p*(a_l+a_s))
    S_gs_g = 150.0 * (a_gs*mu_g) / (a_sg*d_p**2*(a_g+a_s)) + 1.75 * (rho_g*u_gs) / (d_p*(a_g+a_s))
 
    !Chris equation
@@ -247,24 +247,24 @@ subroutine tabsorb(rho_l,rho_g,u_l,u_g,u_s,Cp_l,Cp_g,mu_l,mu_g,k_l,k_g,d_p,d_b,S
    !Cp_l: heat capacity of steam 1996
    !k_l: heat conductivity of liquid 0.606
    !k_g: heat conductivity of steam 0.0184
-   
+
    real(kind=8) rho_l,rho_g,u_l,u_g,u_s,Cp_l,Cp_g,mu_l,mu_g,k_l,k_g,d_p,d_b,St_gl,St_sl,St_sg
    real(kind=8) Re_sl,Re_sg,Re_gl,Pr_l,Pr_g,Nu_sl,Nu_sg,Nu_gl
 
    Re_sl = rho_l*abs(u_s-u_l)*d_p/mu_l
    Re_sg = rho_g*abs(u_s-u_g)*d_p/mu_g
    Re_gl = rho_l*abs(u_g-u_l)*d_b/mu_l
-      
+
    Pr_l = Cp_l*mu_l/k_l
    Pr_g = Cp_g*mu_g/k_g
-   
+
    Nu_sl=2.0+0.6*Re_sl**0.5*Pr_l**0.3333
    Nu_sg=2.0+0.6*Re_sg**0.5*Pr_g**0.3333
    Nu_gl=2.0+0.6*Re_gl**0.5*Pr_l**0.3333
 
    St_sl = (k_l/d_p)*Nu_sl
    St_sg = (k_g/d_p)*Nu_sg
-   St_gl = (k_l/d_b)*Nu_gl   
+   St_gl = (k_l/d_b)*Nu_gl
 
    return
    end subroutine tabsorb

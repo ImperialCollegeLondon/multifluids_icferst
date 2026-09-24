@@ -623,7 +623,7 @@ contains
     deallocate(nfree)
 
     ewrite(2, *) "Constructing output positions"
-  if (.not. adapt_error) then 
+  if (.not. adapt_error) then
       allocate(output_mesh)
       call allocate(output_mesh, nwnnod, nwnelm, input_positions%mesh%shape, name = input_positions%mesh%name)
       output_mesh%shape%refcount%tagged = .false.
@@ -663,8 +663,8 @@ contains
       if (allocated(prdnds)) deallocate(prdnds);if (allocated(oldfld)) deallocate(oldfld)
       if (allocated(nfree)) deallocate(nfree)
       !We need to provide all the integers for consistency
-      nwnnod = output_positions%mesh%nodes 
-      nwnelm = output_positions%mesh%elements 
+      nwnnod = output_positions%mesh%nodes
+      nwnelm = output_positions%mesh%elements
       ! nwnsel = size(output_mesh%faces%coplanar_ids)
       output_mesh => output_positions%mesh
       if (associated(output_mesh%halos)) call deallocate(output_mesh%halos)

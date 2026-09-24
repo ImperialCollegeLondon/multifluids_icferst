@@ -132,8 +132,8 @@
           <real_value shape="3" dim1="dim" rank="1">4.521 1.196 -0.211255</real_value>
           <comment>depth at this gauge: -1.1755000e-02
 surface_heigth: 0.2
-therefore we use: -0.2-1.1755000e-02+d0/2 
-= -0.2-1.1755000e-02+0.0001/2 
+therefore we use: -0.2-1.1755000e-02+d0/2
+= -0.2-1.1755000e-02+0.0001/2
 = -0.211705</comment>
         </location>
       </static_detector>
@@ -276,11 +276,11 @@ therefore we use: -0.2-6.0675000e-03+d0/2
 #  amplitude=0.01
 #  return sin(2.0*pi*t/T)*amplitude*g
 def val(X,t):
- import inputwave 
+ import inputwave
  g=9.81
  d0=0.0005
  surface_heigth = 0.2
- #return -0.135*g*min(1,t) 
+ #return -0.135*g*min(1,t)
  print "Set pressure dirichlet to: ", -surface_heigth*g + inputwave.val(X, t)*g + d0*g
  return -surface_heigth*g + inputwave.val(X, t)*g + d0*g</string_value>
               <comment>def val(X,t):

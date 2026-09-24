@@ -12,7 +12,7 @@ To load the container, run:
     docker load --input icferst.tar
 
 
-The dockerfile is set up so new builds can be created so long the file multifluids_monthly-master.zip is present in the same folder. 
+The dockerfile is set up so new builds can be created so long the file multifluids_monthly-master.zip is present in the same folder.
 
 To rebuild the container, in the directory with the Dockerfile and multifluids tarball run:
 
@@ -33,4 +33,3 @@ To remove local images
 To make a new distribution archive:
 
     docker save icferst > icferst.tar
-

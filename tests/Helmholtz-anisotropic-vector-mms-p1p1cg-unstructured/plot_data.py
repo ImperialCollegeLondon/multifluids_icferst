@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
 import sys
+from math import log
+
+import helmholtz_tools as h
 import numpy as np
 import pylab
-import helmholtz_tools as h
-from math import log
+
 
 def plot_error(name1,logfile1,name2,logfile2):
 
@@ -117,7 +119,7 @@ def plot_convergence(name1,logfile1,name2,logfile2):
 
   # Set the x tick labels to the group_labels defined above.
   ax.set_xticklabels(xlabels)
- 
+
   # Extremely nice function to auto-rotate the x axis labels.
   # It was made for dates (hence the name) but it works
   # for any long x tick labels
@@ -172,7 +174,7 @@ def plot_commconv(name1,logfile1,name2,logfile2):
   # the center of the bars.
   ax.set_xticks(x)
   ax.set_xticklabels(xlabels)
- 
+
   #pylab.axis([1,4,0.,1.])
   ax.set_xlabel('Mesh comparison', ha="center",fontsize=size)
   ax.set_ylabel('commutation error convergence rate',fontsize=size)
@@ -201,4 +203,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-

@@ -739,7 +739,7 @@ contains
     integer :: entries
     type(petsc_csr_matrix), intent(in) :: matrix
 
-    
+
 #if PETSC_VERSION_MINOR>=20
     MatInfo :: matrixinfo
 #else

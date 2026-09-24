@@ -48,4 +48,3 @@ assert(convergence &gt; 1.9)
   <warn_tests>
   </warn_tests>
 </testproblem>
-

@@ -2,7 +2,9 @@
 
 import glob
 import sys
+
 import numpy
+
 
 def inflow_data(plane):
   # Extract mean velocity and Reynolds stresses from ERCOFTAC data at given plane.
@@ -12,7 +14,7 @@ def inflow_data(plane):
   print "reading in data from file: x."+str(plane)
   for line in range(ignore):
     ercoftac.readline()
-  
+
   y=[];U=[];uu=[];vv=[];uv=[]
   for line in ercoftac:
     y.append(float(line.split(  )[0]))
@@ -40,4 +42,3 @@ def main():
 
 if __name__ == "__main__":
   sys.exit(main())
-

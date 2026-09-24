@@ -8,7 +8,7 @@
     ../../bin/fluidity -v3 -l lock_exchange_2d.flml &amp;&amp;
     mpiexec ../../bin/flredecomp -i 1 -o 3 -v -l lock_exchange_2d_parallel lock_exchange_2d_parallel_flredecomp &amp;&amp;
     mpiexec ../../bin/fluidity -v3 -l lock_exchange_2d_parallel_flredecomp.flml
-    </command_line> 
+    </command_line>
   </problem_definition>
   <variables>
     <variable name="times" language="python">
@@ -72,7 +72,7 @@ def IntegrateTrapezoidal(x,y):
   index = [0]
   i = 0
   while len(y)-1>i:
-    if math.copysign(1.0,y[i]) != math.copysign(1.0,y[i+1]): 
+    if math.copysign(1.0,y[i]) != math.copysign(1.0,y[i+1]):
       index.append(i+1)
       m = (y[i+1]-y[i])/(x[i+1]-x[i])
       xzero = x[i]-(y[i]/m)
@@ -85,11 +85,11 @@ def IntegrateTrapezoidal(x,y):
   integral = 0.0
   for i in range(len(index)-1):
     integral = integral + abs(scipy.integrate.trapz(y[index[i]:index[i+1]+1], x=x[index[i]:index[i+1]+1]))
-        
+
   return integral
-  
+
 ################################################################################################
-  
+
 
 # extract values from flml
 
@@ -137,7 +137,7 @@ for statfile in ['lock_exchange_2d.stat', 'lock_exchange_2d_parallel.stat']:
 # Minimum potential energy available through an adiabatic restratification of the fluid
   try: BPE = stat["fluid"]["BackgroundPotentialEnergyDensity"]["integral"]
   except: BPE = []
-  
+
 # Background Potential Energy from mixing bins
 # c.f. Tseng and Ferziger, Physics of Fluids, 2001
 
@@ -152,34 +152,34 @@ for statfile in ['lock_exchange_2d.stat', 'lock_exchange_2d_parallel.stat']:
     # get amount in each bin for this time
     bins = [stat["fluid"]["Temperature"]["mixing_bins%normalised_cv"][j][i] for j in range(0,len(bounds)+1)]
     bins[-2] = bins[-2]+bins[-1] # add final bin in to second to final bin so bins[-2] is volume with -0.49\leqT\leq0.5 not just -0.49\leqT\lt0.5
-    bins[1] = bins[0]+bins[1] # add bottom two bins so bins[1] is volume with T\lt0.01 in case have some fluid with T so that if falls in bottom bin 
+    bins[1] = bins[0]+bins[1] # add bottom two bins so bins[1] is volume with T\lt0.01 in case have some fluid with T so that if falls in bottom bin
                               # need to check effects of doing this/not doing this more robustly but for now this will suffice
-    
+
     # rejig bins otherwise the indicies will get very confusing
     bins = bins[1:-1]
-                           
-    # calculation of z_r :  
+
+    # calculation of z_r :
     # as bins normalised sum(bins) = 1,
-    # let db = [bounds[j+1]-bounds[j] for j in range(len(bounds[:-1]))] 
+    # let db = [bounds[j+1]-bounds[j] for j in range(len(bounds[:-1]))]
     # now, sum([bins[j]*db[j] for j in range(len(bins))]) = Abins
     # require a pdf such that sum([pdf[j]*db[j] for all j in range(len(bins))]) = 1
     # therefore can take pdf[j] = bins[j]/Abins - think about the area in a histogram, basically translating to probability space)
-    
+
     Abins = sum([bins[j]*(bounds[j+1]-bounds[j]) for j in range(len(bins))])
 
     z_r = [H*sum([(bins[j]/Abins)*(bounds[j+1]-bounds[j]) for j in range(k)]) for k in range(len(bounds))]
 
-    # note here have temperature bounds so sum from min to chosen temp, 
+    # note here have temperature bounds so sum from min to chosen temp,
     # if have density need to sum from chosen density to max so would need something like:
     # z_r = [H*sum(([bins[j]/Abins)*(bounds[j+1]-bounds[j]) for j in range(k,len(bins))]) for k in range(len(bounds))]
-    
+
     # calculation of BPE
     integral_T = rho_0*alpha*IntegrateTrapezoidal(z_r,[bounds[j]*z_r[j] for j in range(len(z_r))])
     integral_bckgd = rho_0*(1+(alpha*T_0))*IntegrateTrapezoidal(z_r,z_r)
     integral = integral_bckgd - integral_T
     BPE_mixing_stats.append(g*L*integral)
- 
-# Potential energy diffused through boundaries 
+
+# Potential energy diffused through boundaries
   PEflux = stat["fluid"]["GravitationalPotentialEnergyDensity"]["surface_integral%PEFlux"]*kappa
   PEout = scipy.integrate.cumtrapz(PEflux,time)
 
@@ -187,7 +187,7 @@ for statfile in ['lock_exchange_2d.stat', 'lock_exchange_2d_parallel.stat']:
   DD = stat["fluid"]["DiffusiveDissipation"]["integral"]*2.0*kappa
   DDtot = scipy.integrate.cumtrapz(DD,time)
 
-# Kinetic energy - taken from KineticEnergyDensity (non-Boussinesq) 
+# Kinetic energy - taken from KineticEnergyDensity (non-Boussinesq)
 # and Velocity (Boussinesq) for illustration
   KE_1 = stat["fluid"]["KineticEnergyDensity"]["integral"]
   KE_1_t = scipy.diff(KE_1)/dt
@@ -208,7 +208,7 @@ for statfile in ['lock_exchange_2d.stat', 'lock_exchange_2d_parallel.stat']:
 
 # total energy change
 # subtract off initial values of KE and PE
-# as in time integration of PEout, DDtot, DTtot, VDtot 
+# as in time integration of PEout, DDtot, DTtot, VDtot
 # have not added value at t = 0
 # so then start with totalE = 0
 
@@ -221,9 +221,9 @@ for statfile in ['lock_exchange_2d.stat', 'lock_exchange_2d_parallel.stat']:
   energy_stats.append([PE, PEflux, DD, KE, DT, VD, E_t, totalE, BPE_mixing_stats, BPE])
 
 print 'E total difference serial first timestep, last time step: ', energy_stats[0][-2][0], energy_stats[0][-2][-1]
-print 'dE/dt difference serial first timestep, last time step: ', energy_stats[0][-3][0], energy_stats[0][-3][-1] 
+print 'dE/dt difference serial first timestep, last time step: ', energy_stats[0][-3][0], energy_stats[0][-3][-1]
 print 'E total difference parallel first timestep, last time step: ', energy_stats[1][-2][0], energy_stats[1][-2][-1]
-print 'dE/dt difference parallel first timestep, last time step: ', energy_stats[1][-3][0], energy_stats[1][-3][-1]   
+print 'dE/dt difference parallel first timestep, last time step: ', energy_stats[1][-3][0], energy_stats[1][-3][-1]
 
 #########################################################
 #########################################################
@@ -239,7 +239,7 @@ print 'dE/dt difference parallel first timestep, last time step: ', energy_stats
 # cannot test BPE for parallel as Isopycnal Coordinate not parallelised and
 # therefore BackgroundPotentialEnergyDensity invalid in parallel
 
-# for lock-exchange 
+# for lock-exchange
 # PE = 0.25*g*L*H^2*(rho_1+rho_2)
 # BPE = 0.125*g*L*H^2*(rho_1+3*rho_2) where
 # g is magnitude of gravity
@@ -279,16 +279,16 @@ PE_error_1.append([abs(PE-energy_stats[1][0][0]), abs(BPE-energy_stats[0][-2][0]
 names = ['PotentialEnergyDensity', 'PotentialEnergyDensitySurfaceFlux', 'DiffusiveDissipation', 'KineticEnergy', 'KineticEnergySurfaceFlux', 'ViscousDiss', 'dE/dt', 'total Energy', 'BPE from mixing stats']
 serial_parallel_error = [[abs(energy_stats[0][i][0] - energy_stats[1][i][0]) for i in range(len(energy_stats[0])-1)]]
 serial_parallel_error.append([abs(energy_stats[0][i][-1] - energy_stats[1][i][-1]) for i in range(len(energy_stats[0])-1)])
-for i in range(len(energy_stats[0])-1): 
+for i in range(len(energy_stats[0])-1):
   print names[i]+' serial-parallel error start, end: ', serial_parallel_error[0][i], ', ', serial_parallel_error[1][i]
-  
+
 #########################################################
 #########################################################
 #########################################################
 
 # mixing stats error
 
-# compare BPE from mixing stats (serial) and BPE direct calculation in stats 
+# compare BPE from mixing stats (serial) and BPE direct calculation in stats
 # (compare serial and parallel values so don't need to make that comparison too)
 ms_error = [abs(energy_stats[0][-2][i]-energy_stats[0][-1][i]) for i in range(len(energy_stats[0][-1]))]
 print 'difference between BPE from mixing stats (serial) and BPE direct calculation in stats'
@@ -317,7 +317,7 @@ errors = [energy_stats, serial_parallel_error, PE_error_1, ms_error]
     </test>
     <test name="check difference between parallel and serial at end of run" language="python">
       for err in errors[1][1][:6]: print err; assert err &lt; 1.E-6
-    </test>  
+    </test>
     <test name="check error to PE/BPE in serial at first time step" language="python">
       for err in errors[2][0]: print err; assert err &lt; 1.E-5 # needs to be a bit looser for BPE from mixing stats
     </test>

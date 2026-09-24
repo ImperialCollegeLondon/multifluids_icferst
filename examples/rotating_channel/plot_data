@@ -1,14 +1,16 @@
 #!/usr/bin/env python
-import pylab
-import channel_tools
 import sys
+
+import channel_tools
 import numpy
+import pylab
+
 
 def usage():
     print """plot_data <layers>
 
     <layers> is a space-separated list of layer counts."""
-    
+
 
 try:
     layers=numpy.array(map(int,sys.argv[1:]))
@@ -28,6 +30,3 @@ error=channel_tools.retrieve_results(layers)
 channel_tools.plot_results(dx,error)
 
 pylab.show()
-
-
-

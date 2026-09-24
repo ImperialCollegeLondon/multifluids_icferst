@@ -21,7 +21,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
 
 
 
-#include "petsc/finclude/petsc.h"  
+#include "petsc/finclude/petsc.h"
   use petsc
 
 
@@ -228,7 +228,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
             end do
         end do
     end block
-    
+
     call run_diagnostics(state)
 
     ! Determine the output format

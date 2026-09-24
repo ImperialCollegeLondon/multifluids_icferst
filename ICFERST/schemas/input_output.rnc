@@ -41,7 +41,7 @@ input_choice_real_plus_file =
       }|
       ## Initialize the field property from an input csv file, specified in io/PropertiesFromFile.
       element csv_file {empty}|
-      ## Initialize the field from a subroutine defined in an 
+      ## Initialize the field from a subroutine defined in an
       ## external shared object library.
       ## Set path to the absolute or relative path to the .so file
       ## and set name to the function name to be called. This should
@@ -51,7 +51,7 @@ input_choice_real_plus_file =
       ##
       ##  double precision :: field(:), X(:,:), t
       ##
-      ## end subroutine 
+      ## end subroutine
       ##
       ## "field" is the data array for the field being set.
       ## "X" is the physical location of the nodes ordered
@@ -62,7 +62,7 @@ input_choice_real_plus_file =
       ##    gfortran -fPIC -shared -o example.so example.F90
       element plugin_function {
          attribute path { xsd:string },
-	 attribute name { xsd:string }	    
+	 attribute name { xsd:string }
       }
    )
 
@@ -83,7 +83,7 @@ input_choice_real_plus_map =
          ## For use with 2D depth maps.
          ## If you are reading data from a file whose top layer height
          ## is not equal to zero, set the height of that top layer here.
-         ## Note however that the height of the top layer in the the 
+         ## Note however that the height of the top layer in the the
          ## extruded mesh will still be equal to zero, the given domain
          ## will in effect have been shifted down.
          ## This option has no effect when extruding meshes on the surface
@@ -140,7 +140,7 @@ input_choice_real_contents =
          attribute parent_field_name { xsd:string }
       }
 
-initial_condition_scalar = 
+initial_condition_scalar =
    (
       ## Initial condition for WholeMesh
       ##
@@ -183,8 +183,8 @@ input_choice_initial_condition_real =
       }|
       ## Initialise the field from an existing file (indended
       ## primarily for use in checkpointing). The file mesh must match
-      ## the mesh of this field  (except for piecewise constant fields 
-      ## which will be remapped back from the discontinuous nodal values). 
+      ## the mesh of this field  (except for piecewise constant fields
+      ## which will be remapped back from the discontinuous nodal values).
       ## In parallel the process number is
       ## appended to the filename, e.g. if the file_name attribute is
       ## set to "input.vtu", process 0 reads from "input-0.vtu".
@@ -201,7 +201,7 @@ input_choice_initial_condition_real =
       ## Initialize a single field from data contained within a NetCDF file.
       ## Data should be in the form x,y,z where where x and y are the coordinates
       ## (either cartesian or longitude-latitude) and z is the value of the intial
-      ## condition to be imposed. 
+      ## condition to be imposed.
       ## Note: This option currently only supports 'single layer' data sets.
       element from_netcdf {
           attribute file_name { xsd:string },
@@ -236,8 +236,8 @@ input_choice_initial_condition_pressure =
       }|
       ## Initialise the field from an existing file (indended
       ## primarily for use in checkpointing). The file mesh must match
-      ## the mesh of this field  (except for piecewise constant fields 
-      ## which will be remapped back from the discontinuous nodal values). 
+      ## the mesh of this field  (except for piecewise constant fields
+      ## which will be remapped back from the discontinuous nodal values).
       ## In parallel the process number is
       ## appended to the filename, e.g. if the file_name attribute is
       ## set to "input.vtu", process 0 reads from "input-0.vtu".
@@ -262,7 +262,7 @@ input_choice_initial_condition_pressure =
       ## Initialize a single field from data contained within a NetCDF file.
       ## Data should be in the form x,y,z where where x and y are the coordinates
       ## (either cartesian or longitude-latitude) and z is the value of the intial
-      ## condition to be imposed. 
+      ## condition to be imposed.
       ## Note: This option currently only supports 'single layer' data sets.
       element from_netcdf {
           attribute file_name { xsd:string },
@@ -400,7 +400,7 @@ input_choice_real_dim_symmetric_tensor =
       }|
       ## Python command prescribing symmetric tensor input.
       ##
-      ## Note that it is for the python function to determine 
+      ## Note that it is for the python function to determine
       ## that the results it produces are, in fact, symmetric.
       ##
       ## An example that returns the three-dimensional identity:
@@ -500,8 +500,8 @@ input_choice_real_dim_minus_one_tensor =
    )
 
 
-region_ids = 
-   ( 
+region_ids =
+   (
       ## Optional region ids to associate different values
       ## to different regions of the mesh.
       ## Leave unselected if you`re not using multiple regions or
@@ -512,11 +512,11 @@ region_ids =
       }
    )
 
-input_choice_real_bc_component = 
+input_choice_real_bc_component =
    (
       input_choice_real|
       element synthetic_eddy_method {
-         ## use a large number to ensure Gaussian 
+         ## use a large number to ensure Gaussian
          ## behaviour of the fluctuating component
          element number_of_eddies {
            integer
@@ -534,13 +534,13 @@ input_choice_real_bc_component =
          ## Reynolds stresses profile
          ##
          ## usually a function of height,
-         ## assumes that the remaining stresses are negligible 
+         ## assumes that the remaining stresses are negligible
          element Re_stresses_profile {
            input_choice_real
          }
       }|
       element foam_flow {
-         ## use the normal component of the remapped foam velocity 
+         ## use the normal component of the remapped foam velocity
          element factor {
            integer
          }?
@@ -561,7 +561,7 @@ vtu_input_format =
          comment
       }
    )
-    
+
 netcdf_input_format =
    (
       ## NetCDF CF 1.4 (http://cf-pcmdi.llnl.gov/)

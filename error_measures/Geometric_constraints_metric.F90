@@ -61,7 +61,7 @@ module geometric_constraints_metric
 #endif
 
     logical :: debug_metric
-    
+
     if(.not.use_geometric_constraints_metric) then
         return
     end if
@@ -70,12 +70,12 @@ module geometric_constraints_metric
 
     snloc = face_loc(error_metric%mesh, 1)
     nselements = surface_element_count(error_metric%mesh)
-    
+
     dim = error_metric%dim(1)
     ewrite(2,*) "++: Applying geometric constraints"
 
     call FindGeometryConstraints(positions, geometric_edge_lengths_raw)
-    
+
     geometric_edge_lengths = wrap_tensor_field(error_metric%mesh, geometric_edge_lengths_raw, "GeometricEdgeLengths")
 
     call bound_metric(geometric_edge_lengths, state)

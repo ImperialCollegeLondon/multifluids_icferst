@@ -51,28 +51,28 @@ $
 $
 $ Node cards
 $
-GRID    52      0       3250.   2250.   -49.    
-GRID    53      0       3250.   2250.   0.      
-GRID    64      0       3250.   2250.   -24.5   
+GRID    52      0       3250.   2250.   -49.
+GRID    53      0       3250.   2250.   0.
+GRID    64      0       3250.   2250.   -24.5
 $
 $ Element cards
 $
 $
-CROD    160     102     53      64      
-CROD    161     102     64      52      
+CROD    160     102     53      64
+CROD    161     102     64      52
 $
 $ Property cards
 $
 $
-PROD    102     100     0       0       0       0       
+PROD    102     100     0       0       0       0
 $
 $ Material cards
 $
 $
 $ Name: Default-Steel
 $
-MAT1*   100             206800          80155.039       0.29            
-*       7e-06           1.2e-05         
+MAT1*   100             206800          80155.039       0.29
+*       7e-06           1.2e-05
 $
 $ Restraint cards
 $

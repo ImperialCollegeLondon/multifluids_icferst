@@ -7,4 +7,3 @@ coordsY = annulus_mesh.SliceCoordsLinear(0.0, 1.0, 0.01, 20)
 coordsX = annulus_mesh.SliceCoordsLinear(0.0, 1.0, 0.01, 20)
 mesh = annulus_mesh.GenerateRectangleMesh(coordsX, coordsY)
 triangletools.WriteTriangle(mesh, "square-structured-linear")
-

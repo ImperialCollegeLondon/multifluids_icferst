@@ -1,10 +1,11 @@
+import subprocess
+import sys
+
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy
 import shocktube
 import vtktools
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-import subprocess
-import sys
 
 time_levels=numpy.arange(0,99)
 filename_part='shocktube_'
@@ -30,7 +31,7 @@ for time_level in time_levels:
   analytical_u=analytical_solution[:,1]
   analytical_rho=analytical_solution[:,2]
   analytical_ie=analytical_p/analytical_rho/(shocktube.gamma-1.0)
-  
+
   fig = plt.figure()
 
   pressure_subplot = fig.add_subplot(4,1,1)

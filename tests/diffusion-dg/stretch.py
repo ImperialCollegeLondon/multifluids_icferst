@@ -1,6 +1,9 @@
 #!/usr/bin/env python
+import getopt
+import os
+import sys
+
 from numpy import *
-import getopt, sys, os
 
 # Global variables
 filename = None
@@ -9,7 +12,7 @@ yscale = None
 
 def get_options():
     global filename, xscale, yscale
-    
+
     try:
         opts, args = getopt.getopt(sys.argv[1:], "f:x:y:",
                                    ["filename", "xscale", "yscale",""])
@@ -56,4 +59,3 @@ f.close()
 
 os.system('cp '+filename+'.ele '+filename+'_stretched_x'+str(xscale)+'_y'+str(yscale)+'.ele')
 os.system('cp '+filename+'.edge '+filename+'_stretched_x'+str(xscale)+'_y'+str(yscale)+'.edge')
-

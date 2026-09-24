@@ -1,7 +1,8 @@
 #!/usr/bin/env python
-import vtktools
 import math
-from numpy import array 
+
+import vtktools
+from numpy import array
 
 u=vtktools.vtu("tidesmedsea-flat.vtu")
 g = open("Med-GEBCO-5m-gauges-fes2004-O1-102", "w")
@@ -148,6 +149,7 @@ M2_tideGauge_amp =  array([
 [11.0]
 ])
 from math import sqrt
+
 ampdiff=ampcm-M2_tideGauge_amp
 ampdiff2=ampdiff**2
 a = sum(sum(ampdiff2))/62
@@ -375,12 +377,14 @@ print "RMS difference of O1 Amp (cm):",O1RMS
 
 import fluidity_tools
 from matplotlib import pylab
+
 pylab.plot(ampcm,M2_tideGauge_amp)
 pylab.xlabel("Fluidity")
 pylab.ylabel("Tide Gauge")
 pylab.show()
 
 import matplotlib
+
 matplotlib.pyplot.scatter(M2_tideGauge_amp,ampcm,s=20, c='b', marker='o')
 #pylab.xlabel("Tide Gauge M2 Amplitude (cm)")
 #pylab.ylabel("Fluidity M2 Amplitude (cm)")
@@ -421,7 +425,3 @@ matplotlib.pyplot.scatter(M2_tideGauge_amp,ampcm,s=20, c='b', marker='o')
 #pylab.ylim(ymax=20.0,ymin=0.0)
 #pylab.xlim(xmax=20.0,xmin=0.0)
 #pylab.show()
-
-
-
-

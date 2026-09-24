@@ -8,9 +8,3 @@ if [ "$chrlen" -ge 4 ]; then
 else
     cp /<ABSOLUTE_PATH_TO_INSTALLATION_FOLDER>/bin/icferst ./  && ./icferst ./*.mpml
 fi
-
-
-
-
-
-

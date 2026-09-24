@@ -281,7 +281,7 @@ contains
         integer :: nl_stat, iph, nfields, kk
         character(len=OPTION_PATH_LEN) :: nl_name
         real :: nl_time, nl_dt
-        
+
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -561,7 +561,7 @@ contains
 
         ! Load simulation events from csv if specified in Diamond
         call load_simulation_events()
-        
+
         !!$ Starting Time Loop
         itime = 0
         ! if this is not a zero timestep simulation (otherwise, there would
@@ -762,7 +762,7 @@ contains
 
                 call petsc_logging(3,stages,ierrr,default=.true.)
                 call petsc_logging(2,stages,ierrr,default=.true., push_no=2)
-                
+
                 ! Recalculate any Python diagnostic scalar fields flagged for NL refresh
                 call get_option("/timestepping/current_time", nl_time)
                 call get_option("/timestepping/timestep", nl_dt)

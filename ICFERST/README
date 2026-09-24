@@ -1,6 +1,6 @@
 			README for ICFERST
 
-All the contributions to ICFERST in this repository are under AGPL 3.0 license, 
+All the contributions to ICFERST in this repository are under AGPL 3.0 license,
 otherwise refrain from commiting your code to this repository. Each library
 keeps their original license.
 
@@ -13,13 +13,12 @@ For compilation run the command:
 make mp
 after configuring the make files.
 
-ICFERST is based on Fluidity which is property of the AMCG group 
+ICFERST is based on Fluidity which is property of the AMCG group
 while ICFERST is property of the NORMS group.
 
 See the file COPYRIGHT for a description of the copyright.
 
 For more details please see:
-http://multifluids.github.io/ 
+http://multifluids.github.io/
 and
 http://www.imperial.ac.uk/earth-science/research/research-groups/norms/
-

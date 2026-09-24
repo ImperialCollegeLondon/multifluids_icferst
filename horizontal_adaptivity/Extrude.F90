@@ -23,8 +23,8 @@ module hadapt_extrude
   implicit none
 
   private
-  
-  public :: extrude, compute_z_nodes, hadapt_extrude_check_options, get_extrusion_options, &             
+
+  public :: extrude, compute_z_nodes, hadapt_extrude_check_options, get_extrusion_options, &
             populate_depth_vector, skip_column_extrude
 
   interface compute_z_nodes
@@ -44,7 +44,7 @@ module hadapt_extrude
     !!< The full extruded 3D mesh.
     type(vector_field), intent(out) :: out_mesh
 
-    character(len=FIELD_NAME_LEN):: mesh_name, file_name  
+    character(len=FIELD_NAME_LEN):: mesh_name, file_name
     type(quadrature_type) :: quad
     type(element_type) :: full_shape
     type(vector_field) :: constant_z_mesh
@@ -60,7 +60,7 @@ module hadapt_extrude
 
     logical :: sigma_layers
     integer :: number_sigma_layers
-    
+
     integer :: n_regions, r
     integer, dimension(:), allocatable :: region_ids
     logical :: apply_region_ids, constant_z_mesh_initialised
@@ -74,7 +74,7 @@ module hadapt_extrude
     allocate(z_meshes(node_count(h_mesh)))
 
     call add_nelist(h_mesh%mesh)
-    
+
     n_regions = option_count(trim(option_path)//'/from_mesh/extrude/regions')
     if(n_regions==0) then
       ewrite(-1,*) "I've been told to extrude but have found no regions options."
@@ -84,13 +84,13 @@ module hadapt_extrude
     end if
     apply_region_ids = (n_regions>1)
     visited = 0 ! a little debugging check - can be removed later
-    
+
     column_visited = .false.
-    
+
     do r = 0, n_regions-1
-      
+
       constant_z_mesh_initialised = .false.
-      
+
       call get_extrusion_options(option_path, r, apply_region_ids, region_ids, &
                                  depth_is_constant, depth, depth_from_python, depth_function, depth_from_map, &
                                  file_name, have_min_depth, min_depth, surface_height, sizing_is_constant, constant_sizing, list_sizing, &
@@ -99,15 +99,15 @@ module hadapt_extrude
 
       allocate(depth_vector(size(z_meshes)))
       if (depth_from_map) call populate_depth_vector(h_mesh,file_name,depth_vector,surface_height,radial_extrusion)
-      
+
       ! create a 1d vertical mesh under each surface node
       do column=1, size(z_meshes)
-      
+
         ! decide if this column needs visiting...
         if(skip_column_extrude(h_mesh%mesh, column, &
                               apply_region_ids, column_visited(column), region_ids, &
                               visited_count = visited(column))) cycle
-        
+
         if(varies_only_in_depth .and. depth_is_constant) then
           if (.not. constant_z_mesh_initialised) then
             call compute_z_nodes(constant_z_mesh, node_val(h_mesh, column), min_bottom_layer_frac, &
@@ -127,16 +127,16 @@ module hadapt_extrude
         end if
 
       end do
-      
+
       if(apply_region_ids) deallocate(region_ids)
       deallocate(depth_vector)
-      
+
       if (constant_z_mesh_initialised) then
         call deallocate(constant_z_mesh)
       end if
-    
+
     end do
-    
+
 #ifdef DDEBUG
     if(apply_region_ids) then
       ewrite(2,*) "Maximum number of times a node was visited: ", maxval(visited)
@@ -146,7 +146,7 @@ module hadapt_extrude
       end if
     end if
 #endif
-      
+
     ! Now the tiresome business of making a shape function.
     h_dim = mesh_dim(h_mesh)
     call get_option("/geometry/quadrature/degree", quadrature_degree)
@@ -159,14 +159,14 @@ module hadapt_extrude
     ! combine the 1d vertical meshes into a full mesh
     call combine_z_meshes(h_mesh, z_meshes, out_mesh, &
        full_shape, mesh_name, option_path, sigma_layers)
-       
+
     do column=1, node_count(h_mesh)
       if (.not. node_owned(h_mesh, column)) cycle
       call deallocate(z_meshes(column))
     end do
     call deallocate(full_shape)
     deallocate(z_meshes)
-    
+
   end subroutine extrude
 
   subroutine get_extrusion_options(option_path, region_index, apply_region_ids, region_ids, &
@@ -178,13 +178,13 @@ module hadapt_extrude
     character(len=*), intent(in) :: option_path
     integer, intent(in) :: region_index
     logical, intent(in) :: apply_region_ids
-    
+
     integer, dimension(:), allocatable :: region_ids
-    
+
     logical, intent(out) :: depth_is_constant, depth_from_python, depth_from_map
     real, intent(out) :: depth
     character(len=PYTHON_FUNC_LEN), intent(out) :: depth_function
-    
+
     logical, intent(out) :: sizing_is_constant, list_sizing
     real, intent(out) :: constant_sizing
     character(len=PYTHON_FUNC_LEN), intent(out) :: sizing_function
@@ -193,16 +193,16 @@ module hadapt_extrude
     character(len=FIELD_NAME_LEN), intent(out) :: file_name
     logical, intent(out) :: have_min_depth
     real, intent(out) :: min_depth, surface_height
-    
+
     logical, intent(out) :: varies_only_in_depth
-    
+
     real, intent(out) :: min_bottom_layer_frac
 
     logical, intent(out) :: sigma_layers
     integer, intent(out) :: number_sigma_layers
 
     logical, intent(out) :: radial_extrusion
-    
+
     integer, dimension(2) :: shape_option
     integer :: stat
 
@@ -231,7 +231,7 @@ module hadapt_extrude
                       ']/bottom_depth/python', &
                        depth_function, stat=stat)
       if (stat==0) depth_from_python = .true.
-      if (stat /= 0) then 
+      if (stat /= 0) then
         call get_option(trim(option_path)//'/from_mesh/extrude/regions['//int2str(region_index)//&
                          ']/bottom_depth/from_map/file_name', &
                           file_name, stat=stat)
@@ -255,7 +255,7 @@ module hadapt_extrude
       call get_option(trim(option_path)//'/from_mesh/extrude/regions['//int2str(region_index)//&
                                          ']/bottom_depth/from_map/surface_height',surface_height)
     end if
-    
+
     list_sizing=.false.
     sigma_layers=.false.
     call get_option(trim(option_path)//&
@@ -289,18 +289,18 @@ module hadapt_extrude
       end if
       if (stat/=0) then
         FLAbort("Unknown way of specifying sizing function in mesh extrusion")
-      end if       
+      end if
     end if
 
     varies_only_in_depth = have_option(trim(option_path)//&
     '/from_mesh/extrude/regions['//int2str(region_index)//&
     ']/sizing_function/varies_only_in_depth')
-  
+
     call get_option(trim(option_path)//&
                     '/from_mesh/extrude/regions['//int2str(region_index)//&
                     ']/minimum_bottom_layer_fraction', &
                     min_bottom_layer_frac, default=1.e-3)
-  
+
   end subroutine get_extrusion_options
 
   subroutine populate_depth_vector(h_mesh,file_name,depth_vector,surface_height,radial_extrusion)
@@ -367,10 +367,10 @@ module hadapt_extrude
     real, dimension(1) :: tmp_depth
     real, dimension(size(xy), 1) :: tmp_pos
     real :: ldepth
-    
+
     if(depth_is_constant) then
       ldepth = depth
-    else 
+    else
       tmp_pos(:,1) = xy
       if (depth_from_python) then
         call set_from_python_function(tmp_depth, trim(depth_function), tmp_pos, time=0.0)
@@ -384,7 +384,7 @@ module hadapt_extrude
         FLAbort("Unknown way of specifying the bottom_depth.")
       end if
     end if
-    
+
     if (sizing_is_constant) then
       call compute_z_nodes(z_mesh, ldepth, xy, &
        min_bottom_layer_frac, radial_extrusion, sizing=constant_sizing)
@@ -400,7 +400,7 @@ module hadapt_extrude
         min_bottom_layer_frac, radial_extrusion, sizing_function=sizing_function)
       end if
     end if
-    
+
   end subroutine compute_z_nodes_wrapper
 
   subroutine get_previous_z_nodes(z_mesh, z_mesh_previous)
@@ -475,7 +475,7 @@ module hadapt_extrude
     ! Start the mesh at d=0 and work down to d=-depth.
     d=0.0
     node=2
-    ! first size(xy) coordinates remain fixed, 
+    ! first size(xy) coordinates remain fixed,
     ! the last entry will be replaced with the appropriate depth
     if (radial_extrusion) then
       allocate(xyz(size(xy)))
@@ -530,14 +530,14 @@ module hadapt_extrude
     ! For pathological sizing functions the mesh might have gotten inverted at the last step.
     ! If you encounter this, make this logic smarter.
     assert(abs(node_val(z_mesh, 1, elements)) < abs(node_val(z_mesh, 1, elements+1)))
-    
+
     assert(oned_quad%refcount%count == 1)
     assert(oned_shape%refcount%count == 1)
     assert(z_mesh%refcount%count == 1)
     assert(mesh%refcount%count == 1)
 
     contains
-    
+
       function get_delta_h(pos, is_constant, constant_value, py_func) result(delta_h)
         real, dimension(:), intent(in) :: pos
         logical, intent(in) :: is_constant
@@ -547,7 +547,7 @@ module hadapt_extrude
         real :: delta_h
         real, dimension(1) :: delta_h_tmp
         real, dimension(size(pos), 1) :: pos_tmp
-        
+
         if (is_constant) then
           delta_h = constant_value
         else
@@ -556,9 +556,9 @@ module hadapt_extrude
           delta_h = delta_h_tmp(1)
         end if
         assert(delta_h > 0.0)
-        
+
       end function get_delta_h
-      
+
   end subroutine compute_z_nodes_sizing
 
   logical function skip_column_extrude(horizontal_mesh, column, &
@@ -571,17 +571,17 @@ module hadapt_extrude
     logical, intent(inout) :: column_visited
     integer, dimension(:), intent(in) :: region_ids
     integer, intent(inout), optional :: visited_count
-    
+
     integer, dimension(:), pointer :: eles
     logical :: node_in_region
     integer :: rs
-    
+
     skip_column_extrude = .false.
     if(.not.node_owned(horizontal_mesh, column)) then
       skip_column_extrude = .true.
       return
     end if
-    
+
     ! need to work out here if this column is in one of the current region ids!
     ! this is a bit arbitrary since nodes belong to multiple regions... therefore
     ! the extrusion depth had better be continuous across region id boundaries!
@@ -607,7 +607,7 @@ module hadapt_extrude
         visited_count = visited_count + 1
       end if
     end if
-  
+
   end function skip_column_extrude
 
   ! hadapt_extrude options checking
@@ -630,11 +630,11 @@ module hadapt_extrude
           ewrite(-1,*) "This means fluidity will not be able to extrude your mesh again after the adapt."
           FLExit("Missing /mesh_adaptivity/hr_adaptivity/preserve_mesh_regions option")
         end if
-      end if   
-        
+      end if
+
     end do
 
   end subroutine hadapt_extrude_check_options
 
-    
+
 end module hadapt_extrude

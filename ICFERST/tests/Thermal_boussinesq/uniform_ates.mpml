@@ -793,7 +793,7 @@
             <python>
               <string_value type="code" language="python" lines="20">def val(X, t):
  val=0.50
- 
+
  return val</string_value>
             </python>
           </value>

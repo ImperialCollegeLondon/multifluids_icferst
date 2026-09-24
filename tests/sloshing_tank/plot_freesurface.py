@@ -1,23 +1,19 @@
 #!/usr/bin/env python
 
-import settings
-import ana_sol
-
-import sys
+import getopt
 import math
+import sys
+
+import ana_sol
 import commands
 import matplotlib.pyplot as plt
-import getopt
-
-
-from scipy.special import erf
-from numpy import poly1d
-from matplotlib.pyplot import figure, show
-from numpy import pi, sin, linspace
-from matplotlib.mlab import stineman_interp
-from numpy import exp, cos
-
+import settings
 from fluidity_tools import stat_parser as stat
+from matplotlib.mlab import stineman_interp
+from matplotlib.pyplot import figure, show
+from numpy import cos, exp, linspace, pi, poly1d, sin
+from scipy.special import erf
+
 
 # Usage
 def usage():
@@ -33,35 +29,35 @@ def main(argv=None):
         g = settings.g # gravity
         eta= settings.eta # viscosity
         L= settings.L # wavelength
-        timestep= settings.timestep # timestep 
+        timestep= settings.timestep # timestep
         filename=''
 
         global debug
         debug=False
-        #debug=True      
+        #debug=True
 
-        try:                                
+        try:
                 opts, args = getopt.getopt(sys.argv[1:], "h:", ['file='])
-        except getopt.GetoptError:  
-                usage()                     
-                sys.exit(2)                     
-        for opt, arg in opts:                
-                if opt == '--file':      
+        except getopt.GetoptError:
+                usage()
+                sys.exit(2)
+        for opt, arg in opts:
+                if opt == '--file':
                     filename=arg
                 elif opt == '-h' or opt == '--help':
-                    usage()                     
-                    sys.exit(2) 
+                    usage()
+                    sys.exit(2)
         if filename=='':
-                usage()                     
-                sys.exit(2) 
+                usage()
+                sys.exit(2)
 
         print 'Using:\n\ta_0 =', a_0 # initial maximum perturbation
         print '\tg =', g # gravity
         print '\teta=', eta # viscosity
         print '\tL=', L # wavelength
-        print '\ttimestep=', timestep # timestep 
+        print '\ttimestep=', timestep # timestep
 
-        
+
         ####################### Print time plot  ###########################
         print 'Generating time plot'
 
@@ -89,5 +85,3 @@ def main(argv=None):
 
 if __name__ == "__main__":
     main()
-
-

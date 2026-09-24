@@ -41,8 +41,8 @@ for i, mesh in enumerate(meshes):
 
 print '-------------------------------------------'
 
-fields = ['s1Error', 
-          's2Error', 
+fields = ['s1Error',
+          's2Error',
           'PressureError',
           ]
 
@@ -51,22 +51,22 @@ for i, field in enumerate(fields):
     print '-------------------------------------------'
 
     for j, mesh in enumerate(meshes):
-        
+
         a_error = stat("MMS_"+str(mesh[0])+".stat")["NS"][field]["l2norm"][-1]
         b_error = stat("MMS_"+str(mesh[1])+".stat")["NS"][field]["l2norm"][-1]
-        
+
         ratio = a_error / b_error
-        
+
         print mesh[0] + '->' + mesh[1] + ': ', log(ratio, 2)
 
         convergence[i+1] = min(log(ratio, 2), convergence[i+1])
-    
+
     print '-------------------------------------------'
 
-fields = ['s1BedloadErosionRateError', 
-          's2BedloadErosionRateError', 
-          's1BedloadDepositRateError', 
-          's2BedloadDepositRateError', 
+fields = ['s1BedloadErosionRateError',
+          's2BedloadErosionRateError',
+          's1BedloadDepositRateError',
+          's2BedloadDepositRateError',
           ]
 
 for i, field in enumerate(fields):
@@ -74,19 +74,19 @@ for i, field in enumerate(fields):
     print '-------------------------------------------'
 
     for j, mesh in enumerate(meshes):
-        
+
         a = vtu('MMS_'+str(mesh[0])+'_1.vtu')
 	b = vtu('MMS_'+str(mesh[1])+'_1.vtu')
 
         a_error = a.GetField(field).max()
         b_error = b.GetField(field).max()
-        
+
         ratio = a_error / b_error
-        
+
         print mesh[0] + '->' + mesh[1] + ': ', log(ratio, 2)
 
         convergence[i+4] = min(log(ratio, 2), convergence[i+4])
-    
+
     print '-------------------------------------------'
     </variable>
     <variable name="a_finish_time" language="python">
@@ -147,4 +147,3 @@ assert(d_finish_time-100.0 &lt; 1.E-10)
   <warn_tests>
   </warn_tests>
 </testproblem>
-

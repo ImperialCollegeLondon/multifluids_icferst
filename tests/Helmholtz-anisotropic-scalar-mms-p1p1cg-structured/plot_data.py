@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
 import sys
+from math import log
+
+import helmholtz_tools as h
 import numpy as np
 import pylab
-import helmholtz_tools as h
-from math import log
+
 
 def plot_convergence(name1,logfile1,name2,logfile2):
 
@@ -174,7 +176,7 @@ def plot_commconv(name1,logfile1,name2,logfile2):
   # the center of the bars.
   ax.set_xticks(x)
   ax.set_xticklabels(xlabels)
- 
+
   #pylab.axis([1,4,0.,1.])
   ax.set_xlabel('Mesh comparison', ha="center",fontsize=size)
   ax.set_ylabel('commutation error convergence rate',fontsize=size)
@@ -205,4 +207,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-

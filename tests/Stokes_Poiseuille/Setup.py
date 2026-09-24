@@ -14,7 +14,7 @@
 # Dynamic viscosity of the fluid
 visc = 1e-3
 # Half-height of the rectangular domain
-h = 1.
+h = 1.0
 # Driving pressure, the pressure applied at the inflow boundary
 drvP = 1e6
 # Pressure at the outflow boundary

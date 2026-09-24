@@ -59,12 +59,15 @@ import ElementTree
 #
 # @see elementtree.ElementTree
 
+
 class TreeBuilder(ElementTree.XMLTreeBuilder):
     pass
+
 
 ##
 # (experimental) An alternate builder that supports manipulation of
 # new elements.
+
 
 class FancyTreeBuilder(TreeBuilder):
 

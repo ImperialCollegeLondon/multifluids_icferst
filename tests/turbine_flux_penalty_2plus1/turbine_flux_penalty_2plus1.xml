@@ -45,8 +45,8 @@ for key in DetectorArray_Turbine.iterkeys():
     if max(err)&gt;maxerr:
        maxerr=max(err)
        maxerrkey=key
-print "Maximal absolute error at position", 
-print Detectors_Turbine[maxerrkey]["position"][0][0], 
+print "Maximal absolute error at position",
+print Detectors_Turbine[maxerrkey]["position"][0][0],
 print "x",
 print Detectors_Turbine[maxerrkey]["position"][1][0],
 print ": ", maxerr
@@ -68,8 +68,8 @@ for key in DetectorArray_Turbine.iterkeys():
     if err&gt;maxerr:
        maxerr=err
        maxerrkey=key
-print "Maximal relative error at position ", 
-print Detectors_Turbine[maxerrkey]["position"][0][lind], 
+print "Maximal relative error at position ",
+print Detectors_Turbine[maxerrkey]["position"][0][lind],
 print "x",
 print Detectors_Turbine[maxerrkey]["position"][1][lind],
 print ": ", maxerr,

@@ -1,5 +1,5 @@
 !    Copyright (C) 2006 Imperial College London and others.
-!    
+!
 !    Please see the AUTHORS file in the main source directory for a full list
 !    of copyright holders.
 !
@@ -9,7 +9,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!    
+!
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation,
@@ -43,7 +43,7 @@ module detector_move_lagrangian
   use detector_parallel
 
   implicit none
-  
+
   private
 
   public :: move_lagrangian_detectors, read_detector_move_options, check_any_lagrangian
@@ -53,7 +53,7 @@ module detector_move_lagrangian
 contains
 
   subroutine read_detector_move_options(detector_list, detector_path)
-    ! Subroutine to allocate the detector parameters, 
+    ! Subroutine to allocate the detector parameters,
     ! including RK stages and update vector
     type(detector_linked_list), intent(inout) :: detector_list
     character(len=*), intent(in) :: detector_path
@@ -188,7 +188,7 @@ contains
     ! Pull some information from state
     xfield     => extract_vector_field(state(1),"Coordinate")
     vfield     => extract_vector_field(state(1),"Velocity")
-    vfield_old => extract_vector_field(state(1),"OldVelocity")    
+    vfield_old => extract_vector_field(state(1),"OldVelocity")
 
     ! We allocate a sendlist for every processor
     nprocs=getnprocs()
@@ -207,14 +207,14 @@ contains
           ! This loop continues until all detectors have completed their
           ! timestep this is measured by checking if the send and receive
           ! lists are empty in all processors
-          detector_timestepping_loop: do  
+          detector_timestepping_loop: do
 
              ! Make sure we still have lagrangian detectors
              any_lagrangian=check_any_lagrangian(detector_list)
              if (any_lagrangian) then
 
                 !Detectors leaving the domain from non-owned elements
-                !are entering a domain on another processor rather 
+                !are entering a domain on another processor rather
                 !than leaving the physical domain. In this subroutine
                 !such detectors are removed from the detector list
                 !and added to the send_list_array
@@ -231,7 +231,7 @@ contains
                 call allmax(all_send_lists_empty)
                 if (all_send_lists_empty==0) exit
 
-                !This call serialises send_list_array, sends it, 
+                !This call serialises send_list_array, sends it,
                 !receives serialised receive_list_array, and unserialises that.
                 call exchange_detectors(state(1),detector_list, send_list_array)
              else
@@ -245,11 +245,11 @@ contains
 
     deallocate(send_list_array)
 
-    ! Make sure all local detectors are owned and distribute the ones that 
+    ! Make sure all local detectors are owned and distribute the ones that
     ! stoppped moving in a halo element
     call distribute_detectors(state(1), detector_list)
 
-    ! This needs to be called after distribute_detectors because the exchange  
+    ! This needs to be called after distribute_detectors because the exchange
     ! routine serialises det%k and det%update_vector if it finds the RK-GS option
     call deallocate_rk_guided_search(detector_list)
 
@@ -266,11 +266,11 @@ contains
     type(detector_linked_list), intent(inout) :: detector_list0
     type(detector_type), pointer :: det0
     integer :: i
-    integer :: checkint 
-      
+    integer :: checkint
+
     checkint = 0
     det0 => detector_list0%first
-    do i = 1, detector_list0%length         
+    do i = 1, detector_list0%length
        if (det0%type==LAGRANGIAN_DETECTOR) then
           checkint = 1
           exit
@@ -311,10 +311,10 @@ contains
   subroutine deallocate_rk_guided_search(detector_list)
     ! Deallocate the RK stages and update vector
     type(detector_linked_list), intent(inout) :: detector_list
-      
+
     type(detector_type), pointer :: det0
     integer :: j0
-      
+
     det0 => detector_list%first
     do j0=1, detector_list%length
        if(det0%type==LAGRANGIAN_DETECTOR) then
@@ -336,14 +336,14 @@ contains
     type(vector_field), pointer, intent(in) :: vfield, vfield_old, xfield
     real, intent(in) :: dt0
     integer, intent(in) :: stage0
-    
+
     type(rk_gs_parameters), pointer :: parameters
     type(detector_type), pointer :: det0
     integer :: j0
     real, dimension(mesh_dim(xfield)+1) :: stage_local_coords
 
     parameters => detector_list%move_parameters
-    
+
     det0 => detector_list%first
     do while (associated(det0))
 
@@ -383,9 +383,9 @@ contains
   subroutine move_detectors_guided_search(detector_list,vfield,xfield,send_list_array,search_tolerance)
     !Subroutine to find the element containing the update vector:
     ! - Detectors leaving the computational domain are set to STATIC
-    ! - Detectors leaving the processor domain are added to the list 
+    ! - Detectors leaving the processor domain are added to the list
     !   of detectors to communicate to the other processor.
-    !   This works by searching for the element containing the next point 
+    !   This works by searching for the element containing the next point
     !   in the RK through element faces.
     !   This is done by computing the local coordinates of the target point,
     !   finding the local coordinate closest to -infinity
@@ -421,7 +421,7 @@ contains
                 exit search_loop
              end if
 
-             !The arrival point is not in this element, try to get closer to it by 
+             !The arrival point is not in this element, try to get closer to it by
              !searching in the coordinate direction in which it is furthest away
              neigh = minval(minloc(arrival_local_coords))
              neigh_list=>ele_neigh(xfield,det0%element)
@@ -448,7 +448,7 @@ contains
                       ewrite(1,*) "WARNING: detector attempted to leave computational &
                            domain; making it static, detector ID:", det0%id_number, "detector element:", det0%element
                       det0%type=STATIC_DETECTOR
-                      ! move on to the next detector, without updating det0%position, 
+                      ! move on to the next detector, without updating det0%position,
                       ! because det0%update_vector is by now outside of the computational domain
                       det0 => det0%next
                       exit search_loop

@@ -1,5 +1,5 @@
 
-\section{Buckley Leverett Equations with/without Gravity} 
+\section{Buckley Leverett Equations with/without Gravity}
 
 \subsection{Nomenclature}
 \begin{tabular}{c l}
@@ -83,7 +83,7 @@ The exact analytical form for the derivative of the fractional flow is
 
 \begin{eqnarray}
 \frac{d k_{rg}}{d S_g} &=& k_{rg}^o n_g \frac{\left(S_g - S_{rg}\right)^{n_g-1}}{\left(1-S_{rg}-S_{rw}\right)^{n_g}}\nonumber \\
-\frac{d k_{rw}}{d S_g}&=& -k_{rw}^o n_w \frac{\left(1-S_g - S_{rw}\right)^{n_w-1}}{\left(1-S_{rg}-S_{rw}\right)^{n_w}}\nonumber 
+\frac{d k_{rw}}{d S_g}&=& -k_{rw}^o n_w \frac{\left(1-S_g - S_{rw}\right)^{n_w-1}}{\left(1-S_{rg}-S_{rw}\right)^{n_w}}\nonumber
 \end{eqnarray}
 
 
@@ -137,14 +137,14 @@ Injection&1.0 & 0.0\\
 %\includegraphics[width=0.75\textwidth,viewport=10 10 420 420,clip]{./figures/BL_no_gravity}
 \includegraphics[width=10.0cm,height=15.cm]{./figures/BL_no_gravity}
 \vspace{-4.cm}
-\caption{Top: Comparison the analytical solutions to Case I without gravity with the upstream weighted DG simulated solution with for 3 (green), 10 (blue) and 50 (red) grid blocks.  Bottom: Comparison the analytical solutions to Case I without gravity with the mixed weighted DG simulated solution for 3 (green), 10 (blue) and 50 (red) grid blocks.} 
+\caption{Top: Comparison the analytical solutions to Case I without gravity with the upstream weighted DG simulated solution with for 3 (green), 10 (blue) and 50 (red) grid blocks.  Bottom: Comparison the analytical solutions to Case I without gravity with the mixed weighted DG simulated solution for 3 (green), 10 (blue) and 50 (red) grid blocks.}
 \label{fig:BL_no_grav}
 \end{figure}
 
 
 The displacement consists of a fast moving shock wave from the initial condition, with no gas, to a gas saturation of $S_g = 0.3255$, followed by a rarefaction wave to the residual water saturation. As there is no transfer of components between phases, it is impossible to move the residual water from the system.
 
-The DG simulator was run in 2 modes, upstream weighting and 80\% upstream weighting.  A comparison of the analytical solution for various levels of refinement is shown for upstream weighting on the top of Figure \ref{fig:BL_no_grav} and for mixed weighting on the bottom. 
+The DG simulator was run in 2 modes, upstream weighting and 80\% upstream weighting.  A comparison of the analytical solution for various levels of refinement is shown for upstream weighting on the top of Figure \ref{fig:BL_no_grav} and for mixed weighting on the bottom.
 
 \paragraph{Displacements with gravity}
 
@@ -187,17 +187,17 @@ The first benchmark solution including gravity is the injection of oil into the 
 \includegraphics[width=15.0cm,height=20.cm]{./figures/BL_gravity_up}
 %\includegraphics[width=0.75\textwidth,viewport=10 0 390 300,clip]{./figures/BL_gravity_up}
 \vspace{-5.5cm}
-\caption{Analytical solution to Case II, the stable benchmark case with gravity (black) slowing the displacement.  A fine-grid FD solution (red) and the analytical solution for the case without gravity (blue) are shown for comparison purposes.} 
+\caption{Analytical solution to Case II, the stable benchmark case with gravity (black) slowing the displacement.  A fine-grid FD solution (red) and the analytical solution for the case without gravity (blue) are shown for comparison purposes.}
 \label{fig:BL_grav_up}
 \end{figure}
 
 \paragraph{Case III: Displacements with gravity accelerating displacement}
 
-The second benchmark solution including gravity is the injection of oil into the top of a vertical core or sand pack. In reality this displacement is gravity unstable and needs to be modelled in two-dimensions, but for the purposes of benchmarking the code it is still useful. 
+The second benchmark solution including gravity is the injection of oil into the top of a vertical core or sand pack. In reality this displacement is gravity unstable and needs to be modelled in two-dimensions, but for the purposes of benchmarking the code it is still useful.
 
 The solution with gravity is a shock wave from the right state to the saturation $S_g = 0.2960$ followed by a rarefaction wave to $S_g = 0.3340$.  Then there is a constant state to the injection composition.  This constant state is caused by the fact that $f_g > 1.0$ for large gas saturations and no longer tapers off uniformly as the residual water saturation is approached.
 
-The analytical solution with gravity is shown in Figure \ref{fig:BL_grav_down} with a fine-grid FD solution and the analytical solution without gravity for comparison.  
+The analytical solution with gravity is shown in Figure \ref{fig:BL_grav_down} with a fine-grid FD solution and the analytical solution without gravity for comparison.
 
 \begin{figure}[h]
 \vspace{-1cm}
@@ -205,7 +205,6 @@ The analytical solution with gravity is shown in Figure \ref{fig:BL_grav_down} w
 \includegraphics[width=15.0cm,height=20.cm]{./figures/BL_gravity_down}
 \vspace{-5.5cm}
 %\includegraphics[width=0.75\textwidth,viewport=10 0 390 300,clip]{./figures/BL_gravity_down}
-\caption{Analytical solution to Case III, the unstable benchmark case with gravity (black) accelerating the displacement.  A fine-grid FD solution (red) and the analytical solution for the case without gravity (blue) are shown for comparison purposes.} 
+\caption{Analytical solution to Case III, the unstable benchmark case with gravity (black) accelerating the displacement.  A fine-grid FD solution (red) and the analytical solution for the case without gravity (blue) are shown for comparison purposes.}
 \label{fig:BL_grav_down}
 \end{figure}
-

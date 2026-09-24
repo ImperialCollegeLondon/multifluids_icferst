@@ -9,7 +9,7 @@
     <command_line>fluidity -v2 -l Stokes-Subduction-VK-Case-1b.flml</command_line>
   </problem_definition>
 
-<variables>  
+<variables>
   <variable name="solvers_converged" language="python">
 import os
 files = os.listdir("./")
@@ -113,14 +113,9 @@ assert(abs(HORIZ_GRADIENT_TWO-29.2) &lt; 0.2)
 assert(abs(VERTICAL_GRADIENT_TWO-27.3) &lt; 0.3)
 </test>
 
-</pass_tests>                                                                                                                                                                                                
+</pass_tests>
 
 <warn_tests>
 </warn_tests>
 
 </testproblem>
-
-
-
-
-
