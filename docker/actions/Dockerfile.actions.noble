@@ -1,5 +1,10 @@
 FROM fluidity/baseimages:noble
 
+# Using VTK 9.4 per this commment in the Fluidity base image:
+# We need the fix for https://gitlab.kitware.com/vtk/vtk/-/issues/19258
+# (failing reading of vtk files with newer versions of expat)
+ENV LD_LIBRARY_PATH=/opt/vtk-9.4.0/lib
+
 USER root
 
 RUN apt-get -y update && \
