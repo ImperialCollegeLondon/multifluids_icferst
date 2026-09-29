@@ -25,10 +25,10 @@ fields.</a:documentation>
         <choice>
           <element name="absolute_measure">
             <a:documentation>When specifying absolute measure
-one specifies the absolute interpolation 
-error in the units of the field that is 
+one specifies the absolute interpolation
+error in the units of the field that is
 being adapted, e.g. you can specify
-the error to be 1.3 units </a:documentation>
+the error to be 1.3 units</a:documentation>
             <element name="scalar_field">
               <attribute name="rank">
                 <value>0</value>
@@ -78,7 +78,7 @@ Number 257, January 2007, pp. 179-204.</a:documentation>
             </optional>
           </element>
           <element name="anisotropic_zienkiewicz_zhu">
-            <a:documentation>Adapt using the anisotropic strategy of 
+            <a:documentation>Adapt using the anisotropic strategy of
 Formaggia, Perotto, Micheletti.
 Rather than taking two derivatives
 and deriving the anisotropic information,
@@ -104,10 +104,10 @@ Typically, tau will be ~= 6-8 * |e|_H1.</a:documentation>
     <choice>
       <element name="absolute_measure">
         <a:documentation>When specifying absolute measure
-one specifies the absolute interpolation 
-error in the units of the field that is 
+one specifies the absolute interpolation
+error in the units of the field that is
 being adapted, e.g. you can specify
-the error to be 1.3 units </a:documentation>
+the error to be 1.3 units</a:documentation>
         <element name="scalar_field">
           <attribute name="rank">
             <value>0</value>
@@ -160,7 +160,7 @@ Source: Fluidity/ICOM manual draft version 1.2</a:documentation>
         </element>
       </element>
       <element name="anisotropic_zienkiewicz_zhu">
-        <a:documentation>Adapt using the anisotropic strategy of 
+        <a:documentation>Adapt using the anisotropic strategy of
 Formaggia, Perotto, Micheletti.
 Rather than taking two derivatives
 and deriving the anisotropic information,
@@ -194,10 +194,10 @@ Typically, tau will be ~= 6-8 * |e|_H1.</a:documentation>
         <choice>
           <element name="absolute_measure">
             <a:documentation>When specifying absolute measure
-one specifies the absolute interpolation 
-error in the units of the field that is 
+one specifies the absolute interpolation
+error in the units of the field that is
 being adapted, e.g. you can specify
-the error to be 1.3 units </a:documentation>
+the error to be 1.3 units</a:documentation>
             <element name="vector_field">
               <attribute name="rank">
                 <value>1</value>
@@ -261,10 +261,10 @@ Source: Fluidity/ICOM manual draft version 1.2</a:documentation>
         <choice>
           <element name="absolute_measure">
             <a:documentation>When specifying absolute measure
-one specifies the absolute interpolation 
-error in the units of the field that is 
+one specifies the absolute interpolation
+error in the units of the field that is
 being adapted, e.g. you can specify
-the error to be 1.3 units </a:documentation>
+the error to be 1.3 units</a:documentation>
             <element name="vector_field">
               <attribute name="rank">
                 <value>1</value>
@@ -328,10 +328,10 @@ Source: Fluidity/ICOM manual draft version 1.2</a:documentation>
         <choice>
           <element name="absolute_measure">
             <a:documentation>When specifying absolute measure
-one specifies the absolute interpolation 
-error in the units of the field that is 
+one specifies the absolute interpolation
+error in the units of the field that is
 being adapted, e.g. you can specify
-the error to be 1.3 units </a:documentation>
+the error to be 1.3 units</a:documentation>
             <element name="tensor_field">
               <attribute name="rank">
                 <value>2</value>
@@ -395,10 +395,10 @@ Source: Fluidity/ICOM manual draft version 1.2</a:documentation>
         <choice>
           <element name="absolute_measure">
             <a:documentation>When specifying absolute measure
-one specifies the absolute interpolation 
-error in the units of the field that is 
+one specifies the absolute interpolation
+error in the units of the field that is
 being adapted, e.g. you can specify
-the error to be 1.3 units </a:documentation>
+the error to be 1.3 units</a:documentation>
             <element name="tensor_field">
               <attribute name="rank">
                 <value>2</value>
@@ -480,8 +480,8 @@ NOTE THE RESULT MUST BE AN INTEGER.
         </element>
         <element name="adapt_mesh_within_FPI">
           <a:documentation>This option enables the ability to adapt the mesh based on an accumulated shock-front Courant number.
-The mesh will adapt within the non-linear solver to always ensure the optimal position of 
-the mesh idependently of the Courant number. The only exception is at the end of first time-step 
+The mesh will adapt within the non-linear solver to always ensure the optimal position of
+the mesh idependently of the Courant number. The only exception is at the end of first time-step
 that it always adapt the mesh.
 
 To adapt the mesh always introduce a negative value.
@@ -502,9 +502,9 @@ In general, the error tolerances should be set so that
 this is never reached; it should only be a safety catch.
 A typical value is 100000.
 
-When using vertically_structured_adaptivity this indicates the 
+When using vertically_structured_adaptivity this indicates the
 maximum number of nodes in the horizontal mesh, i.e. the number
-of nodes in the full mesh will be much bigger and depends on the 
+of nodes in the full mesh will be much bigger and depends on the
 number of layers specified, or if using inhomogenous_vertical_resolution
 on the resolution produced by the vertical adaptivity step.</a:documentation>
         <ref name="integer"/>
@@ -587,7 +587,7 @@ nodes).</a:documentation>
       </optional>
       <optional>
         <element name="fail_safe">
-          <a:documentation>Here you can control the level of the Fail-Safe of adaptivity. 
+          <a:documentation>Here you can control the level of the Fail-Safe of adaptivity.
 
 In all the cases if a new mesh cannot be obtained the old mesh is re-used. Being CPU domain-wise in parallel.
 
@@ -747,7 +747,7 @@ Otherwise use variable limited theta on individual faces.</a:documentation>
                 <element name="pivot_theta">
                   <a:documentation>Time discretisation of upwind discretisation off which the
 higher order solution is pivotted.
- - pivot_theta = 1 - implicit pivot (default if not set and 
+ - pivot_theta = 1 - implicit pivot (default if not set and
                      best choice if not intentionally modifying
                      scheme to be explicit)
  - pivot_theta = 0 - explicit pivot</a:documentation>
@@ -794,7 +794,7 @@ and divides the rhs by this.</a:documentation>
       </optional>
       <optional>
         <element name="goal_based_adaptivity">
-          <a:documentation>Goal-based adaptivity. 
+          <a:documentation>Goal-based adaptivity.
 
 With this option,
 rather than taking the user-specified interpolation
@@ -917,12 +917,12 @@ The default value is 3.</a:documentation>
               <a:documentation>The tolerance of the goal specifies the acceptable
 error in the quantity computed. The adaptation scheme
 attempts to adapt the mesh to ensure that the
-goal computed from the primitive solution is 
+goal computed from the primitive solution is
 within the tolerance specified here.
 
 A relative tolerance specifies that the acceptable error
 in the goal is some fraction of the value as computed
-from the primitive solution. It is generally 
+from the primitive solution. It is generally
 the easiest to use. This is a unitless percentage.</a:documentation>
               <ref name="real"/>
             </element>
@@ -930,7 +930,7 @@ the easiest to use. This is a unitless percentage.</a:documentation>
               <a:documentation>The tolerance of the goal specifies the acceptable
 error in the quantity computed. The adaptation scheme
 attempts to adapt the mesh to ensure that the
-goal computed from the primitive solution is 
+goal computed from the primitive solution is
 within the tolerance specified here.
 
 An absolute tolerance specifies the acceptable error
@@ -1000,7 +1000,7 @@ and can produce non-contiguous partitions for certain problems.</a:documentation
           <optional>
             <element name="final_partitioner">
               <a:documentation>Select which partitioner to use after the final adapt iteration.
-Graph partitioners available are ParMETIS and Zoltan PHG. The 
+Graph partitioners available are ParMETIS and Zoltan PHG. The
 Zoltan PHG hypergraph partitoner is also available.
 Default is the Zoltan PHG graph partitioner.</a:documentation>
               <choice>
@@ -1010,7 +1010,7 @@ closely as possible the setup used previously by Sam.</a:documentation>
                   <empty/>
                 </element>
                 <element name="scotch">
-                  <a:documentation>Use the PT-Scotch graph partitioner. *CURRENTLY UNAVAILABLE* </a:documentation>
+                  <a:documentation>Use the PT-Scotch graph partitioner. *CURRENTLY UNAVAILABLE*</a:documentation>
                   <empty/>
                 </element>
                 <element name="zoltan">
@@ -1030,7 +1030,7 @@ and can produce non-contiguous partitions for certain problems.</a:documentation
           </optional>
           <optional>
             <element name="element_quality_cutoff">
-              <a:documentation>Element quality cut off. 
+              <a:documentation>Element quality cut off.
 Elements with a quality greater than this will be liable to be
 on the parition boundary. Below this, they will be free to be adapted
 and improved. Range is 0 to 1, with default 0.6
@@ -1045,7 +1045,7 @@ The amount of load imbalance the partitioning algorithm should deem acceptable.
 The imbalance is computed as the maximum load divided by the average load.
 A value for load_imbalance_tol of 1.2 indicates that 20% imbalance is okay.
 A high value for this parameter (~1.5) could see Zoltan produce poorer partitions
-but be able to move the partition boundaries easier to allow adaption. For some 
+but be able to move the partition boundaries easier to allow adaption. For some
 problems where the partitioner creates empty partitions lowering this (~1.075) will
 force Zoltan to create more evenly balanced partitions (no empty ones) but may
 require more adapt iterations to produce a fully adapted final mesh.</a:documentation>
@@ -1119,7 +1119,7 @@ One dump file is created for each rank.</a:documentation>
               <optional>
                 <element name="dump_field_sizes">
                   <a:documentation>Print out a dump file of field sizes.
-Zoltan needs to be told how much data is associated with the fields for each 
+Zoltan needs to be told how much data is associated with the fields for each
 element when we're transfering fields.
 Here we dump the size calculated by zoltan_cb_pack_field_sizes for each
 owned node.
@@ -1404,7 +1404,7 @@ acceleration from Velocity on the donor mesh.</a:documentation>
             </optional>
             <optional>
               <element name="lump_rhs">
-                <a:documentation>Lump the RHS term. Requires Velocity and the Coriolis 
+                <a:documentation>Lump the RHS term. Requires Velocity and the Coriolis
 acceleration to be on the same mesh.</a:documentation>
                 <ref name="comment"/>
               </element>
@@ -1419,7 +1419,7 @@ the Coriolis acceleration on the target mesh.</a:documentation>
             </optional>
             <optional>
               <element name="lump_rhs">
-                <a:documentation>Lump the RHS term. Requires Velocity and the Coriolis 
+                <a:documentation>Lump the RHS term. Requires Velocity and the Coriolis
 acceleration to be on the same mesh.</a:documentation>
                 <ref name="comment"/>
               </element>
@@ -1796,7 +1796,7 @@ Defaults to computer precision if unspecified.</a:documentation>
               <element name="bounds">
                 <a:documentation>If the bounds on this field are known then they can be set here.
 These can either further constrain the limits worked out by the
-lumped version of the projection (i.e. to make sure that errors 
+lumped version of the projection (i.e. to make sure that errors
 don't accumulate with succesive interpolations) or if apply_globally
 is set they are just made to be bounded within the bounds globally
 (i.e. anything between those bounds is not smoothed).</a:documentation>
@@ -1911,7 +1911,7 @@ Note well: this only works for linear fields.</a:documentation>
               <element name="bounds">
                 <a:documentation>If the bounds on this field are known then they can be set here.
 These can either further constrain the limits worked out by the
-lumped version of the projection (i.e. to make sure that errors 
+lumped version of the projection (i.e. to make sure that errors
 don't accumulate with succesive interpolations) or if apply_globally
 is set they are just made to be bounded within the bounds globally
 (i.e. anything between those bounds is not smoothed).</a:documentation>

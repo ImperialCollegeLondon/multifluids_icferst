@@ -18,7 +18,7 @@
         <ref name="comment"/>
       </element>
       <element name="from_mesh">
-        <a:documentation>Make mesh from existing mesh. </a:documentation>
+        <a:documentation>Make mesh from existing mesh.</a:documentation>
         <ref name="mesh_choice"/>
         <optional>
           <element name="mesh_shape">
@@ -33,7 +33,7 @@
 Pn element type. "bubble" adds bubble functions that
 vanish on the element boundaries, and
 trace defines an element that is only defined on faces
-and is undefined on the element interior (used for 
+and is undefined on the element interior (used for
 enforcing continuity by Lagrange multipliers).</a:documentation>
                 <choice>
                   <!--                 "lagrangian" | "bubble" | "trace" -->
@@ -87,7 +87,7 @@ enforcing continuity by Lagrange multipliers).</a:documentation>
                        ## <b>Don't turn this on by hand!</b>
                        ## This option gets set by the periodise tool, to indicate
                        ## that this mesh should have the periodic boundary conditions
-                       ## <b>removed</b>. See the discussion on the wiki about 
+                       ## <b>removed</b>. See the discussion on the wiki about
                        ## parallel periodic boundary conditions.
                        element remove_periodicity {
                           empty
@@ -127,8 +127,8 @@ requires a distinct name for the options dictionary.</a:documentation>
             </oneOrMore>
             <optional>
               <element name="checkpoint_from_file">
-                <a:documentation>This is an internal option used by checkpointing. The 
-option is switched on automatically in writing a 
+                <a:documentation>This is an internal option used by checkpointing. The
+option is switched on automatically in writing a
 checkpoint, so that when starting from the checkpoint .flml
 fluidity picks up the extruded mesh from file. After the next
 adapt the extrusion is again done as specified in the other
@@ -220,7 +220,7 @@ varies both in the horizontal as in the vertical.</a:documentation>
       <optional>
         <element name="varies_only_in_z">
           <a:documentation>If your sizing function only varies in z enable this options.
-Do not use if your function depends on x and/or y as it takes a column of z values and re-uses it. </a:documentation>
+Do not use if your function depends on x and/or y as it takes a column of z values and re-uses it.</a:documentation>
           <empty/>
         </element>
       </optional>
@@ -229,7 +229,7 @@ Do not use if your function depends on x and/or y as it takes a column of z valu
       <element name="minimum_bottom_layer_fraction">
         <a:documentation>To prevent infinitesimally thin bottom layer if sizing function
 is an integer multiple of total depth, the bottom layer needs
-to have at least this fraction of the layer depth above it. 
+to have at least this fraction of the layer depth above it.
 
 Default is 1e-3.</a:documentation>
         <ref name="real"/>
