@@ -189,8 +189,18 @@ requires a distinct name for the options dictionary.</a:documentation>
             </optional>
             <optional>
               <element name="Total_mass">
-                <a:documentation>Imposed total mass (kg)</a:documentation>
-                <ref name="real"/>
+                <a:documentation>Imposed total mass (kg) of tracer in the whole domain.
+The source is switched off once the domain mass reaches this value.</a:documentation>
+                <choice>
+                  <ref name="real"/>
+                  <element name="python">
+                    <a:documentation>Python function of time returning the target mass in kg:
+
+ def val(t):
+    return # mass in kg</a:documentation>
+                    <ref name="python_code"/>
+                  </element>
+                </choice>
               </element>
             </optional>
           </group>

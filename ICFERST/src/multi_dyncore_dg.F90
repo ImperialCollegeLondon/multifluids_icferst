@@ -52,6 +52,7 @@ module multiphase_1D_engine
     use multi_tools, only: CALC_FACE_ELE, tolfun
     use parallel_tools, only : allmax, allmin, isparallel
     use ieee_arithmetic
+    use embed_python, only: real_from_python
 #ifdef USING_XGBOOST
     use multi_machine_learning
     use iso_c_binding
@@ -829,6 +830,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            type(tensor_field), pointer :: old_tracer_field, old_density_field
            type(vector_field), pointer :: cv_volume
            real :: total_mass_tracer, mass_tracer, imposed_total_mass, imposed_tracer_value
+           character(len=PYTHON_FUNC_LEN) :: tm_python_func
+           real :: tm_current_time
            integer :: cv_nod
 
            old_tracer_field=>extract_tensor_field(packed_state,"PackedOld"//trim(Tracer_name), stat)
@@ -895,7 +898,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                call get_option( '/material_phase['// int2str( iphase - 1 ) //']/scalar_field::'//trim(Tracer_name)//'/prognostic/scalar_field::Source/Tracer_field_value', imposed_tracer_value)
              end if
 
-             if ( have_option( '/material_phase['// int2str( iphase - 1 ) //']/scalar_field::'//trim(Tracer_name)//'/prognostic/scalar_field::Source/Total_mass')) then
+             if ( have_option( '/material_phase['// int2str( iphase - 1 ) //']/scalar_field::'//trim(Tracer_name)//'/prognostic/scalar_field::Source/Total_mass/python')) then
+               call get_option( '/material_phase['// int2str( iphase - 1 ) //']/scalar_field::'//trim(Tracer_name)//'/prognostic/scalar_field::Source/Total_mass/python', tm_python_func)
+               call get_option( '/timestepping/current_time', tm_current_time )
+               call real_from_python( tm_python_func, tm_current_time, imposed_total_mass )
+               ewrite(2,*) 'Source of ', trim(Tracer_name), ': Total_mass from python at t = ', tm_current_time, ' is ', imposed_total_mass
+             else if ( have_option( '/material_phase['// int2str( iphase - 1 ) //']/scalar_field::'//trim(Tracer_name)//'/prognostic/scalar_field::Source/Total_mass')) then
                call get_option( '/material_phase['// int2str( iphase - 1 ) //']/scalar_field::'//trim(Tracer_name)//'/prognostic/scalar_field::Source/Total_mass', imposed_total_mass)
              end if
 

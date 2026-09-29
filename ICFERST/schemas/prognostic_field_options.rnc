@@ -159,9 +159,19 @@ prognostic_scalar_field =
              element Tracer_field_value {
                 real
              }?,
-             ## Imposed total mass (kg)
+             ## Imposed total mass (kg) of tracer in the whole domain.
+             ## The source is switched off once the domain mass reaches this value.
              element Total_mass {
-                real
+                (
+                   real|
+                   ## Python function of time returning the target mass in kg:
+                   ##
+                   ##  def val(t):
+                   ##     return # mass in kg
+                   element python {
+                      python_code
+                   }
+                )
              }?
          )
       }?,
