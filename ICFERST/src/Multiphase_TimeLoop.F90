@@ -66,6 +66,7 @@ module multiphase_time_loop
     use adapt_state_prescribed_module!, only: do_adapt_state_prescribed, adapt_state_prescribed
     use populate_sub_state_module
     use fluids_module, only: pre_adapt_tasks, update_state_post_adapt
+    use interpolation_manager, only: set_thermal_projection_weight, clear_thermal_projection_weight
     use parallel_tools
     use checkpoint
     use boundary_conditions
@@ -1791,6 +1792,83 @@ contains
             end do
         end function massfix_temperature_couples_eos
 
+        !>@brief Hands the Galerkin projection the bulk volumetric heat capacity per element of the mesh about to be adapted.
+        !> w = phi rho_f cp_f + (1 - phi) rho_r cp_r, with rho_f cp_f from PackedDensityHeatCapacity of the reservoir phase.
+        !> Wet rock values are converted to dry ones as effective_Cp_density does for the transport equation, so the
+        !> projection conserves the energy measure the equations use.
+        !> Does nothing when the projection does not claim the temperature.
+        subroutine set_thermal_weight_for_adapt()
+            type( vector_field ), pointer :: porosity_e
+            type( tensor_field ), pointer :: rhocp_e, den_e
+            type( scalar_field ), pointer :: rock_den_e, rock_cp_e
+            integer, dimension( : ), pointer :: cv_ndgln_e
+            real, dimension( : ), allocatable :: w_e
+            integer :: ele_e, iloc_e, inod_e, stat_rd, stat_rc, stat_rc2
+            real :: phi_e, rhocp_f, rho_f, one_m_phi, rho_r, cp_r, rho_dry, cp_dry
+            logical :: cp_wet, den_wet, have_rock_e
+            logical, save :: warned_e = .false.
+
+            if ( .not. has_temperature ) return
+            if ( .not. massfix_projection_temperature() ) return
+            porosity_e => extract_vector_field( packed_state, "Porosity" )
+            rhocp_e => extract_tensor_field( packed_state, "PackedDensityHeatCapacity", stat_rc2 )
+            den_e => extract_tensor_field( packed_state, "PackedDensity" )
+            if ( stat_rc2 == 0 ) then
+                if ( maxval( abs( rhocp_e%val ) ) <= 1.0e-20 ) &
+                    call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp = .true. )
+            else
+                if ( maxval( abs( den_e%val ) ) <= 1.0e-20 ) call Calculate_All_Rhos( state, packed_state, Mdims )
+            end if
+            rock_den_e => extract_scalar_field( state( 1 ), "porous_density", stat_rd )
+            rock_cp_e => extract_scalar_field( state( 1 ), "porous_heat_capacity", stat_rc )
+            have_rock_e = ( stat_rd == 0 .and. stat_rc == 0 )
+            if ( .not. have_rock_e .and. .not. warned_e ) then
+                ewrite(0,*) "WARNING: thermal projection weight built from the fluid alone"
+                ewrite(0,*) "         porous_density or porous_heat_capacity is missing from the state"
+                warned_e = .true.
+            end if
+            cp_wet = have_option( "/porous_media/porous_properties/scalar_field::porous_heat_capacity/wet_value" )
+            den_wet = have_option( "/porous_media/porous_properties/scalar_field::porous_density/wet_value" )
+            cv_ndgln_e => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
+            allocate( w_e( Mdims%totele ) )
+            do ele_e = 1, Mdims%totele
+                phi_e = porosity_e%val( 1, min( size( porosity_e%val, 2 ), ele_e ) )
+                !Fluid term averaged over the CV nodes of the element
+                rhocp_f = 0.0 ; rho_f = 0.0
+                do iloc_e = 1, Mdims%cv_nloc
+                    inod_e = cv_ndgln_e( ( ele_e - 1 ) * Mdims%cv_nloc + iloc_e )
+                    rho_f = rho_f + den_e%val( 1, 1, inod_e )
+                    if ( stat_rc2 == 0 ) then
+                        rhocp_f = rhocp_f + rhocp_e%val( 1, 1, inod_e )
+                    else
+                        rhocp_f = rhocp_f + den_e%val( 1, 1, inod_e )
+                    end if
+                end do
+                rhocp_f = rhocp_f / real( Mdims%cv_nloc ) ; rho_f = rho_f / real( Mdims%cv_nloc )
+                w_e( ele_e ) = phi_e * rhocp_f
+                if ( have_rock_e ) then
+                    one_m_phi = max( 1.0 - phi_e, 1.0e-10 )
+                    rho_r = rock_den_e%val( min( size( rock_den_e%val ), ele_e ) )
+                    cp_r = rock_cp_e%val( min( size( rock_cp_e%val ), ele_e ) )
+                    rho_dry = rho_r
+                    if ( den_wet ) rho_dry = ( rho_r - phi_e * rho_f ) / one_m_phi
+                    cp_dry = cp_r
+                    if ( cp_wet ) then
+                        if ( den_wet ) then
+                            cp_dry = ( rho_r * cp_r - phi_e * rhocp_f ) / max( rho_dry * one_m_phi, 1.0e-30 )
+                        else
+                            cp_dry = ( ( phi_e * rho_f + one_m_phi * rho_r ) * cp_r - phi_e * rhocp_f ) / &
+                                max( rho_r * one_m_phi, 1.0e-30 )
+                        end if
+                    end if
+                    w_e( ele_e ) = w_e( ele_e ) + one_m_phi * rho_dry * cp_dry
+                end if
+                w_e( ele_e ) = max( w_e( ele_e ), 1.0e-30 )
+            end do
+            call set_thermal_projection_weight( w_e )
+            deallocate( w_e )
+        end subroutine set_thermal_weight_for_adapt
+
         !>@brief True when the reservoir Temperature is conserved inside the Galerkin projection.
         !> Mirrors interpolate_field_galerkin_weighted_thermal in Interpolation_manager so the two sides agree.
         logical function massfix_projection_temperature()
@@ -2231,7 +2309,9 @@ contains
                         end if
                         call scale_conserved_fields( +1 )
                         call scale_saturation_conserved( +1 )
+                        call set_thermal_weight_for_adapt()
                         call adapt_state( state, metric_tensor, suppress_reference_warnings = .true.)
+                        call clear_thermal_projection_weight()
                         call update_state_post_adapt( state, metric_tensor, dt, sub_state, nonlinear_iterations, &
                             nonlinear_iterations_adapt )
                         if( have_option( '/io/stat/output_after_adapts' ) ) call write_diagnostics( state, current_time, dt, &
@@ -2256,7 +2336,9 @@ contains
                         end if
                         call scale_conserved_fields( +1 )
                         call scale_saturation_conserved( +1 )
+                        call set_thermal_weight_for_adapt()
                         call adapt_state_prescribed( state, current_time )
+                        call clear_thermal_projection_weight()
                         call update_state_post_adapt( state, metric_tensor, dt, sub_state, nonlinear_iterations, &
                             nonlinear_iterations_adapt)
                         if(have_option( '/io/stat/output_after_adapts' ) ) call write_diagnostics( state, current_time, dt, &

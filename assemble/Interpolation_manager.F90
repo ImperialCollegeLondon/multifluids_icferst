@@ -57,7 +57,10 @@ module interpolation_manager
   private
 
   public :: interpolate, interpolation_manager_check_options
+  public :: set_thermal_projection_weight, clear_thermal_projection_weight
 
+  real, dimension(:), allocatable, save :: thermal_projection_weight
+  
   interface collect_fields_to_interpolate
     module procedure collect_fields_to_interpolate_single_state, collect_fields_to_interpolate_multiple_states
   end interface
@@ -107,7 +110,6 @@ contains
                        & "interpolation_galerkin_wtotal  ", &
                        & "interpolation_galerkin_wthermal", &
                        & "grandy_interpolation           " /)
-    real, dimension(:), allocatable :: weight_thermal
     integer :: alg_cnt, alg
 
     type(mesh_type), pointer :: old_mesh, new_mesh
@@ -565,13 +567,15 @@ contains
           end do
           if(no_fields > mesh_cnt) then ! there will always be a Coordinate per mesh
             assert(allocated(map_BA))
-            call build_thermal_weight(states_old(1), old_pos, weight_thermal)
-            if(size(weight_thermal) /= ele_count(old_pos)) then
-              ewrite(-1,*) "size(weight_thermal) = ", size(weight_thermal), " ele_count(old_pos) = ", ele_count(old_pos)
+            if(.not. allocated(thermal_projection_weight)) then
+              FLExit("Temperature asked for the heat capacity weighted projection but no weight was set before the adapt")
+            end if
+            if(size(thermal_projection_weight) /= ele_count(old_pos)) then
+              ewrite(-1,*) "size(thermal_projection_weight) = ", size(thermal_projection_weight), &
+                & " ele_count(old_pos) = ", ele_count(old_pos)
               FLExit("The thermal weight must carry one value per old element")
             end if
-            call interpolation_galerkin(alg_old, alg_new, map_BA = map_BA, weight_A = weight_thermal)
-            deallocate(weight_thermal)
+            call interpolation_galerkin(alg_old, alg_new, map_BA = map_BA, weight_A = thermal_projection_weight)
           end if
 
           do mesh=1,mesh_cnt
@@ -858,81 +862,20 @@ contains
 
   end function interpolate_field_galerkin_weighted_thermal
 
-  subroutine build_thermal_weight(state_old, old_pos, weight)
-    !!< Bulk volumetric heat capacity per old element: phi rho_f cp_f + (1 - phi) rho_r cp_r.
-    !!< rho_f is the phase Density field on the old mesh, so a compressible phase carries its current density.
-    !!< Rock density and heat capacity are read as the transport equations read them: wet values already
-    !!< include the fluid share and are converted to dry values first, so the same element weight results
-    !!< whichever way the model declares them (see the porous heat coefficient in multi_dyncore_dg).
-    !!< Fields missing from the state fall back to the fluid term alone with a warning, never to a zero weight.
+  subroutine set_thermal_projection_weight(weight)
+    !!< Stores the bulk volumetric heat capacity per element of the mesh about to be adapted.
+    !!< Called by the time loop right before adapt_state, cleared right after.
     !!< @author Meissam Bahlali
-    type(state_type), intent(in) :: state_old
-    type(vector_field), intent(in) :: old_pos
-    real, dimension(:), allocatable, intent(out) :: weight
+    real, dimension(:), intent(in) :: weight
+    if(allocated(thermal_projection_weight)) deallocate(thermal_projection_weight)
+    allocate(thermal_projection_weight(size(weight)))
+    thermal_projection_weight = weight
+  end subroutine set_thermal_projection_weight
 
-    type(scalar_field), pointer :: porosity, rock_den, rock_cp, fluid_den, fluid_cp
-    integer :: ele, stat_phi, stat_rd, stat_rc, stat_fd, stat_fc
-    logical :: cp_wet, den_wet, have_rock
-    real :: phi, rho_f, cp_f, rho_r, cp_r, rho_dry, cp_dry, one_m_phi
-    logical, save :: warned = .false.
-
-    allocate(weight(ele_count(old_pos)))
-    porosity => extract_scalar_field(state_old, "Porosity", stat_phi)
-    rock_den => extract_scalar_field(state_old, "porous_density", stat_rd)
-    rock_cp => extract_scalar_field(state_old, "porous_heat_capacity", stat_rc)
-    fluid_den => extract_scalar_field(state_old, "Density", stat_fd)
-    fluid_cp => extract_scalar_field(state_old, "TemperatureHeatCapacity", stat_fc)
-    if(stat_fc /= 0) fluid_cp => extract_scalar_field(state_old, "HeatCapacity", stat_fc)
-    have_rock = (stat_rd == 0 .and. stat_rc == 0)
-    cp_wet = have_option("/porous_media/porous_properties/scalar_field::porous_heat_capacity/wet_value")
-    den_wet = have_option("/porous_media/porous_properties/scalar_field::porous_density/wet_value")
-    if((.not. have_rock .or. stat_fd /= 0 .or. stat_fc /= 0) .and. .not. warned) then
-      ewrite(0,*) "WARNING: thermal projection weight built without", &
-        & merge(" rock", "     ", .not. have_rock), merge(" fluid density", "              ", stat_fd /= 0), &
-        & merge(" fluid heat capacity", "                    ", stat_fc /= 0)
-      warned = .true.
-    end if
-
-    do ele = 1, ele_count(old_pos)
-      phi = 1.0
-      if(stat_phi == 0) phi = ele_mean(porosity, ele)
-      rho_f = 1000.0
-      if(stat_fd == 0) rho_f = ele_mean(fluid_den, ele)
-      cp_f = 1.0
-      if(stat_fc == 0) cp_f = ele_mean(fluid_cp, ele)
-      weight(ele) = phi * rho_f * cp_f
-      if(have_rock) then
-        one_m_phi = max(1.0 - phi, 1.0e-10)
-        rho_r = ele_mean(rock_den, ele)
-        cp_r = ele_mean(rock_cp, ele)
-        rho_dry = rho_r
-        if(den_wet) rho_dry = (rho_r - phi * rho_f) / one_m_phi
-        cp_dry = cp_r
-        if(cp_wet) then
-          ! the wet heat capacity is per unit mass of the wet mixture, whose density is the wet density
-          if(den_wet) then
-            cp_dry = (rho_r * cp_r - phi * rho_f * cp_f) / max(rho_dry * one_m_phi, 1.0e-30)
-          else
-            cp_dry = ((phi * rho_f + one_m_phi * rho_r) * cp_r - phi * rho_f * cp_f) / max(rho_r * one_m_phi, 1.0e-30)
-          end if
-        end if
-        weight(ele) = weight(ele) + one_m_phi * rho_dry * cp_dry
-      end if
-      weight(ele) = max(weight(ele), 1.0e-30)
-    end do
-
-  contains
-
-    function ele_mean(field, ele) result(mean)
-      type(scalar_field), intent(in) :: field
-      integer, intent(in) :: ele
-      real :: mean
-      real, dimension(ele_loc(field, ele)) :: vals
-      vals = ele_val(field, ele)
-      mean = sum(vals) / max(size(vals), 1)
-    end function ele_mean
-
-  end subroutine build_thermal_weight
+  subroutine clear_thermal_projection_weight()
+    !!< @author Meissam Bahlali
+    if(allocated(thermal_projection_weight)) deallocate(thermal_projection_weight)
+  end subroutine clear_thermal_projection_weight
 
   function phase_density_projection_safe() result(safe)
     !!< True when the phase density is constant: incompressible or Boussinesq.
