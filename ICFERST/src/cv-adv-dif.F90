@@ -683,6 +683,7 @@ contains
           conservative_advection = abs(one_m_cv_beta) <= RM8
           clamp_pipe_theta = Mdims%npres > 1
           vad_pipe_gate = clamp_pipe_theta .and. trim(tracer%name) /= "PackedPhaseVolumeFraction"
+          pipe_face = .false.
           QUAD_OVER_WHOLE_ELE=.FALSE.
           ! Allocate memory for the control volume surface shape functions, etc.
           IF(GETCT) THEN
@@ -1705,6 +1706,10 @@ contains
                               !     call sum_saturation_to_unity(mdims%nphase, Imble_frac, LIMTOLD)
                               ! endif
 
+                              pipe_face = .false.
+                              if ( clamp_pipe_theta .and. ( .not. on_domain_boundary ) ) then
+                                  pipe_face = pipes_aux%MASS_PIPE(CV_NODI) > 0.0 .or. pipes_aux%MASS_PIPE(CV_NODJ) > 0.0
+                              end if
                               if ( pipe_face ) then
                                   LIMT = LOC_T_I*(1.0-INCOME) + LOC_T_J*INCOME
                                   LIMTOLD = LOC_TOLD_I*(1.0-INCOMEOLD) + LOC_TOLD_J*INCOMEOLD
@@ -1769,10 +1774,6 @@ contains
                                       endif
                                   END IF
                               END IF
-                              pipe_face = .false.
-                              if ( clamp_pipe_theta .and. ( .not. on_domain_boundary ) ) then
-                                  pipe_face = pipes_aux%MASS_PIPE(CV_NODI) > 0.0 .or. pipes_aux%MASS_PIPE(CV_NODJ) > 0.0
-                              end if
                               if ( pipe_face ) then
                                   FTHETA_T2 = LIMT2
                                   ONE_M_FTHETA_T2OLD = 0.0

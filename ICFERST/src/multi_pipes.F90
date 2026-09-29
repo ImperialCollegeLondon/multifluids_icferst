@@ -3175,6 +3175,7 @@ contains
         if (abs(maxval(sfield%val)- 666) < 1e-5) STOP 11011998
 
         pipes_aux%GAMMA_PRES_ABS = 0.0
+        pipes_aux%MASS_PIPE = 0.0; pipes_aux%MASS_CVFEM2PIPE = 0.0; pipes_aux%MASS_PIPE2CVFEM = 0.0; pipes_aux%MASS_CVFEM2PIPE_TRUE = 0.0
         do ipres = 1, Mdims%npres
             do iphase = 1+(ipres-1)*Mdims%n_in_pres, ipres*Mdims%n_in_pres
                 do jpres = 1, Mdims%npres
