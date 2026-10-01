@@ -310,7 +310,11 @@ AS_IF([test "x$enable_python" != "xno"], [
   m4_ifdef([AX_PYTHON_DEVEL], [
     AX_PYTHON_DEVEL([>= '3.8'])
     HAVE_PYTHON=yes
-    AC_DEFINE([HAVE_PYTHON],[1],[Define to 1 to embed Python])
+    dnl AX_PYTHON_DEVEL already AC_DEFINEs HAVE_PYTHON (as the Python version
+    dnl string); defining it again here as 1 causes a duplicate-macro
+    dnl redefinition warning that later gets promoted to a fatal error by
+    dnl AX_CHECK_COMPILE_FLAG's internal -Werror, incorrectly causing -fPIC
+    dnl (and other flag checks) to be misdetected as unsupported.
 
     CPPFLAGS="$CPPFLAGS $PYTHON_CPPFLAGS"
     CFLAGS="$CFLAGS $PYTHON_CPPFLAGS"
