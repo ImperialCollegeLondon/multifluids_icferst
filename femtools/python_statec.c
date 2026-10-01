@@ -55,7 +55,7 @@ void python_init_(void){
 #endif
 #ifdef HAVE_NUMPY
   // Enable use of NumPy arrays in C
-  import_array();
+  import_array1();
 
   // Import the NumPy module in our Python interpreter
   if(PyRun_SimpleString("import numpy") == -1)

@@ -468,7 +468,7 @@ void set_tensor_field_from_python(char *function, int *function_len, int *dim,
   char *function_c;
   int i, ii, jj;
 
-  import_array()
+  import_array1()
 
   // the function string passed down from Fortran needs terminating,
   // so make a copy and fiddle with it (remember to free it)
