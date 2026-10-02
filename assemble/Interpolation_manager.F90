@@ -57,9 +57,7 @@ module interpolation_manager
   private
 
   public :: interpolate, interpolation_manager_check_options
-  public :: set_thermal_projection_weight, clear_thermal_projection_weight
-
-  real, dimension(:), allocatable, save :: thermal_projection_weight
+  public :: capture_thermal_projection_weight, capture_solid_projection_weight
   
   interface collect_fields_to_interpolate
     module procedure collect_fields_to_interpolate_single_state, collect_fields_to_interpolate_multiple_states
@@ -67,23 +65,18 @@ module interpolation_manager
 
 contains
 
-  subroutine interpolate(states_old, states_new, map, only_owned, weight_A, weight_A_total)
+  subroutine interpolate(states_old, states_new, map, only_owned, weight_A, weight_A_total, &
+                         weight_A_thermal, weight_A_solid)
     !! OK! We need to figure out what algorithm to use when and where.
     type(state_type), dimension(:), intent(inout) :: states_old, states_new
     !! Map from new nodes to old elements
     integer, dimension(:), optional, intent(in) :: map
     !! Only interpolate in owned nodes
     logical, optional, intent(in) :: only_owned
-    !> Piecewise constant conservation weight on the OLD mesh, one value per old element.
-    !> Fields that ask for the weighted Galerkin projection conserve the integral of
-    !> weight times field across the adapt rather than the integral of the field.
-    !> The caller owns the element numbering: it must match the old Coordinate mesh.
-    !> @author Meissam Bahlali
     real, dimension(:), optional, intent(in) :: weight_A
-    !> Second conservation weight, the total porosity per old element. Fields whose conserved
-    !> measure carries the total rather than the effective porosity (the saturation family when
-    !> porosity_total is defined) are projected against this one instead.
     real, dimension(:), optional, intent(in) :: weight_A_total
+    real, dimension(:), optional, intent(in) :: weight_A_thermal
+    real, dimension(:), optional, intent(in) :: weight_A_solid
 
     ! The fields organised by mesh:
     type(state_type), dimension(:), allocatable :: meshes_old, meshes_new
@@ -102,13 +95,14 @@ contains
     type(tensor_field), pointer :: field_t, p_field_t
     integer :: field
 
-    character(len=255), dimension(7), parameter :: algorithms = (/&
+    character(len=255), dimension(8), parameter :: algorithms = (/&
                        & "consistent_interpolation       ", &
                        & "pseudo_consistent_interpolation", &
                        & "interpolation_galerkin         ", &
                        & "interpolation_galerkin_weighted", &
                        & "interpolation_galerkin_wtotal  ", &
                        & "interpolation_galerkin_wthermal", &
+                       & "interpolation_galerkin_wsolid  ", &
                        & "grandy_interpolation           " /)
     integer :: alg_cnt, alg
 
@@ -567,15 +561,58 @@ contains
           end do
           if(no_fields > mesh_cnt) then ! there will always be a Coordinate per mesh
             assert(allocated(map_BA))
-            if(.not. allocated(thermal_projection_weight)) then
-              FLExit("Temperature asked for the heat capacity weighted projection but no weight was set before the adapt")
+            if(.not. weight_supplied(weight_A_thermal)) then
+              FLExit("Temperature asked for the heat capacity weighted projection but no thermal weight reached interpolate")
             end if
-            if(size(thermal_projection_weight) /= ele_count(old_pos)) then
-              ewrite(-1,*) "size(thermal_projection_weight) = ", size(thermal_projection_weight), &
+            if(size(weight_A_thermal) /= ele_count(old_pos)) then
+              ewrite(-1,*) "size(weight_A_thermal) = ", size(weight_A_thermal), &
                 & " ele_count(old_pos) = ", ele_count(old_pos)
               FLExit("The thermal weight must carry one value per old element")
             end if
-            call interpolation_galerkin(alg_old, alg_new, map_BA = map_BA, weight_A = thermal_projection_weight)
+            call interpolation_galerkin(alg_old, alg_new, map_BA = map_BA, weight_A = weight_A_thermal)
+          end if
+
+          do mesh=1,mesh_cnt
+            call deallocate(alg_old(mesh))
+            call deallocate(alg_new(mesh))
+          end do
+        case("interpolation_galerkin_wsolid")
+          ! Solid metal tracers live in the rock: the projection conserves int (1-phi)*rho_rock*C dV
+          if(.not. allocated(map_BA)) then
+            allocate(map_BA(ele_count(new_pos)))
+            map_BA = intersection_finder(new_pos, old_pos)
+          end if
+
+          do mesh = 1, mesh_cnt
+            call get_option("/geometry/mesh[" // int2str(mesh - 1) // "]/name", mesh_name)
+            old_mesh => extract_mesh(states_old(1), trim(mesh_name))
+            new_mesh => extract_mesh(states_new(1), trim(mesh_name))
+            old_pos = extract_vector_field(meshes_old(mesh), "Coordinate")
+            new_pos = extract_vector_field(meshes_new(mesh), "Coordinate")
+
+            call insert(alg_old(mesh), old_mesh, "Mesh")
+            call insert(alg_new(mesh), new_mesh, "Mesh")
+            call insert(alg_old(mesh), old_pos, "Coordinate")
+            call insert(alg_new(mesh), new_pos, "Coordinate")
+          end do
+
+          call collect_fields_to_interpolate(interpolate_field_galerkin_weighted_solid, meshes_new, meshes_old, alg_new, alg_old)
+
+          no_fields = 0
+          do mesh = 1, mesh_cnt
+            no_fields = no_fields + field_count(alg_old(mesh))
+          end do
+          if(no_fields > mesh_cnt) then ! there will always be a Coordinate per mesh
+            assert(allocated(map_BA))
+            if(.not. weight_supplied(weight_A_solid)) then
+              FLExit("A solid metal tracer asked for the rock weighted projection but no solid weight reached interpolate")
+            end if
+            if(size(weight_A_solid) /= ele_count(old_pos)) then
+              ewrite(-1,*) "size(weight_A_solid) = ", size(weight_A_solid), &
+                & " ele_count(old_pos) = ", ele_count(old_pos)
+              FLExit("The solid weight must carry one value per old element")
+            end if
+            call interpolation_galerkin(alg_old, alg_new, map_BA = map_BA, weight_A = weight_A_solid)
           end if
 
           do mesh=1,mesh_cnt
@@ -735,7 +772,8 @@ contains
       & .and. .not. have_option(trim(base_path) // "/galerkin_projection/supermesh_free") &
       & .and. .not. interpolate_field_galerkin_weighted(option_path) &
       & .and. .not. interpolate_field_galerkin_weighted_total(option_path) &
-      & .and. .not. interpolate_field_galerkin_weighted_thermal(option_path)
+      & .and. .not. interpolate_field_galerkin_weighted_thermal(option_path) &
+      & .and. .not. interpolate_field_galerkin_weighted_solid(option_path)
 
   end function interpolate_field_galerkin_projection
 
@@ -862,20 +900,190 @@ contains
 
   end function interpolate_field_galerkin_weighted_thermal
 
-  subroutine set_thermal_projection_weight(weight)
-    !!< Stores the bulk volumetric heat capacity per element of the mesh about to be adapted.
-    !!< Called by the time loop right before adapt_state, cleared right after.
-    !!< @author Meissam Bahlali
-    real, dimension(:), intent(in) :: weight
-    if(allocated(thermal_projection_weight)) deallocate(thermal_projection_weight)
-    allocate(thermal_projection_weight(size(weight)))
-    thermal_projection_weight = weight
-  end subroutine set_thermal_projection_weight
+  function weight_supplied(weight) result(supplied)
+    !!< True when an optional per-element weight was actually handed over.
+    real, dimension(:), optional, intent(in) :: weight
+    logical :: supplied
+    supplied = .false.
+    if(present(weight)) supplied = size(weight) > 0
+  end function weight_supplied
 
-  subroutine clear_thermal_projection_weight()
-    !!< @author Meissam Bahlali
-    if(allocated(thermal_projection_weight)) deallocate(thermal_projection_weight)
-  end subroutine clear_thermal_projection_weight
+  function element_mean(field, ele) result(val)
+    !!< Mean of a scalar field over the nodes of one element.
+    !!< Gives the element value of a P0DG field and the constant of a constant field.
+    type(scalar_field), intent(in) :: field
+    integer, intent(in) :: ele
+    real :: val
+    val = sum(ele_val(field, ele)) / real(max(ele_loc(field, ele), 1))
+  end function element_mean
+
+  subroutine capture_thermal_projection_weight(states, weight)
+    !!< Bulk volumetric heat capacity per element of the current old mesh, the weight of the thermal
+    !!< projection: w = phi*rho_f*cp_f + (1-phi)*rho_r*cp_r, wet rock values converted to dry ones.
+    !!< Same formula as the transport equation measure, so the projection conserves the heat.
+    !!< Returns a zero-length array when the thermal projection is not in use.
+    type(state_type), dimension(:), intent(in) :: states
+    real, dimension(:), allocatable, intent(inout) :: weight
+
+    type(scalar_field), pointer :: porosity, density, cp_fluid, rock_den, rock_cp
+    integer :: ele, stat_cp, stat_rd, stat_rc
+    real :: phi, rho_f, rhocp_f, one_m_phi, rho_r, cp_r, rho_dry, cp_dry
+    logical :: have_rock, cp_wet, den_wet
+
+    if(allocated(weight)) deallocate(weight)
+    allocate(weight(0))
+    ! Same global conditions as interpolate_field_galerkin_weighted_thermal, so that whenever the
+    ! selector claims the Temperature the weight is there.
+    if(have_option("/numerical_methods/disable_all_conservative_adaptivity")) return
+    if(have_option("/numerical_methods/disable_temperature_conservative_adaptivity")) return
+    if(.not. has_scalar_field(states(1), "Porosity")) return
+    if(.not. has_scalar_field(states(1), "Temperature")) return
+    if(temperature_couples_eos()) return
+
+    porosity => extract_scalar_field(states(1), "Porosity")
+    if(.not. has_scalar_field(states(1), "Density")) then
+      FLExit("The thermal projection weight needs the Density field of the first phase")
+    end if
+    density => extract_scalar_field(states(1), "Density")
+    cp_fluid => extract_scalar_field(states(1), "TemperatureHeatCapacity", stat_cp)
+    rock_den => extract_scalar_field(states(1), "porous_density", stat_rd)
+    rock_cp => extract_scalar_field(states(1), "porous_heat_capacity", stat_rc)
+    have_rock = (stat_rd == 0 .and. stat_rc == 0)
+    if(.not. have_rock) then
+      ewrite(0, *) "WARNING: thermal projection weight built from the fluid alone"
+      ewrite(0, *) "         porous_density or porous_heat_capacity is missing from the state"
+    end if
+    cp_wet = have_option("/porous_media/porous_properties/scalar_field::porous_heat_capacity/wet_value")
+    den_wet = have_option("/porous_media/porous_properties/scalar_field::porous_density/wet_value")
+
+    deallocate(weight)
+    allocate(weight(ele_count(porosity)))
+    do ele = 1, ele_count(porosity)
+      phi = element_mean(porosity, ele)
+      ! Fluid term averaged over the element's nodes. cp_f is constant in practice, so the mean of
+      ! rho_f*cp_f is mean(rho_f)*cp_f, the same value the time loop measured from PackedDensityHeatCapacity.
+      rho_f = element_mean(density, ele)
+      if(stat_cp == 0) then
+        rhocp_f = rho_f * element_mean(cp_fluid, ele)
+      else
+        rhocp_f = rho_f
+      end if
+      weight(ele) = phi * rhocp_f
+      if(have_rock) then
+        one_m_phi = max(1.0 - phi, 1.0e-10)
+        rho_r = element_mean(rock_den, ele)
+        cp_r = element_mean(rock_cp, ele)
+        rho_dry = rho_r
+        if(den_wet) rho_dry = (rho_r - phi * rho_f) / one_m_phi
+        cp_dry = cp_r
+        if(cp_wet) then
+          if(den_wet) then
+            cp_dry = (rho_r * cp_r - phi * rhocp_f) / max(rho_dry * one_m_phi, 1.0e-30)
+          else
+            cp_dry = ((phi * rho_f + one_m_phi * rho_r) * cp_r - phi * rhocp_f) / &
+              & max(rho_r * one_m_phi, 1.0e-30)
+          end if
+        end if
+        weight(ele) = weight(ele) + one_m_phi * rho_dry * cp_dry
+      end if
+      weight(ele) = max(weight(ele), 1.0e-30)
+    end do
+    ewrite(2, *) "Captured thermal projection weight, elements: ", size(weight), &
+                 " range: ", minval(weight), maxval(weight)
+
+  end subroutine capture_thermal_projection_weight
+
+  subroutine capture_solid_projection_weight(states, weight)
+    !!< (1-phi)*rho_rock per element of the current old mesh, the weight of the solid metal projection.
+    !!< phi is porosity_total where the model defines it, as in metal_reactions_exchange.
+    !!< Returns a zero-length array when no metal reaction is configured.
+    type(state_type), dimension(:), intent(in) :: states
+    real, dimension(:), allocatable, intent(inout) :: weight
+
+    type(scalar_field), pointer :: porosity, rock_den
+    integer :: ele
+
+    if(allocated(weight)) deallocate(weight)
+    allocate(weight(0))
+    ! Same global conditions as interpolate_field_galerkin_weighted_solid.
+    if(have_option("/numerical_methods/disable_all_conservative_adaptivity")) return
+    if(.not. has_scalar_field(states(1), "Porosity")) return
+    if(.not. have_option("/porous_media/metal_reactions")) return
+    if(.not. has_scalar_field(states(1), "porous_density")) then
+      FLExit("The solid metal projection weight needs porous_density, which the metal reactions require anyway")
+    end if
+
+    if(has_scalar_field(states(1), "porosity_total")) then
+      porosity => extract_scalar_field(states(1), "porosity_total")
+    else
+      porosity => extract_scalar_field(states(1), "Porosity")
+    end if
+    rock_den => extract_scalar_field(states(1), "porous_density")
+
+    deallocate(weight)
+    allocate(weight(ele_count(porosity)))
+    do ele = 1, ele_count(porosity)
+      weight(ele) = max((1.0 - element_mean(porosity, ele)) * element_mean(rock_den, ele), 1.0e-30)
+    end do
+    ewrite(2, *) "Captured solid projection weight, elements: ", size(weight), &
+                 " range: ", minval(weight), maxval(weight)
+
+  end subroutine capture_solid_projection_weight
+
+  function field_is_solid_metal_tracer(field_name) result(is_solid)
+    !!< True when field_name is the solid tracer of a reaction under /porous_media/metal_reactions.
+    !!< Read from the options directly so this module stays independent of multi_tools.
+    character(len = *), intent(in) :: field_name
+    logical :: is_solid
+
+    character(len = FIELD_NAME_LEN) :: solid_name
+    integer :: i
+
+    is_solid = .false.
+    if(len_trim(field_name) == 0) return
+    do i = 0, option_count("/porous_media/metal_reactions/metal_reaction") - 1
+      call get_option("/porous_media/metal_reactions/metal_reaction[" // int2str(i) // "]/tracer_field_solid", solid_name)
+      if(trim(solid_name) == trim(field_name)) then
+        is_solid = .true.
+        return
+      end if
+    end do
+
+  end function field_is_solid_metal_tracer
+
+  function interpolate_field_galerkin_weighted_solid(option_path) result(interpolate)
+    !!< Selects the solid metal tracers of the reservoir block for projection against (1-phi)*rho_rock.
+    !!< The weight is element-wise and exact (porosity and rock density are both P0), so the
+    !!< projection conserves the solid metal mass without the nodal compromise of the scaling.
+    !!< Mirrors massfix_projection_solid_tracer in Multiphase_TimeLoop so the two sides agree.
+    character(len = *), intent(in) :: option_path
+
+    logical :: interpolate
+
+    character(len = OPTION_PATH_LEN) :: base_path
+    character(len = FIELD_NAME_LEN) :: field_name
+    integer :: stat
+
+    interpolate = .false.
+    if(len_trim(option_path) == 0) return
+    if(have_option("/numerical_methods/disable_all_conservative_adaptivity")) return
+    if(.not. have_option("/porous_media/scalar_field::Porosity")) return
+    if(.not. have_option("/porous_media/metal_reactions")) return
+
+    base_path = trim(complete_field_path(option_path, stat = stat))
+
+    ! Only the continuous supermesh projection carries the weight.
+    if(.not. have_option(trim(base_path) // "/galerkin_projection/continuous")) return
+    if(have_option(trim(base_path) // "/galerkin_projection/supermesh_free")) return
+
+    ! Well-block phases are excluded: their volume is the pipe, not the rock.
+    if(.not. field_phase_in_first_pressure_block(option_path)) return
+
+    field_name = field_name_from_option_path(option_path)
+    interpolate = field_is_solid_metal_tracer(field_name)
+
+  end function interpolate_field_galerkin_weighted_solid
+
 
   function phase_density_projection_safe() result(safe)
     !!< True when the phase density is constant: incompressible or Boussinesq.
@@ -992,6 +1200,8 @@ contains
     if(n > 6) then
       if(field_name(n - 5:n) == "_solid") return
     end if
+    ! Solid metal tracers have their own weight, (1-phi)*rho_rock, see interpolate_field_galerkin_weighted_solid
+    if(field_is_solid_metal_tracer(field_name)) return
     if(trim(field_name) == "Temperature") return
 
     if(trim(field_name) == "PhaseVolumeFraction") then

@@ -3797,6 +3797,10 @@ contains
     !>   (with w_f = phi*S*rho_f and w_s = (1-phi)*rho_porous)
     !> - A reaction with both laws applies the flash where its precipitation rate <= 0
     !>   and the rate law where its partition coefficient <= 0.
+    !> - Optional precipitation capacity (precipitation/capacity_field): the rock can only hold
+    !>   a maximum solid metal concentration (kg metal per kg rock)
+    !>   Reactions naming the SAME capacity field share that capacity
+    !>   (their solid tracers are summed against it). Absent: unlimited (original behaviour).
     !>
     !> Restrictions (enforced): each solid tracer may appear in exactly one reaction, and all
     !> reactions sharing a fluid tracer must declare the same carrier phase.
@@ -3824,10 +3828,11 @@ contains
       type(vector_field), pointer :: MeanPoreCV, cv_volume, vfield
       type(vector_field), pointer :: MeanPoreCV_total
       real, dimension (:), pointer :: mass_ele
-      double precision, dimension(:,:), allocatable :: K_node, P_node
+      double precision, dimension(:,:), allocatable :: K_node, P_node, cap_node
       double precision, dimension(:), allocatable :: porous_density_cv, SUM_CV, delta_m
+      double precision :: room_m, solid_sum, req_m
       logical, dimension(:), allocatable :: active_prec, active_flash
-      integer, dimension(:), allocatable :: group_id
+      integer, dimension(:), allocatable :: group_id, cap_id
       double precision :: ref_rho, phi, S, rho_f, w_f, w_s, m_f, tot_delta, scale_prec
       double precision :: phi_solid
       double precision :: I_inv, sumK, C_f, denom, Vcv
@@ -3859,6 +3864,23 @@ contains
           if (trim(reacs(jre)%fluid_name) == trim(reacs(ire)%fluid_name)) then
             group_id(ire) = group_id(jre)
             exit
+          end if
+        end do
+      end do
+
+      ! ---- group reactions by capacity field (reactions naming the same field share it) --------
+      ! cap_id(ire) is the first reaction naming the same capacity field, or 0 without capacity.
+      allocate(cap_id(nre))
+      cap_id = 0
+      do ire = 1, nre
+        if (.not. reacs(ire)%has_capacity) cycle
+        cap_id(ire) = ire
+        do jre = 1, ire-1
+          if (reacs(jre)%has_capacity) then
+            if (trim(reacs(jre)%capacity_name) == trim(reacs(ire)%capacity_name)) then
+              cap_id(ire) = cap_id(jre)
+              exit
+            end if
           end if
         end do
       end do
@@ -3939,6 +3961,16 @@ contains
         end if
       end do
 
+      ! ---- optional precipitation capacity (kg metal per kg rock) ---------------------------------
+      ! Only evaluated once per capacity field, at its representative reaction (cap_id(ire) == ire).
+      allocate(cap_node(nre, Mdims%cv_nonods))
+      cap_node = 0.d0
+      do ire = 1, nre
+        if (cap_id(ire) == ire) then
+          call evaluate_metal_capacity(reacs(ire)%capacity_name, cap_node(ire,:))
+        end if
+      end do
+
       ! ---- exchange ------------------------------------------------------------------------------
       allocate(delta_m(nre), active_prec(nre), active_flash(nre))
 
@@ -3980,8 +4012,39 @@ contains
                    ( .not. reacs(ire)%has_dissolution .or. K_node(ire,cv_nod) <= 0.d0 )
               if (active_prec(ire)) then
                 delta_m(ire) = P_node(ire,cv_nod) * dt * m_f
-                tot_delta = tot_delta + delta_m(ire)
               end if
+            end do
+            ! ---- optional capacity: the rock of this CV can only take room_m more kg of metal ----
+            ! solid_sum is the metal already fixed by all reactions sharing the capacity field.
+            ! req_m is what the active sharers ask for now. If too much, they are scaled down
+            ! proportionally, so the capacity is never exceeded (order-independent).
+            do ire = 1, nre
+              if (.not. active_prec(ire)) cycle
+              if (cap_id(ire) == 0) cycle
+              solid_sum = 0.d0
+              req_m = 0.d0
+              do jre = 1, nre
+                if (cap_id(jre) /= cap_id(ire)) cycle
+                solid_sum = solid_sum + f_solid(jre)%p%val(1,1,cv_nod)
+                if (active_prec(jre)) req_m = req_m + delta_m(jre)
+              end do
+              room_m = max( 0.d0, cap_node(cap_id(ire),cv_nod) - solid_sum ) * w_s * Vcv
+              if (req_m > room_m) then
+                do jre = 1, nre
+                  if (cap_id(jre) /= cap_id(ire)) cycle
+                  if (.not. active_prec(jre)) cycle
+                  if (req_m > 0.d0) then
+                    delta_m(jre) = delta_m(jre) * room_m / req_m
+                  else
+                    delta_m(jre) = 0.d0
+                  end if
+                  ! Once the capacity is reached the reaction no longer precipitates in this CV.
+                  if (delta_m(jre) <= 0.d0) active_prec(jre) = .false.
+                end do
+              end if
+            end do
+            do ire = 1, nre
+              if (active_prec(ire)) tot_delta = tot_delta + delta_m(ire)
             end do
             if (tot_delta > 0.d0) then
               scale_prec = 1.d0
@@ -4036,8 +4099,8 @@ contains
         end do
       end if
 
-      deallocate(reacs, f_fluid, f_solid, f_Ksalt, f_Psalt, group_id)
-      deallocate(K_node, P_node, porous_density_cv, SUM_CV, delta_m, active_prec, active_flash)
+      deallocate(reacs, f_fluid, f_solid, f_Ksalt, f_Psalt, group_id, cap_id)
+      deallocate(K_node, P_node, cap_node, porous_density_cv, SUM_CV, delta_m, active_prec, active_flash)
 
     contains
 
@@ -4130,6 +4193,34 @@ contains
           rate_node(lcv_nod) = A_cv(lcv_nod)*exp(log_rate)
         end do
       end subroutine evaluate_metal_rate_law
+
+      !>@brief: evaluates the optional precipitation capacity field at every CV node.
+      !> The field is element-wise (or a single constant) and gives the maximum solid metal
+      !> concentration, in kg metal per kg rock, that the rock can hold.
+      !> It is CV-averaged with MASS_ELE weights, exactly like the rate-law coefficient fields.
+      subroutine evaluate_metal_capacity(field_name, cap_cv)
+        implicit none
+        character( len = * ), intent(in) :: field_name
+        double precision, dimension(Mdims%cv_nonods), intent(out) :: cap_cv
+        !Local variables
+        type (scalar_field), pointer :: cfield
+        integer :: lele, lcv_iloc, lcv_nod, lstat, icap
+
+        cfield => extract_scalar_field(state(1), trim(field_name), lstat)
+        if (lstat /= 0) then
+          FLAbort("metal_reactions: capacity field "//trim(field_name)//" not found.")
+        end if
+
+        cap_cv = 0.d0
+        do lele = 1, Mdims%totele
+          icap = min(size(cfield%val), lele)
+          do lcv_iloc = 1, Mdims%cv_nloc
+            lcv_nod = ndgln%cv( ( lele - 1 ) * Mdims%cv_nloc + lcv_iloc )
+            cap_cv( lcv_nod ) = cap_cv( lcv_nod ) + MASS_ELE( lele ) * cfield%val(icap)
+          end do
+        end do
+        cap_cv(:) = cap_cv(:) / SUM_CV
+      end subroutine evaluate_metal_capacity
 
     end subroutine metal_reactions_exchange
 

@@ -1439,7 +1439,13 @@ start =
                        ## Prefix of the 7 coefficient fields defining the precipitation rate.
                        element coefficient_prefix{string},
                        ## Name of the salt tracer entering the rate law. Name is either "Concentration" (if active tracer), or else it has to start with "PassiveTracer" (if passive tracer).
-                       element Tracer_Salt{string}?
+                       element Tracer_Salt{string}?,
+                       ## OPTIONAL. Consumable reductant: name of an element-wise scalar field (defined in the scalar_field list of metal_reactions) giving the maximum solid metal concentration the rock can hold, in kg metal per kg rock.
+                       ## Precipitation stops in a control volume once the solid metal reaches that value.
+                       ## Reactions naming the SAME capacity field share it (their solid tracers are summed against it).
+                       ## Set 0 where the rock has no reductant. If absent, precipitation is unlimited
+                       ## (original behaviour).
+                       element capacity_field{string}?
                     }?
                  }+
               }?,

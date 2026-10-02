@@ -47,6 +47,8 @@ module multi_tools
         logical :: has_P_salt = .false.                        !< precipitation law depends on a salt tracer
         character( len = OPTION_PATH_LEN ) :: K_salt_name = "" !< salt tracer name for the partition law
         character( len = OPTION_PATH_LEN ) :: P_salt_name = "" !< salt tracer name for the precipitation law
+        logical :: has_capacity = .false.                      !< precipitation limited by a capacity field
+        character( len = OPTION_PATH_LEN ) :: capacity_name = "" !< field: max solid metal (kg/kg rock)
     end type metal_reaction_type
 
 #include "petsc_legacy.h"
@@ -1272,6 +1274,12 @@ version and using & profiling, please configure WITHOUT 'petscdebug'"
           call get_option(trim(rpath)//"/precipitation/coefficient_prefix", reactions(i)%P_prefix)
           reactions(i)%has_P_salt = have_option(trim(rpath)//"/precipitation/Tracer_Salt")
           if (reactions(i)%has_P_salt) call get_option(trim(rpath)//"/precipitation/Tracer_Salt", reactions(i)%P_salt_name)
+          !Optional: the rock can only fix a limited amount of metal (consumable reductant).
+          !When absent, has_capacity stays false and precipitation is unlimited, as before.
+          reactions(i)%has_capacity = have_option(trim(rpath)//"/precipitation/capacity_field")
+          if (reactions(i)%has_capacity) then
+            call get_option(trim(rpath)//"/precipitation/capacity_field", reactions(i)%capacity_name)
+          end if
         end if
         if (.not. (reactions(i)%has_dissolution .or. reactions(i)%has_precipitation)) then
           FLAbort("metal_reaction "//trim(rpath)//" defines neither a dissolution nor a precipitation law.")

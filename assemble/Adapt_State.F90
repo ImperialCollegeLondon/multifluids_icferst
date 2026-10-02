@@ -1135,6 +1135,7 @@ contains
     !> Conservation weight for the weighted Galerkin projection, captured on the old mesh.
     !> @author Meissam Bahlali
     real, dimension(:), allocatable :: weight_old
+    real, dimension(:), allocatable :: weight_thermal_old, weight_solid_old
     !> Total porosity per old element.
     !> Captured alongside weight_old when the model defines porosity_total.
     real, dimension(:), allocatable :: weight_total_old
@@ -1241,6 +1242,12 @@ contains
       ! states down and nothing else holds a reference to them.
       ! Only block one of the packed porosity carries real rock porosity: the well blocks are
       ! set to one in Extract_From_State, so the P0DG scalar is the whole weight.
+      ! Thermal and solid projection weights, captured like Porosity on the old mesh of this iteration.
+      ! They cannot be built once before adapt_state: each iteration remeshes, and in parallel Zoltan
+      ! rebuilds the states at the end of each iteration, so the old mesh changes from one iteration
+      ! to the next. Zero-length arrays when the corresponding projection is not in use.
+      call capture_thermal_projection_weight(states, weight_thermal_old)
+      call capture_solid_projection_weight(states, weight_solid_old)
       if(allocated(weight_old)) deallocate(weight_old)
       if(allocated(weight_total_old)) deallocate(weight_total_old)
       if(has_scalar_field(states(1), "Porosity")) then
@@ -1375,26 +1382,32 @@ contains
         if(allocated(weight_total_old)) then
           if(associated(node_ownership)) then
             call interpolate(interpolate_states, states, map = node_ownership, only_owned=.true., &
-                             weight_A = weight_old, weight_A_total = weight_total_old)
+                             weight_A = weight_old, weight_A_total = weight_total_old, &
+                         weight_A_thermal = weight_thermal_old, weight_A_solid = weight_solid_old)
           else
             call interpolate(interpolate_states, states, only_owned=.true., &
-                             weight_A = weight_old, weight_A_total = weight_total_old)
+                             weight_A = weight_old, weight_A_total = weight_total_old, &
+                         weight_A_thermal = weight_thermal_old, weight_A_solid = weight_solid_old)
           end if
           deallocate(weight_total_old)
         else
           if(associated(node_ownership)) then
             call interpolate(interpolate_states, states, map = node_ownership, only_owned=.true., &
-                             weight_A = weight_old)
+                             weight_A = weight_old, &
+                         weight_A_thermal = weight_thermal_old, weight_A_solid = weight_solid_old)
           else
-            call interpolate(interpolate_states, states, only_owned=.true., weight_A = weight_old)
+            call interpolate(interpolate_states, states, only_owned=.true., weight_A = weight_old, &
+                         weight_A_thermal = weight_thermal_old, weight_A_solid = weight_solid_old)
           end if
         end if
         deallocate(weight_old)
       else
         if(associated(node_ownership)) then
-          call interpolate(interpolate_states, states, map = node_ownership, only_owned=.true.)
+          call interpolate(interpolate_states, states, map = node_ownership, only_owned=.true., &
+                         weight_A_thermal = weight_thermal_old, weight_A_solid = weight_solid_old)
         else
-          call interpolate(interpolate_states, states, only_owned=.true.)
+          call interpolate(interpolate_states, states, only_owned=.true., &
+                         weight_A_thermal = weight_thermal_old, weight_A_solid = weight_solid_old)
         end if
       end if
 
