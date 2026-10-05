@@ -516,6 +516,23 @@ contains
                     call add_option(trim(option_path)//"/consistent_interpolation",  stat=stat)
                     call copy_option("simulation_name", trim(option_path)//"/output/exclude_from_vtu")
                   end if
+                  !Direction of Saturation_flipping, carried as a separate field across mesh adapts
+                  option_path = "/material_phase["// int2str( i -1 )//"]/scalar_field::Saturation_flipping_sign"
+                  if (.not.have_option(option_path)) then
+                    call add_option(trim(option_path),  stat=stat)
+                    option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::Saturation_flipping_sign/prescribed"
+                    call add_option(trim(option_path)//"/mesh::PressureMesh",  stat=stat)
+                    call add_option(trim(option_path)//"/value::WholeMesh",  stat=stat)
+                    call add_option(trim(option_path)//"/value::WholeMesh/no_initial_condition",  stat=stat)
+                    call add_option(trim(option_path)//"/output",  stat=stat)
+                    call add_option(trim(option_path)//"/stat",  stat=stat)
+                    call add_option(trim(option_path)//"/stat/exclude_from_stat",  stat=stat)
+                    call add_option(trim(option_path)//"/detectors",  stat=stat)
+                    call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
+                    call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
+                    call add_option(trim(option_path)//"/consistent_interpolation",  stat=stat)
+                    call copy_option("simulation_name", trim(option_path)//"/output/exclude_from_vtu")
+                  end if
                 end if
             end do
         end if

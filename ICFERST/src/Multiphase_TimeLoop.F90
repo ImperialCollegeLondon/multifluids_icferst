@@ -261,7 +261,7 @@ contains
         integer :: phreeqc_id
         double precision, ALLOCATABLE, dimension(:,:) :: concetration_phreeqc
         real :: total_mass_metal_before_adapt, total_mass_metal_after_adapt, total_mass_metal_after_correction, total_mass_metal_after_bound
-        real, allocatable, dimension(:) :: total_mass_sat_before_adapt, total_mass_sat_after_adapt
+        logical :: corr_mass_sat_on, corr_mass_target_fresh
         !Per-phase pore volume (mass where massfix_use_rho) recorded before the adapt, the target Restore_Phase_Mass_SumOne puts back after it
         real, allocatable, dimension(:) :: sat_pore_vol_before_adapt
         !Per-phase density policy: .true. where the saturation scaling carries the nodal density (compressible, not Boussinesq). Filled by massfix_density_policy.
@@ -302,6 +302,9 @@ contains
         !disable_all_conservative_adaptivity switches the mass correction off for every field.
         massfix_scale_tracers = .not. have_option("/numerical_methods/disable_all_conservative_adaptivity")
         massfix_scale_saturation = massfix_scale_tracers
+        !correction_mass_sat restores the per-phase pore volume recorded before the adapt with Restore_Phase_Mass_SumOne
+        corr_mass_sat_on = have_option("/numerical_methods/correction_mass_sat")
+        corr_mass_target_fresh = .false.
         !Eligible fields are conserved inside the Galerkin projection, which carries the porosity
         !exactly where the nodal scaling is inaccurate.
         !This is the default mechanism.
@@ -1033,7 +1036,10 @@ contains
             if (have_option_for_any_phase("/multiphase_properties/type_Formula/immobile_fraction/scalar_field::Land_coefficient",&
             Mdims%n_in_pres) .or. &
             have_option_for_any_phase("/multiphase_properties/type_Tabulated/Land_trapping/scalar_field::Land_coefficient",&
-            Mdims%n_in_pres)) call get_RockFluidProp(state, packed_state, Mdims, ndgln, update_only = .true.)
+            Mdims%n_in_pres)) then
+                call get_RockFluidProp(state, packed_state, Mdims, ndgln, update_only = .true.)
+                call Land_fill_trapping_deficit( Mdims, packed_state, state, Mspars%small_acv%fin, Mspars%small_acv%col )
+            end if
 
             if (have_option( '/io/Show_Convergence') .and. getprocno() == 1) then
               ewrite(1,*) "Iterations taken by the pressure linear solver:", pres_its_taken
@@ -1100,12 +1106,6 @@ contains
               call total_mass_metal(state, packed_state, Mdims, ndgln, CV_funs, total_mass_metal_before_adapt)
             end if
 
-            ! Call to calculate the saturation total mass before adapting
-            allocate(total_mass_sat_before_adapt(Mdims%nphase))
-            allocate(total_mass_sat_after_adapt(Mdims%nphase))
-
-            call total_mass_sat(state, packed_state, Mdims, ndgln, CV_funs, total_mass_sat_before_adapt)
-
             ! Call to adapt the mesh if required! If adapting within the FPI then the adaption is controlled elsewhere
             if(acctim >= t_adapt_threshold .and. .not. have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
               call adapt_mesh_mp()
@@ -1124,22 +1124,28 @@ contains
               end if
             end if
 
-            ! Call to calculate the saturation total mass after adapting
-            call total_mass_sat(state, packed_state, Mdims, ndgln, CV_funs, total_mass_sat_after_adapt)
-
-            if (have_option("/numerical_methods/correction_mass_sat")) then
-                ! Apply correction factor if needed to conserve mass
-                call correction_mass_sat(state, packed_state, Mdims, ndgln, &
-                    total_mass_sat_before_adapt, total_mass_sat_after_adapt)
-                ! Recompute CV_immobile from corrected sat after correction, only when mesh was adapted and Land trapping is active
-                if (do_reallocate_fields .and. is_porous_media .and. &
-                    (have_option_for_any_phase("/multiphase_properties/type_Formula/immobile_fraction/scalar_field::Land_coefficient", Mdims%n_in_pres) .or. &
-                    have_option_for_any_phase("/multiphase_properties/type_Tabulated/Land_trapping/scalar_field::Land_coefficient", Mdims%n_in_pres))) then
-                    call get_RockFluidProp(state, packed_state, Mdims, ndgln, post_adapt=.true.)
+            !correction_mass_sat: put back the per-phase pore volume recorded before this step's adapt
+            if ( corr_mass_sat_on .and. corr_mass_target_fresh .and. is_porous_media ) then
+                if ( allocated( sat_pore_vol_before_adapt ) ) then
+                    call massfix_ensure_density()
+                    tempfield_sat => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+                    if ( allocated( sat_pre_sumone ) ) deallocate( sat_pre_sumone )
+                    allocate( sat_pre_sumone( Mdims%nphase, Mdims%cv_nonods ) )
+                    sat_pre_sumone = tempfield_sat%val( 1, :, : )
+                    call Restore_Phase_Mass_SumOne( Mdims, packed_state, state, CV_funs, &
+                         sat_pore_vol_before_adapt, sat_pre_sumone, &
+                         use_rho = massfix_use_rho, wide_fallback = .true. )
+                    deallocate( sat_pre_sumone )
+                    !The Land immobile fraction follows the corrected saturation
+                    if (have_option_for_any_phase( &
+                        "/multiphase_properties/type_Formula/immobile_fraction/scalar_field::Land_coefficient", Mdims%n_in_pres) &
+                        .or. have_option_for_any_phase( &
+                        "/multiphase_properties/type_Tabulated/Land_trapping/scalar_field::Land_coefficient", Mdims%n_in_pres)) then
+                        call get_RockFluidProp(state, packed_state, Mdims, ndgln, post_adapt=.true.)
+                    end if
                 end if
             end if
-
-            deallocate(total_mass_sat_before_adapt,total_mass_sat_after_adapt)
+            corr_mass_target_fresh = .false.
 
             ! ####Packing this section inside a internal subroutine breaks the code for non-debugging####
             !!$ Simple adaptive time stepping algorithm
@@ -2240,19 +2246,23 @@ contains
                         call run_diagnostics( state )
                         !Record the per-phase pore volume (mass for compressible phases) on the OLD mesh, while the saturation is still unscaled: the target the restore puts back.
                         !Same integrator as the restore's measurement, so the closure is exact.
-                        if ( massfix_scale_saturation ) then
+                        if ( massfix_scale_saturation .or. corr_mass_sat_on ) then
                             if ( allocated( sat_pore_vol_before_adapt ) ) deallocate( sat_pore_vol_before_adapt )
                             allocate( sat_pore_vol_before_adapt( Mdims%nphase ) )
                             call massfix_density_policy()
                             call massfix_ensure_density()
                             call Sat_pore_volume_per_phase( Mdims, packed_state, state, CV_funs, &
                                  sat_pore_vol_before_adapt, use_rho = massfix_use_rho )
+                            corr_mass_target_fresh = .true.
                         end if
                         call scale_conserved_fields( +1 )
                         call scale_saturation_conserved( +1 )
+                        !The Land history is carried across the adapt as magnitude and direction, see Land_flip_split_for_adapt
+                        call Land_flip_split_for_adapt( state, Mdims )
                         call adapt_state( state, metric_tensor, suppress_reference_warnings = .true.)
                         call update_state_post_adapt( state, metric_tensor, dt, sub_state, nonlinear_iterations, &
                             nonlinear_iterations_adapt )
+                        call Land_flip_merge_after_adapt( state, Mdims )
                         if( have_option( '/io/stat/output_after_adapts' ) ) call write_diagnostics( state, current_time, dt, &
                             itime, not_to_move_det_yet = .true. )
                         call run_diagnostics( state )
@@ -2265,19 +2275,22 @@ contains
                         call run_diagnostics( state )
                         !Record the per-phase pore volume (mass for compressible phases) on the OLD mesh, while the saturation is still unscaled: the target the restore puts back.
                         !Same integrator as the restore's measurement, so the closure is exact.
-                        if ( massfix_scale_saturation ) then
+                        if ( massfix_scale_saturation .or. corr_mass_sat_on ) then
                             if ( allocated( sat_pore_vol_before_adapt ) ) deallocate( sat_pore_vol_before_adapt )
                             allocate( sat_pore_vol_before_adapt( Mdims%nphase ) )
                             call massfix_density_policy()
                             call massfix_ensure_density()
                             call Sat_pore_volume_per_phase( Mdims, packed_state, state, CV_funs, &
                                  sat_pore_vol_before_adapt, use_rho = massfix_use_rho )
+                            corr_mass_target_fresh = .true.
                         end if
                         call scale_conserved_fields( +1 )
                         call scale_saturation_conserved( +1 )
+                        call Land_flip_split_for_adapt( state, Mdims )
                         call adapt_state_prescribed( state, current_time )
                         call update_state_post_adapt( state, metric_tensor, dt, sub_state, nonlinear_iterations, &
                             nonlinear_iterations_adapt)
+                        call Land_flip_merge_after_adapt( state, Mdims )
                         if(have_option( '/io/stat/output_after_adapts' ) ) call write_diagnostics( state, current_time, dt, &
                             timestep, not_to_move_det_yet = .true. )
                         call run_diagnostics( state )

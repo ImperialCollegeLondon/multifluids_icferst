@@ -39,6 +39,7 @@ module solvers_module
     use shape_functions_prototype
     use multi_data_types
     use multi_tools, only : is_solid_metal_tracer
+    use futils, only : int2str
     implicit none
 
 #include "petsc_legacy.h"
@@ -46,7 +47,7 @@ module solvers_module
     private
 
     public :: BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one,&
-         Sat_pore_volume_per_phase, Restore_Phase_Mass_SumOne,&
+         Sat_pore_volume_per_phase, Restore_Phase_Mass_SumOne, Land_fill_trapping_deficit,&
          Initialise_Saturation_sums_one, auto_backtracking, get_Anderson_acceleration_new_guess, &
          non_porous_ensure_sum_to_one, duplicate_petsc_matrix, scale_PETSc_matrix, petsc_Stokes_solver,&
          scale_PETSc_matrix_by_vector,PETSc_MatVec
@@ -1324,6 +1325,143 @@ contains
         call halo_update( sat_r )
         deallocate( vol_now, cvol_r, room_r, wgt_r, rho_on_r )
     end subroutine Restore_Phase_Mass_SumOne
+
+    !>@brief Fills the trapping deficit left by the end-of-step Land update
+    subroutine Land_fill_trapping_deficit( Mdims, packed_state, state, small_findrm, small_colm, filled, dropped )
+        Implicit none
+        !Global variables
+        type( multi_dimensions ), intent( in ) :: Mdims
+        type( state_type ), intent( inout ) :: packed_state
+        type( state_type ), dimension( : ), intent( inout ) :: state
+        integer, dimension( : ), intent( in ) :: small_findrm, small_colm
+        !Pore volume moved into deficit nodes and pore volume written off by lowering the trapping
+        real, dimension( : ), intent( out ), optional :: filled, dropped
+        !Local variables
+        type( tensor_field ), pointer :: sat_f
+        type( vector_field ), pointer :: pore_f, vol_f, imm_f
+        type( scalar_field ), pointer :: flip_f, diag_f
+        real, dimension( :, : ), pointer :: CV_Immobile_Fraction
+        real, dimension( : ), allocatable :: room_f, fill_f, drop_f
+        integer :: nb_f, ip_f, iq_f, inod_f, jnod_f, icount_f, stat_f, nfix_f, ndrop_f
+        real :: w_f, need_f, tot_f, frac_f, dn_f, imm_sum_f, land_c_f, fl_f, s_f, take_f, room_q_f
+        logical :: have_flip_f
+
+        nb_f = Mdims%nphase / Mdims%npres
+        if ( nb_f < 2 ) return
+        sat_f  => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+        pore_f => extract_vector_field( packed_state, "MeanPoreCV", stat_f )
+        if ( stat_f /= 0 ) return
+        vol_f  => extract_vector_field( packed_state, "CVIntegral", stat_f )
+        if ( stat_f /= 0 ) return
+        call get_var_from_packed_state( packed_state, CV_Immobile_Fraction = CV_Immobile_Fraction )
+        imm_f => extract_vector_field( packed_state, "CV_Immobile_Fraction" )
+
+        allocate( room_f( Mdims%cv_nonods ) )
+        allocate( fill_f( Mdims%nphase ), drop_f( Mdims%nphase ) )
+        fill_f = 0.0
+        drop_f = 0.0
+        nfix_f = 0
+        ndrop_f = 0
+
+        do ip_f = 1, nb_f
+            flip_f => extract_scalar_field( state( ip_f ), "Saturation_flipping", stat_f )
+            have_flip_f = ( stat_f == 0 )
+            do inod_f = 1, Mdims%cv_nonods
+                if ( .not. node_owned( sat_f, inod_f ) ) cycle
+                need_f = CV_Immobile_Fraction( ip_f, inod_f ) - sat_f%val( 1, ip_f, inod_f )
+                if ( need_f <= 1.0e-14 ) cycle
+                w_f = pore_f%val( 1, inod_f ) * vol_f%val( 1, inod_f )
+                if ( w_f <= 0.0 ) cycle
+                !Partner: the phase of the block with the most moveable saturation here
+                iq_f = 0
+                room_q_f = 0.0
+                do jnod_f = 1, nb_f
+                    if ( jnod_f == ip_f ) cycle
+                    if ( sat_f%val( 1, jnod_f, inod_f ) - CV_Immobile_Fraction( jnod_f, inod_f ) > room_q_f ) then
+                        room_q_f = sat_f%val( 1, jnod_f, inod_f ) - CV_Immobile_Fraction( jnod_f, inod_f )
+                        iq_f = jnod_f
+                    end if
+                end do
+                if ( iq_f == 0 ) cycle
+                !The partner gives at most what it holds above its own trapping
+                need_f = min( need_f, room_q_f )
+                if ( need_f <= 0.0 ) cycle
+                need_f = need_f * w_f
+                !Room at the owned neighbours: the phase above its trapping there, and the partner below its ceiling there
+                tot_f = 0.0
+                do icount_f = small_findrm( inod_f ), small_findrm( inod_f + 1 ) - 1
+                    jnod_f = small_colm( icount_f )
+                    room_f( jnod_f ) = 0.0
+                    if ( jnod_f == inod_f ) cycle
+                    if ( .not. node_owned( sat_f, jnod_f ) ) cycle
+                    imm_sum_f = sum( CV_Immobile_Fraction( 1:nb_f, jnod_f ) )
+                    room_f( jnod_f ) = min( sat_f%val( 1, ip_f, jnod_f ) - CV_Immobile_Fraction( ip_f, jnod_f ), &
+                         ( 1.0 - imm_sum_f + CV_Immobile_Fraction( iq_f, jnod_f ) ) - sat_f%val( 1, iq_f, jnod_f ) )
+                    room_f( jnod_f ) = max( room_f( jnod_f ), 0.0 ) * pore_f%val( 1, jnod_f ) * vol_f%val( 1, jnod_f )
+                    tot_f = tot_f + room_f( jnod_f )
+                end do
+                take_f = min( need_f, tot_f )
+                if ( take_f > 0.0 ) then
+                    frac_f = take_f / tot_f
+                    do icount_f = small_findrm( inod_f ), small_findrm( inod_f + 1 ) - 1
+                        jnod_f = small_colm( icount_f )
+                        if ( room_f( jnod_f ) <= 0.0 ) cycle
+                        dn_f = frac_f * room_f( jnod_f ) / ( pore_f%val( 1, jnod_f ) * vol_f%val( 1, jnod_f ) )
+                        sat_f%val( 1, ip_f, jnod_f ) = sat_f%val( 1, ip_f, jnod_f ) - dn_f
+                        sat_f%val( 1, iq_f, jnod_f ) = sat_f%val( 1, iq_f, jnod_f ) + dn_f
+                    end do
+                    dn_f = take_f / w_f
+                    sat_f%val( 1, ip_f, inod_f ) = sat_f%val( 1, ip_f, inod_f ) + dn_f
+                    sat_f%val( 1, iq_f, inod_f ) = sat_f%val( 1, iq_f, inod_f ) - dn_f
+                    fill_f( ip_f ) = fill_f( ip_f ) + take_f
+                    nfix_f = nfix_f + 1
+                end if
+                if ( CV_Immobile_Fraction( ip_f, inod_f ) - sat_f%val( 1, ip_f, inod_f ) > 1.0e-14 ) then
+                    s_f = max( sat_f%val( 1, ip_f, inod_f ), 0.0 )
+                    drop_f( ip_f ) = drop_f( ip_f ) + ( CV_Immobile_Fraction( ip_f, inod_f ) - s_f ) * w_f
+                    ndrop_f = ndrop_f + 1
+                    if ( have_flip_f ) then
+                        !Rewind |S_flip| so the Land formula returns exactly the lowered value next time.
+                        !The Land coefficient is recovered from the current pair (S_flip, S_imm) at the node.
+                        fl_f = abs( flip_f%val( inod_f ) )
+                        if ( fl_f > 0.0 .and. CV_Immobile_Fraction( ip_f, inod_f ) > 0.0 ) then
+                            land_c_f = ( fl_f - CV_Immobile_Fraction( ip_f, inod_f ) ) / &
+                                 ( CV_Immobile_Fraction( ip_f, inod_f ) * fl_f )
+                            land_c_f = max( land_c_f, 0.0 )
+                            if ( land_c_f * s_f < 1.0 - 1.0e-8 ) then
+                                flip_f%val( inod_f ) = sign( max( s_f / ( 1.0 - land_c_f * s_f ), 1.0e-8 ), flip_f%val( inod_f ) )
+                            end if
+                        end if
+                    end if
+                    CV_Immobile_Fraction( ip_f, inod_f ) = s_f
+                end if
+            end do
+            if ( have_flip_f .and. IsParallel() ) call halo_update( flip_f )
+            !Refresh the per-phase diagnostic copy of the immobile fraction where it is declared
+            if ( have_option( "/material_phase[" // int2str( ip_f - 1 ) // "]/scalar_field::CV_ImmobileFraction" ) ) then
+                diag_f => extract_scalar_field( state( ip_f ), "CV_ImmobileFraction", stat_f )
+                if ( stat_f == 0 ) diag_f%val( : ) = CV_Immobile_Fraction( ip_f, : )
+            end if
+        end do
+
+        if ( IsParallel() ) then
+            call halo_update( sat_f )
+            call halo_update( imm_f )
+        end if
+        call allsum( nfix_f )
+        call allsum( ndrop_f )
+        do ip_f = 1, nb_f
+            call allsum( fill_f( ip_f ) )
+            call allsum( drop_f( ip_f ) )
+        end do
+        if ( nfix_f + ndrop_f > 0 ) then
+            ewrite( 2, * ) 'Land_fill_trapping_deficit: nodes filled', nfix_f, ' written off', ndrop_f, &
+                 ' pore volume filled', sum( fill_f ), ' written off', sum( drop_f )
+        end if
+        if ( present( filled ) ) filled( 1:nb_f ) = fill_f( 1:nb_f )
+        if ( present( dropped ) ) dropped( 1:nb_f ) = drop_f( 1:nb_f )
+        deallocate( room_f, fill_f, drop_f )
+    end subroutine Land_fill_trapping_deficit
 
 
 

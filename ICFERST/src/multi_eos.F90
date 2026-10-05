@@ -2903,9 +2903,11 @@ contains
                   !when changing from imbibition to drainage or the other way round
                   !When defer_sat_flip the saturation is scaled (mass fix, adapt window), so the flip update and cap are deferred to Apply_Land_flip_post_adapt
                   if (.not. present_and_true(defer_sat_flip)) then
-                    call Update_saturation_flipping(saturation_flip%val(cv_nod), Saturation%val(1,iphase,cv_nod), SaturationOld%val(1,iphase,cv_nod))
-
-                    if (present_and_true(post_adapt)) then
+                    if (.not. present_and_true(post_adapt)) then
+                      call Update_saturation_flipping(saturation_flip%val(cv_nod), Saturation%val(1,iphase,cv_nod), &
+                          SaturationOld%val(1,iphase,cv_nod))
+                    else
+                      !Right after an adapt the saturation and its old value are both interpolated fields
                       ! Cap sat_flip <= sat: independent interpolation of both fields after adapt can give sat_flip > sat => which inflates Land trapped fraction
                       saturation_flip%val(cv_nod) = sign( &
                           min(abs(saturation_flip%val(cv_nod)), Saturation%val(1,iphase,cv_nod)), &
@@ -2970,7 +2972,7 @@ contains
 
     !>@brief Deferred half of the Land-trapping post-adapt update.
     !> Inside the adapt window the saturation is still scaled by the mass fix, so get_RockFluidProp is called there with defer_sat_flip.
-    !> This routine, called right after the unscale, applies the flip update and the post-adapt cap on the real saturation.
+    !> This routine, called right after the unscale, applies the post-adapt cap on the real saturation.
     !> It then recomputes the Land immobile fraction from scratch (reset to the same 1e10 init: the flip update can raise |S_flip|, so a re-min on the deferred value would be wrong).
     !> No-op for phases without the Land option.
     !> @author Meissam Bahlali
@@ -2981,7 +2983,7 @@ contains
         type( multi_ndgln ), intent( in ) :: ndgln
         type( state_type ), intent( inout ) :: packed_state
         !Local variables
-        type (tensor_field), pointer :: Saturation, SaturationOld
+        type (tensor_field), pointer :: Saturation
         type (scalar_field), target :: targ_Store
         type (scalar_field), pointer :: s_field, saturation_flip
         type (vector_field), pointer :: position
@@ -3005,7 +3007,6 @@ contains
         if (.not. any_land) return
 
         Saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-        SaturationOld => extract_tensor_field(packed_state,"PackedOldPhaseVolumeFraction")
         call get_var_from_packed_state(packed_state, CV_Immobile_Fraction = CV_Immobile_Fraction)
         s_field => extract_scalar_field(state(1),1)
         position => get_external_coordinate_field(packed_state, s_field%mesh)
@@ -3033,8 +3034,6 @@ contains
             do ele = 1, Mdims%totele
                 do cv_iloc = 1, Mdims%cv_nloc
                     cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
-                    call Update_saturation_flipping(saturation_flip%val(cv_nod), &
-                        Saturation%val(1,iphase,cv_nod), SaturationOld%val(1,iphase,cv_nod))
                     ! Cap sat_flip <= sat, as in get_RockFluidProp's post_adapt branch
                     saturation_flip%val(cv_nod) = sign( &
                         min(abs(saturation_flip%val(cv_nod)), Saturation%val(1,iphase,cv_nod)), &
@@ -3054,6 +3053,61 @@ contains
 
         call deallocate(targ_Store)
     end subroutine Apply_Land_flip_post_adapt
+
+    !>@brief True when the reservoir phase uses the Land trapping model.
+    logical function Land_phase(iphase)
+      implicit none
+      integer, intent(in) :: iphase
+      Land_phase = have_option("/material_phase["//int2str(iphase-1)//&
+          "]/multiphase_properties/type_Formula/immobile_fraction/scalar_field::Land_coefficient/prescribed/value") .or. &
+          have_option("/material_phase["//int2str(iphase-1)//&
+          "]/multiphase_properties/type_Tabulated/Land_trapping/scalar_field::Land_coefficient/prescribed/value")
+    end function Land_phase
+
+    !>@brief Before a mesh adapt: splits the signed Land history Saturation_flipping into its magnitude, left in
+    !> Saturation_flipping, and its direction, written to Saturation_flipping_sign as +1 or -1.
+    !> The signed field is +S on the drainage side of the plume and -S on the imbibition side.
+    subroutine Land_flip_split_for_adapt(state, Mdims)
+        implicit none
+        type(state_type), dimension(:), intent(inout) :: state
+        type( multi_dimensions ), intent( in ) :: Mdims
+        !Local variables
+        type (scalar_field), pointer :: flip_s, sgn_s
+        integer :: iphase, stat_f, stat_s, inod
+        do iphase = 1, Mdims%n_in_pres
+            if (.not. Land_phase(iphase)) cycle
+            flip_s => extract_scalar_field(state(iphase), "Saturation_flipping", stat_f)
+            sgn_s  => extract_scalar_field(state(iphase), "Saturation_flipping_sign", stat_s)
+            if (stat_f /= 0 .or. stat_s /= 0) cycle
+            if (size(sgn_s%val) /= size(flip_s%val)) cycle
+            do inod = 1, size(flip_s%val)
+                sgn_s%val(inod) = sign(1.0, flip_s%val(inod))
+                flip_s%val(inod) = abs(flip_s%val(inod))
+            end do
+        end do
+    end subroutine Land_flip_split_for_adapt
+
+    !>@brief After a mesh adapt: rebuilds the signed Saturation_flipping from the interpolated magnitude and the
+    !> interpolated direction, the direction rounded to +1 or -1. Counterpart of Land_flip_split_for_adapt.
+    subroutine Land_flip_merge_after_adapt(state, Mdims)
+        implicit none
+        type(state_type), dimension(:), intent(inout) :: state
+        type( multi_dimensions ), intent( in ) :: Mdims
+        !Local variables
+        type (scalar_field), pointer :: flip_s, sgn_s
+        integer :: iphase, stat_f, stat_s, inod
+        do iphase = 1, Mdims%n_in_pres
+            if (.not. Land_phase(iphase)) cycle
+            flip_s => extract_scalar_field(state(iphase), "Saturation_flipping", stat_f)
+            sgn_s  => extract_scalar_field(state(iphase), "Saturation_flipping_sign", stat_s)
+            if (stat_f /= 0 .or. stat_s /= 0) cycle
+            if (size(sgn_s%val) /= size(flip_s%val)) cycle
+            do inod = 1, size(flip_s%val)
+                flip_s%val(inod) = sign( max(abs(flip_s%val(inod)), RM8), sgn_s%val(inod) )
+                sgn_s%val(inod) = sign(1.0, sgn_s%val(inod))
+            end do
+        end do
+    end subroutine Land_flip_merge_after_adapt
 
     !>JWL equation functions
     function JWL( A, B, w, R1, R2, E0, p,  roe, ro) result(fro)
@@ -4224,114 +4278,5 @@ contains
 
     end subroutine metal_reactions_exchange
 
-    !> @author Meissam Bahlali
-    !>@brief: subroutine to calculate the saturation total mass (in kg).
-    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
-    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
-    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
-    !>@param  ndgln Global to local variables
-    subroutine total_mass_sat(state, packed_state, Mdims, ndgln, CV_funs, total_mass)
-      implicit none
-      type(state_type), dimension(:), intent (inout) :: state
-      type(state_type), intent (inout) :: packed_state
-      type(multi_dimensions), intent (in) :: Mdims
-      type(multi_ndgln), intent (in) :: ndgln
-      type (multi_shape_funs) :: CV_funs
-      !Local variables
-      type(multi_dev_shape_funs) :: DevFuns
-      type(tensor_field), pointer :: density, sat_field
-      type(vector_field), pointer :: porosity_field
-      integer :: cv_nod, stat, ele, cv_iloc
-      real :: correction_factor, ref_rho
-      real, intent(out), dimension(Mdims%n_in_pres) :: total_mass
-      real, dimension (:), pointer :: mass_ele
-      type(vector_field), pointer :: vfield
-      type( vector_field ), pointer :: x
-      integer, dimension( : ), pointer ::  x_ndgln
-      integer :: iphase
-
-      porosity_field=>extract_vector_field(packed_state,"Porosity")
-      density => extract_tensor_field(packed_state,"PackedDensity")
-      x => extract_vector_field( packed_state, "PressureCoordinate" )
-      x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
-      vfield => extract_vector_field(packed_state,"MASS_ELE")
-      mass_ele => vfield%val(1,:)
-
-      ! here we run multi_dev_shape_funs just to calculate element volumes
-      call allocate_multi_dev_shape_funs(CV_funs, DevFuns)
-
-      sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-
-      total_mass = 0.0
-      do iphase = 1, Mdims%n_in_pres
-        if (has_boussinesq_aprox) then
-          ref_rho=retrieve_reference_density(state, packed_state, iphase, 0, Mdims%nphase)
-        end if
-        do ele = 1, Mdims%totele
-          call DETNLXR(ele, X%val, x_ndgln, CV_funs%cvweight, CV_funs%CVFEN, CV_funs%CVFENLX_ALL, DevFuns)
-          Mass_ELE(ele) = DevFuns%volume
-          do cv_iloc = 1, Mdims%cv_nloc
-            cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
-            if (node_owned(sat_field, cv_nod)) then
-              if (has_boussinesq_aprox) then
-                total_mass(iphase) = total_mass(iphase) + (porosity_field%val(1, ele) * ref_rho * sat_field%val(1,iphase,cv_nod) ) * (Mass_ELE(ele) / Mdims%cv_nloc)
-              else
-                total_mass(iphase) = total_mass(iphase) + (porosity_field%val(1, ele) * density%val(1,iphase,cv_nod) * sat_field%val(1,iphase,cv_nod)) * (Mass_ELE(ele) / Mdims%cv_nloc)
-              end if
-            end if
-          end do
-        end do
-      end do
-
-      call allsum(total_mass)
-
-    end subroutine total_mass_sat
-
-    !> @author Meissam Bahlali
-    !>@brief: subroutine to apply a correction factor to the saturation in order to conserve mass if needed.
-    !>@param  state Linked list containing all the fields defined in diamond and considered by Fluidity
-    !>@param  packed_state Linked list containing all the fields used by IC-FERST, memory partially shared with state
-    !>@param Mdims Data type storing all the dimensions describing the mesh, fields, nodes, etc
-    !>@param  ndgln Global to local variables
-    subroutine correction_mass_sat(state, packed_state, Mdims, ndgln, total_mass_before, total_mass_after)
-      implicit none
-      type(state_type), dimension(:), intent (inout) :: state
-      type(state_type), intent (inout) :: packed_state
-      type(multi_dimensions), intent (in) :: Mdims
-      type(multi_ndgln), intent (in) :: ndgln
-      !Local variables
-      type(tensor_field), pointer :: sat_field
-      integer :: cv_nod, stat
-      real, intent(in), dimension(Mdims%n_in_pres) :: total_mass_before, total_mass_after
-      real, dimension(Mdims%n_in_pres) :: correction_factor, error
-      integer :: iphase
-
-      sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-
-      do iphase = 1, Mdims%n_in_pres
-        if ( total_mass_after(iphase) > 0 ) then
-
-          correction_factor(iphase) = total_mass_before(iphase) / total_mass_after(iphase)
-          error(iphase) = 1.0 / correction_factor(iphase) - 1.0
-
-          ! Uncomment below, if you want to debug the mass/adaptivity
-          ! if ( abs(error(iphase)) >= 0.01 ) then
-          !   if ( getprocno() == 1 ) then
-          !     print *, "------------------------------------------------------------"
-          !     print *, "Mass conservation issue after adaptivity step"
-          !     print *, "Phase                :", iphase
-          !     print *, "Relative error (%)   :", error(iphase) * 100.0
-          !     print *, "Too much mass has to be redistributed across the domain."
-          !     print *, "It is strongly advised to stop the simulation."
-          !     print *, "------------------------------------------------------------"
-          !   end if
-          ! end if
-
-          sat_field%val(1,iphase,:) = sat_field%val(1,iphase,:) * correction_factor(iphase)
-
-        end if
-      end do
-
-    end subroutine correction_mass_sat
 
 end module multiphase_EOS
