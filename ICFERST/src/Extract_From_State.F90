@@ -2458,7 +2458,8 @@ ts_ref_val = 0d0;
                     .and. max_calculate_mass_delta < calculate_mass_tol .and. Tracers_ref_val < Infinite_norm_tol &
                     .and. inf_norm_temp < infinite_norm_tol_temp) .or. its >= NonLinearIteration )
             else
-                ExitNonLinearLoop = (inf_norm_val < Infinite_norm_tol .and. inf_norm_pres < Infinite_norm_tol_pres) .or. its >= NonLinearIteration
+                ExitNonLinearLoop = (inf_norm_val < Infinite_norm_tol .and. inf_norm_pres < Infinite_norm_tol_pres &
+                    .and. inf_norm_temp < infinite_norm_tol_temp) .or. its >= NonLinearIteration
             end if
             !At least two non-linear iterations
             ExitNonLinearLoop =  ExitNonLinearLoop .and. its >= 2

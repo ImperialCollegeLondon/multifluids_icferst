@@ -438,6 +438,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
                    call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken);total_lIts = total_lIts + its_taken;
 
+                !Check for Huyakorn et al. (1986) dynamic under-relaxation
+                if (have_option("/numerical_methods/underrelaxation_for_thermal_equation/Huyakorn_et_al_1986")) then
+                    call calculate_Huyakorn_underrelaxation(btrk, solution%val, tracer%val, ITS_FLUX_LIM, Mdims)
+                end if
+
                !Copy solution back to tracer(not ideal...)
                do ipres =1, mdims%npres
                  do iphase = 1 , n_in_pres
@@ -9756,6 +9761,70 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         call assemble( ACV_petsc )
         call deallocate( temperature_BCs )
       end subroutine
+
+
+        !---------------------------------------------------------------------------
+        ! Calculates dynamic under-relaxation factor based on Huyakorn et al. (1986) empirical formulation (Eq. 33-35)
+        ! btrk Output under-relaxation factor
+        ! param sol Current solved field values (T_solve)
+        ! param tracer_val Current field values before underrelaxation update (T_old)
+        ! param its_iter Current non-linear iteration index
+        ! param Mdims Data type storing dimensions
+        !---------------------------------------------------------------------------
+        subroutine calculate_Huyakorn_underrelaxation(btrk, sol, tracer_val, its_iter, Mdims)
+            
+            implicit none
+            real, intent(inout) :: btrk
+            real, dimension(:,:), intent(in) :: sol
+            real, dimension(:,:,:), intent(in) :: tracer_val
+            integer, intent(in) :: its_iter
+            type(multi_dimensions), intent(in) :: Mdims
+
+            ! Local variables and saved history across iterations
+            integer :: i, n_nodes
+            real :: delta_curr, delta_prev_max, gamma_ratio, dot_prod
+            real, allocatable, save, dimension(:) :: delta_T_curr, delta_T_prev
+            real, save :: max_delta_prev
+            real, parameter :: eps_zero = 1.0e-12
+
+            n_nodes = size(sol, 2)
+            if (.not. allocated(delta_T_curr)) allocate(delta_T_curr(n_nodes))
+            if (.not. allocated(delta_T_prev)) allocate(delta_T_prev(n_nodes))
+
+            ! Calculate proposed step change: delta_T_curr = T_solve - T_old
+            delta_T_curr = 0.0
+            do i = 1, n_nodes
+                delta_T_curr(i) = sol(1, i) - tracer_val(1, 1, i)
+            end do
+            if (its_iter <= 1) then
+                ! First iteration: default btrk, store delta_T_curr for next iteration
+                delta_T_prev = delta_T_curr
+                max_delta_prev = maxval(abs(delta_T_curr))
+                btrk = 1.0
+                return
+            end if
+            delta_curr = maxval(abs(delta_T_curr))
+            delta_prev_max = max_delta_prev
+            if (delta_prev_max < eps_zero) delta_prev_max = eps_zero
+            gamma_ratio = delta_curr / delta_prev_max
+            dot_prod = dot_product(delta_T_curr, delta_T_prev)
+
+            if (dot_prod < 0.0) then
+                ! Oscillation detected: dampen update
+                btrk = 1.0 / (1.0 + gamma_ratio)
+            else
+                ! Monotonic change
+                btrk = min(1.0, 1.0 / (0.5 + 0.5 * gamma_ratio))
+            end if
+
+            ! Safety bounds: 0.1 <= btrk <= 1.0
+            btrk = max(0.1, min(1.0, btrk))
+
+            ! Save current step for next iteration
+            delta_T_prev = delta_T_curr
+            max_delta_prev = delta_curr
+
+        end subroutine calculate_Huyakorn_underrelaxation
 
 
     !----------------------------------------------------------------------------------------
