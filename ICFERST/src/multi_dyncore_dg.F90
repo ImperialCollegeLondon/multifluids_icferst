@@ -440,8 +440,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
                 !Check for Huyakorn et al. (1986) dynamic under-relaxation
                 if (have_option("/numerical_methods/underrelaxation_for_thermal_equation/Huyakorn_et_al_1986")) then
-                    call calculate_Huyakorn_underrelaxation(btrk, solution%val, tracer%val, ITS_FLUX_LIM, Mdims)
+                    call calculate_Huyakorn_underrelaxation(btrk, solution%val, tracer%val, nonlinear_iteration, Mdims)
                 end if
+
 
                !Copy solution back to tracer(not ideal...)
                do ipres =1, mdims%npres
@@ -489,7 +490,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    call allocate(residual, Mdims%nphase, tracer%mesh, "residual_tracer")
                    vtracer = as_vector(tracer, dim=2)
                    call mult(residual, Mmat%petsc_ACV, vtracer)
-                   print*, maxval(abs(Mmat%CV_RHS%val - residual%val))/maxval(abs(Mmat%CV_RHS%val ))
+                   print*, maxval(abs(Mmat%CV_RHS%val - residual%val))/maxval(abs(Mmat%CV_RHS%val )), btrk
                end if
 
 
