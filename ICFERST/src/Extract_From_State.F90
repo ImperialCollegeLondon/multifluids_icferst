@@ -2169,10 +2169,9 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
     !For the time being the pressure is 10% or based on the saturation
     Infinite_norm_tol_pres = max(Infinite_norm_tol * 5., 0.1)
 
-    ! For fixed underrelaxation factor, nonlinear loop convergence criteria is scaled down with the same
+    ! For underrelaxation factor (fixed or dynamic Huyakorn), nonlinear loop convergence criteria is scaled down with the same
     ! value to prevent fake convergence. Otherwise full solution update.
-    call get_option("/numerical_methods/underrelaxation_for_thermal_equation/fixed_brtk", btrk, default=1.0)
-    Infinite_norm_tol_temp = Infinite_norm_tol*btrk
+    Infinite_norm_tol_temp = Infinite_norm_tol * thermal_btrk
 
     !retrieve number of Fixed Point Iterations
     call get_option( '/solver_options/Non_Linear_Solver', NonLinearIteration, default = 3 )

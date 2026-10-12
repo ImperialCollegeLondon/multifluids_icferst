@@ -183,7 +183,7 @@ contains
            real, dimension(Mdims%nphase, Mdims%cv_nonods) :: temp_bak
            logical :: repeat_assemb_solve, assemble_collapsed_to_one_phase
            type(vector_field) :: solution
-           real :: btrk
+           integer :: local_its_iter
            ! This is for strong temperture BC at well top
            logical :: impose_strong_T_BC_wells
 
@@ -385,7 +385,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            call allocate(Mmat%CV_RHS,nphase,tracer%mesh,"RHS")
            call allocate(solution,nphase,tracer%mesh,"sol_tracer")!; call zero(solution)
            ! Get underrelaxation factor from input, if not found set to 1 i.e. full update
-           call get_option("/numerical_methods/underrelaxation_for_thermal_equation/fixed_brtk", btrk, default=1.0)
+           call get_option("/numerical_methods/underrelaxation_for_thermal_equation/fixed_brtk", thermal_btrk, default=1.0)
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
                !Get information for capillary pressure to be use in CV_ASSEMB
@@ -440,7 +440,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
                 !Check for Huyakorn et al. (1986) dynamic under-relaxation
                 if (have_option("/numerical_methods/underrelaxation_for_thermal_equation/Huyakorn_et_al_1986")) then
-                    call calculate_Huyakorn_underrelaxation(btrk, solution%val, tracer%val, nonlinear_iteration, Mdims)
+                    local_its_iter = 1
+                    if (present(nonlinear_iteration)) local_its_iter = nonlinear_iteration
+                    call calculate_Huyakorn_underrelaxation(thermal_btrk, solution%val, tracer%val, local_its_iter)
                 end if
 
 
@@ -451,7 +453,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    if (assemble_collapsed_to_one_phase) auxI = ipres
                    ! Apply underrelaxation by: 
                    tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) &
-                                                                       + btrk*(solution%val(auxI,:) - tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) )
+                                                                       + thermal_btrk*(solution%val(auxI,:) - tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) )
                 end do
                end do
 
@@ -490,7 +492,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    call allocate(residual, Mdims%nphase, tracer%mesh, "residual_tracer")
                    vtracer = as_vector(tracer, dim=2)
                    call mult(residual, Mmat%petsc_ACV, vtracer)
-                   print*, maxval(abs(Mmat%CV_RHS%val - residual%val))/maxval(abs(Mmat%CV_RHS%val )), btrk
+                   print*, maxval(abs(Mmat%CV_RHS%val - residual%val))/maxval(abs(Mmat%CV_RHS%val )), thermal_btrk
                end if
 
 
@@ -9770,16 +9772,14 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         ! param sol Current solved field values (T_solve)
         ! param tracer_val Current field values before underrelaxation update (T_old)
         ! param its_iter Current non-linear iteration index
-        ! param Mdims Data type storing dimensions
         !---------------------------------------------------------------------------
-        subroutine calculate_Huyakorn_underrelaxation(btrk, sol, tracer_val, its_iter, Mdims)
-            
+        subroutine calculate_Huyakorn_underrelaxation(btrk, sol, tracer_val, its_iter)
+        
             implicit none
             real, intent(inout) :: btrk
             real, dimension(:,:), intent(in) :: sol
             real, dimension(:,:,:), intent(in) :: tracer_val
             integer, intent(in) :: its_iter
-            type(multi_dimensions), intent(in) :: Mdims
 
             ! Local variables and saved history across iterations
             integer :: i, n_nodes
@@ -9789,6 +9789,14 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             real, parameter :: eps_zero = 1.0e-12
 
             n_nodes = size(sol, 2)
+
+            ! Safely check and reallocate arrays if n_nodes changes across calls or mesh adaptation
+            if (allocated(delta_T_curr)) then
+                if (size(delta_T_curr) /= n_nodes) then
+                    deallocate(delta_T_curr, delta_T_prev)
+                end if
+            end if
+
             if (.not. allocated(delta_T_curr)) allocate(delta_T_curr(n_nodes))
             if (.not. allocated(delta_T_prev)) allocate(delta_T_prev(n_nodes))
 
