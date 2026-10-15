@@ -196,6 +196,7 @@ module global_parameters
 
   !!Public variable to be used in Adaptive_NonLinear to re-scale the effective convergence
   real :: backtrack_or_convergence
+  real :: thermal_btrk = 1.0
   logical :: FPI_have_converged = .false.
   logical :: after_adapt = .false.
   logical :: first_time_step = .false.
