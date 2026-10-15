@@ -9776,62 +9776,60 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         subroutine calculate_Huyakorn_underrelaxation(btrk, sol, tracer_val, its_iter)
         
             implicit none
+
             real, intent(inout) :: btrk
             real, dimension(:,:), intent(in) :: sol
             real, dimension(:,:,:), intent(in) :: tracer_val
             integer, intent(in) :: its_iter
 
-            ! Local variables and saved history across iterations
-            integer :: i, n_nodes
-            real :: delta_curr, delta_prev_max, gamma_ratio, dot_prod
-            real, allocatable, save, dimension(:) :: delta_T_curr, delta_T_prev
-            real, save :: max_delta_prev
+            integer :: idx(1), n_nodes
+            integer, save :: n_nodes_prev = -1
+            real :: delta_T(size(sol, 2))
+            real :: epsilon_curr, applied_prev, rho
+
+            real, save :: epsilon_prev = 0.0
+            real, save :: gamma_prev = 1.0
+            logical, save :: have_history = .false.
+
             real, parameter :: eps_zero = 1.0e-12
 
             n_nodes = size(sol, 2)
 
-            ! Safely check and reallocate arrays if n_nodes changes across calls or mesh adaptation
-            if (allocated(delta_T_curr)) then
-                if (size(delta_T_curr) /= n_nodes) then
-                    deallocate(delta_T_curr, delta_T_prev)
-                end if
-            end if
+            ! Proposed change before applying relaxation.
+            delta_T = sol(1, :) - tracer_val(1, 1, :)
 
-            if (.not. allocated(delta_T_curr)) allocate(delta_T_curr(n_nodes))
-            if (.not. allocated(delta_T_prev)) allocate(delta_T_prev(n_nodes))
+            ! Preserve the SIGN of the largest absolute change.
+            idx = maxloc(abs(delta_T))
+            epsilon_curr = delta_T(idx(1))
 
-            ! Calculate proposed step change: delta_T_curr = T_solve - T_old
-            delta_T_curr = 0.0
-            do i = 1, n_nodes
-                delta_T_curr(i) = sol(1, i) - tracer_val(1, 1, i)
-            end do
-            if (its_iter <= 1) then
-                ! First iteration: default btrk, store delta_T_curr for next iteration
-                delta_T_prev = delta_T_curr
-                max_delta_prev = maxval(abs(delta_T_curr))
+            if (its_iter <= 1 .or. .not. have_history .or. &
+                n_nodes /= n_nodes_prev) then
                 btrk = 1.0
-                return
-            end if
-            delta_curr = maxval(abs(delta_T_curr))
-            delta_prev_max = max_delta_prev
-            if (delta_prev_max < eps_zero) delta_prev_max = eps_zero
-            gamma_ratio = delta_curr / delta_prev_max
-            dot_prod = dot_product(delta_T_curr, delta_T_prev)
 
-            if (dot_prod < 0.0) then
-                ! Oscillation detected: dampen update
-                btrk = 1.0 / (1.0 + gamma_ratio)
             else
-                ! Monotonic change
-                btrk = min(1.0, 1.0 / (0.5 + 0.5 * gamma_ratio))
+
+                ! Previous change actually applied.
+                applied_prev = gamma_prev * epsilon_prev
+
+                if (abs(applied_prev) <= eps_zero) then
+                    ! Numerical safeguard: the ratio is undefined or unreliable.
+                    btrk = 1.0
+                else
+                    rho = epsilon_curr / applied_prev
+                    if (rho >= -1.0) then
+                        btrk = (3.0 + rho) / (3.0 + abs(rho))
+                    else
+                        btrk = abs(-0.5 / rho)
+                    end if
+                end if
+
             end if
 
-            ! Safety bounds: 0.1 <= btrk <= 1.0
-            btrk = max(0.1, min(1.0, btrk))
-
-            ! Save current step for next iteration
-            delta_T_prev = delta_T_curr
-            max_delta_prev = delta_curr
+            ! Store history for the next iteration.
+            epsilon_prev = epsilon_curr
+            gamma_prev = btrk
+            n_nodes_prev = n_nodes
+            have_history = .true.
 
         end subroutine calculate_Huyakorn_underrelaxation
 
