@@ -77,7 +77,7 @@ module multiphase_time_loop
     use multiphase_EOS
     use Compositional_Terms
     use Copy_Outof_State
-    use cv_advection, only : cv_count_faces
+    use cv_advection, only : cv_count_faces, new_flux_as_old_after_adapt
     use multiphase_1D_engine
     use boundary_conditions_from_options
     use multi_data_types
@@ -1106,6 +1106,7 @@ contains
               call total_mass_metal(state, packed_state, Mdims, ndgln, CV_funs, total_mass_metal_before_adapt)
             end if
 
+            new_flux_as_old_after_adapt = .false.
             ! Call to adapt the mesh if required! If adapting within the FPI then the adaption is controlled elsewhere
             if(acctim >= t_adapt_threshold .and. .not. have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
               call adapt_mesh_mp()
@@ -2227,6 +2228,7 @@ contains
                 if( do_adapt_state_prescribed( current_time ) ) do_reallocate_fields = .true.
             end if Conditional_Adaptivity_ReallocatingFields
             new_mesh = do_reallocate_fields
+            if ( do_reallocate_fields ) new_flux_as_old_after_adapt = .true.
 
             Conditional_ReallocatingFields: if( do_reallocate_fields ) then
                 !The stored variables must be recalculated

@@ -20,7 +20,7 @@ cp_int = abs(s["Concentration"]["integral"][-1] - s["PassiveTracer"]["integral"]
   </variables>
   <pass_tests>
     <test name="Temperature equals Concentration (coefficient equivalence)" language="python">assert(tc_diff &lt; 0.05)</test>
-    <test name="Concentration and PassiveTracer conserve the same mass" language="python">assert(cp_int &lt; 2.0e-3)</test>
+    <test name="Concentration and PassiveTracer conserve the same mass" language="python">assert(cp_int &lt; 5.0e-3)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>

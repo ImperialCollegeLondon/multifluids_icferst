@@ -79,6 +79,8 @@ module cv_advection
         WIC_P_BC_DIRICHLET = 1, &
         WIC_P_BC_FREE = 2
 
+    logical, save :: new_flux_as_old_after_adapt = .false.
+
 contains
 
     !---------------------------------------------------------------------------
@@ -481,6 +483,8 @@ contains
           real, dimension( final_phase) :: LOC_CV_RHS_I, LOC_CV_RHS_J, LOC_MAT_II, LOC_MAT_JJ, LOC_MAT_IJ, LOC_MAT_JI
           real :: bc_den, bc_denold
           logical :: clamp_pipe_theta, pipe_face, vad_pipe_gate
+          logical :: post_adapt_new_flux
+          logical :: upwind_face_values
           REAL, DIMENSION( final_phase ) :: FEMTGI_IPHA, NDOTQ_TILDE, NDOTQ_INT, DT_J, abs_tilde, NDOTQ2, DT_I, LIMT3
           REAL, DIMENSION ( Mdims%ndim,final_phase ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV
           type( vector_field ), pointer :: MeanPoreCV, MeanPoreCV_total
@@ -548,6 +552,10 @@ contains
           call get_option("/geometry/simulation_quality", option_path2, stat=stat)
           activate_limiters = .not. trim(option_path2) == "fast"
           if (have_option("/numerical_methods/disable_limiters")) activate_limiters = .false.
+          upwind_face_values = .not. activate_limiters
+          if ( CV_DISOPT / 2 == 0 .and. len_trim( tracer%name ) > 6 ) then
+              if ( is_PassiveTracer_field( tracer%name(7:) ) ) upwind_face_values = .true.
+          end if
           !this is true if the user is asking for high order advection scheme
           use_porous_limiter = (Mdisopt%in_ele_upwind /= 0)
           !When using VAD, we want to use initially upwinding to ensure monotonocity, as high-order methods may not do it that well
@@ -681,6 +689,9 @@ contains
           !cv_beta == 1 means conservative, meaning that everything multiplied by one_m_cv_beta can be ignored
           one_m_cv_beta = 1.0 - cv_beta
           conservative_advection = abs(one_m_cv_beta) <= RM8
+          post_adapt_new_flux = new_flux_as_old_after_adapt .and. .not. GETCT .and. &
+              .not. present_and_true(solving_compositional) .and. &
+              .not. conservative_advection .and. trim(tracer%name) /= "PackedPhaseVolumeFraction"
           clamp_pipe_theta = Mdims%npres > 1
           vad_pipe_gate = clamp_pipe_theta .and. trim(tracer%name) /= "PackedPhaseVolumeFraction"
           pipe_face = .false.
@@ -1619,7 +1630,7 @@ contains
                                     call DETNLXR_INVJAC( ELE, X_ALL, ndgln%x, FE_funs%scvfeweigh, FE_funs%scvfen, FE_funs%scvfenlx_all, FSdevFuns)
                                 END IF
                               ENDIF
-                              IF(activate_limiters) THEN
+                              IF(.not. upwind_face_values) THEN
                                 call PACK_LOC_ALL( F_INCOME, INCOME, &
                                     INCOMEOLD, INCOME, INCOMEOLD, & !Tracer, density and T2
                                     INCOME, INCOMEOLD, IGOT_T_PACK, use_volume_frac_T2, final_phase )
@@ -1630,7 +1641,7 @@ contains
                                   CALL GET_INT_T_DEN_new( LIMF )
                               ENDIF
 
-                              IF(APPLY_ENO .and. activate_limiters) THEN
+                              IF(APPLY_ENO .and. .not. upwind_face_values) THEN
                                   ! Calculate DETWEI, RA, NX, NY, NZ for element ELE
                                   call DETNLXR_INVJAC( ELE, X_ALL, ndgln%x, CV_funs%scvfeweigh, CV_funs%scvfen, CV_funs%scvfenlx_all, SdevFuns)
                                   ! Apply a simple ENO scheme to T,TOLD only which is not bounded but gets rid of most of the osillations.
@@ -1646,7 +1657,7 @@ contains
                               ! it does not matter about bcs for FVT below as its zero'ed out in the eqns:
                               FVT=LOC_T_I*(1.0-INCOME) + LOC_T_J*INCOME
 
-                              if (activate_limiters) then
+                              if (.not. upwind_face_values) then
                                 CALL UNPACK_LOC_ALL( LIMF, LIMT, LIMTOLD, LIMD, LIMDOLD, LIMT2, LIMT2OLD,&
                                             IGOT_T_PACK, IGOT_T_CONST, IGOT_T_CONST_VALUE, use_volume_frac_T2, final_phase)
                               else !Use upwinding to obtaing the values
@@ -1751,6 +1762,7 @@ contains
                                       ENDIF
                                   END DO
                               ENDIF
+                              if ( post_adapt_new_flux ) THETA_VEL = 1.0
                               NDOTQOLD = THETA_VEL*NDOTQ + (1.0-THETA_VEL)*NDOTQOLD
                               FTHETA_T2 = FTHETA * LIMT2
                               ONE_M_FTHETA_T2OLD = (1.0-FTHETA) * LIMT2OLD
@@ -1888,9 +1900,8 @@ contains
                                       if (GOT_DIFFUS) LOC_MAT_II = LOC_MAT_II + FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
                                       if (VAD_activated .and. .not. ( pipe_face .and. vad_pipe_gate )) &
                                           LOC_MAT_II = LOC_MAT_II + LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
-                                      !The beta<1 correction is applied fully implicitly
-                                      if (.not.conservative_advection) LOC_MAT_II = LOC_MAT_II - ( ONE_M_CV_BETA ) * &
-                                                                                    SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD
+                                      if (.not.conservative_advection) LOC_MAT_II = LOC_MAT_II - ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * &
+                                          ( FTHETA_T2 * NDOTQNEW * LIMD + ONE_M_FTHETA_T2OLD * NDOTQOLD * LIMDOLD )
                                       if (on_domain_boundary) LOC_MAT_II = LOC_MAT_II + SdevFuns%DETWEI( GI ) * ROBIN2
 
                                       !Assemble diagonal of the matrix of node cv_nodj
@@ -1899,7 +1910,8 @@ contains
                                         if (GOT_DIFFUS) LOC_MAT_JJ = LOC_MAT_JJ + FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
                                         if (VAD_activated .and. .not. ( pipe_face .and. vad_pipe_gate )) &
                                           LOC_MAT_JJ = LOC_MAT_JJ +  LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
-                                        if (.not.conservative_advection) LOC_MAT_JJ = LOC_MAT_JJ + ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD
+                                        if (.not.conservative_advection) LOC_MAT_JJ = LOC_MAT_JJ + ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * &
+                                          ( FTHETA_T2_J * NDOTQNEW * LIMD + ONE_M_FTHETA_T2OLD_J * NDOTQOLD * LIMDOLD )
                                       endif
 
                                       IF ( GET_GTHETA ) THEN
@@ -1927,7 +1939,6 @@ contains
                                           LOC_CV_RHS_I =  LOC_CV_RHS_I &
                                           - LIMT2* SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX &  ! capillary pressure stabilization term..
                                           * ( LOC_T_J - LOC_T_I )
-                                      !With the fully implicit beta<1 correction the RHS contribution is identically zero
                                       if (on_domain_boundary) LOC_CV_RHS_I =  LOC_CV_RHS_I &
                                           + SdevFuns%DETWEI( GI ) * ROBIN1
 
@@ -1945,7 +1956,6 @@ contains
                                           LOC_CV_RHS_J =  LOC_CV_RHS_J  &
                                           - LIMT2 * SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX & ! capillary pressure stabilization term..
                                           * ( LOC_T_I - LOC_T_J )
-                                      !With the fully implicit beta<1 correction the RHS contribution is identically zero
 
                                   endif
                                   IF ( GET_GTHETA ) THEN
