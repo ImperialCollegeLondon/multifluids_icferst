@@ -1820,7 +1820,7 @@ contains
                                   CALL PUT_IN_CT_RHS(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
                                       final_phase, Mdims, CV_funs, ndgln, Mmat, GI,  &
                                       between_elements, on_domain_boundary, ELE, ELE2, SELE, MASS_ELE, &
-                                      JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, &
+                                      JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, CV_SLOC2LOC, &
                                       SdevFuns%DETWEI, CVNORMX_ALL, DEN_ALL(1:final_phase,:), CV_NODI, CV_NODJ, &
                                       WIC_U_BC_ALL, WIC_P_BC_ALL, pressure_BCs%val, &
                                       UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL,  &
@@ -6061,7 +6061,7 @@ end if
         final_phase, Mdims, CV_funs, ndgln, Mmat, GI, between_elements, on_domain_boundary, &
         ELE, ELE2, SELE, MASS_ELE, JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, &
         C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC, &
-        U_SLOC2LOC, SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
+        U_SLOC2LOC, CV_SLOC2LOC, SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
         WIC_U_BC_ALL, WIC_P_BC_ALL,SUF_P_BC_ALL,&
         UGI_COEF_ELE_ALL,  &
         UGI_COEF_ELE2_ALL,  &
@@ -6084,6 +6084,7 @@ end if
         INTEGER, DIMENSION( : ), intent( in ) :: JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC
         INTEGER, DIMENSION( : ), intent( in ) :: C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2
         INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC
+        INTEGER, DIMENSION( : ), intent( in ) :: CV_SLOC2LOC
         REAL, DIMENSION( :, :, : ), intent( inout ) :: SUF_P_BC_ALL
         REAL, DIMENSION( : ), intent( inout ) :: ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj
         REAL, DIMENSION( :, :, : ), intent( in ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
@@ -6241,11 +6242,12 @@ end if
             implicit none
             real, dimension(:,:,:), intent(out) :: Bound_ele_correct
             !Local variables
-            integer :: IPHASE, U_INOD, ipres, i, n_bcs
+            integer :: IPHASE, U_INOD, ipres, i, n_bcs, CV_SKLOC, CV_KLOC
             logical, save :: show_warn_msg = .true.
             logical, save :: have_been_read = .false.
             logical, save :: hydrostatic_bc
             real, save :: top_domain
+            real :: P_BC_GI, D_BC_GI, Z_GI, SHAPE_GI
             !By default no modification is required
             Bound_ele_correct = 1.0
             if (.not. have_been_read) then
@@ -6274,19 +6276,25 @@ end if
                                         hydrostatic_bc = have_option("/material_phase["// int2str( iphase - 1)//"]/scalar_field::Pressure/prognostic/boundary_conditions["//int2str(i-1)//"]/type::dirichlet/hydrostatic_boundaries")
                                     end do
 
+                                    P_BC_GI = 0.0; D_BC_GI = 0.0; Z_GI = 0.0
+                                    DO CV_SKLOC = 1, Mdims%cv_snloc
+                                        CV_KLOC  = CV_SLOC2LOC( CV_SKLOC )
+                                        SHAPE_GI = CV_funs%scvfen( CV_KLOC, GI )
+                                        P_BC_GI  = P_BC_GI + SHAPE_GI * SUF_P_BC_ALL( 1, IPRES,  Mdims%cv_snloc*( SELE - 1 ) + CV_SKLOC )
+                                        D_BC_GI  = D_BC_GI + SHAPE_GI * SUF_D_BC_ALL( 1, IPHASE, Mdims%cv_snloc*( SELE - 1 ) + CV_SKLOC )
+                                        Z_GI     = Z_GI    + SHAPE_GI * X_ALL( Mdims%ndim, ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_KLOC ) )
+                                    END DO
+
                                     if (hydrostatic_bc) then!not compatible with hydrostatic presure solver
                                         Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
                                         Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
                                             - CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI )&
-                                            * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) ) - (gravty*&
-                                            SUF_D_BC_ALL( 1, 1, 1 + Mdims%cv_snloc* ( SELE - 1 ) )*&
-                                            abs(top_domain-X_ALL(Mdims%ndim, CV_NODI))*&
-                                            CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI ))
+                                            * ( P_BC_GI + gravty * D_BC_GI * abs( top_domain - Z_GI ) )
                                     else
                                         Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
                                         Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
                                             - CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI )&
-                                            * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) )
+                                            * P_BC_GI
                                     endif
 
                                 else
