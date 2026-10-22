@@ -493,6 +493,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    vtracer = as_vector(tracer, dim=2)
                    call mult(residual, Mmat%petsc_ACV, vtracer)
                    print*, maxval(abs(Mmat%CV_RHS%val - residual%val))/maxval(abs(Mmat%CV_RHS%val )), thermal_btrk
+                   if (associated(residual%val)) call deallocate(residual)               
                end if
 
 
