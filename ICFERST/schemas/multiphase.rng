@@ -1904,6 +1904,31 @@ Useful for, e.g., a very low heat capacity to mimic thermal non equilibrium. Por
             </element>
           </optional>
           <optional>
+            <element name="underrelaxation_for_thermal_equation">
+              <a:documentation>underrelaxation for temperature solution update every nonlinear iteration. temperature update will follow T_i+1 = T_i + btrk*(T_solve - T_i)</a:documentation>
+              <optional>
+                <choice>
+                  <element name="fixed_brtk">
+                    <a:documentation>use a fixed underrelaxation factor following Cooley RL. (1983). Cooley suggests btrk = 0.75 is stable. With this option, the nonlinear loop convergence criteria for thermal equation is scaled down by the same btrk to avoid fake convergence.
+
+Note that different btrk might result in slightly different results for the same simulations, so convergence test with different brtk is recomended.</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                  <element name="Huyakorn_et_al_1986">
+                    <a:documentation>in this case btrk is controlled by an empirical function given by Huyakorn et al. (1986).</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
+              </optional>
+              <optional>
+                <element name="print_true_residual_after_solve">
+                  <a:documentation>reassemble A from T solution and print A*T-b</a:documentation>
+                  <empty/>
+                </element>
+              </optional>
+            </element>
+          </optional>
+          <optional>
             <element name="correction_mass_sat">
               <a:documentation>Apply a correction factor to conserve multiphase mass after mesh adaptation.
 Only active when mesh adaptivity is enabled.</a:documentation>

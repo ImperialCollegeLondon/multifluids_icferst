@@ -184,6 +184,9 @@ contains
            real, dimension(Mdims%nphase, Mdims%cv_nonods) :: temp_bak
            logical :: repeat_assemb_solve, assemble_collapsed_to_one_phase
            type(vector_field) :: solution
+           integer :: local_its_iter
+           ! This is for strong temperture BC at well top
+           logical :: impose_strong_T_BC_wells
 
            !Initialise with an out of range value to be able to check it hasn't been
            totally_min_max = 1e30
@@ -382,6 +385,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            !Allocate the RHS
            call allocate(Mmat%CV_RHS,nphase,tracer%mesh,"RHS")
            call allocate(solution,nphase,tracer%mesh,"sol_tracer")!; call zero(solution)
+           ! Get underrelaxation factor from input, if not found set to 1 i.e. full update
+           call get_option("/numerical_methods/underrelaxation_for_thermal_equation/fixed_brtk", thermal_btrk, default=1.0)
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
                !Get information for capillary pressure to be use in CV_ASSEMB
@@ -425,19 +430,73 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    assemble_collapsed_to_one_phase = assemble_collapsed_to_one_phase)
                    ! vtracer=as_vector(tracer,dim=2)
                    ! call zero(vtracer)
+
+                   ! Specify strong T BC if necessary...
+                   ! not functional yet since we should apply strong BC based on upwind direction of pipe:
+                   ! i.e. strong T BC when injection and weak T BC when producing.
+                   !impose_strong_T_BC_wells = .false.
+                   !if (impose_strong_T_BC_wells) call impose_strong_bcs_wells_thermal(state, pipes_aux, Mdims, Mmat, ndgln, Mmat%petsc_ACV, tracer,Mmat%CV_RHS%val)
+
                    call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken);total_lIts = total_lIts + its_taken;
+
+                !Check for Huyakorn et al. (1986) dynamic under-relaxation
+                if (have_option("/numerical_methods/underrelaxation_for_thermal_equation/Huyakorn_et_al_1986")) then
+                    local_its_iter = 1
+                    if (present(nonlinear_iteration)) local_its_iter = nonlinear_iteration
+                    call calculate_Huyakorn_underrelaxation(thermal_btrk, solution%val, tracer%val, local_its_iter)
+                end if
+
 
                !Copy solution back to tracer(not ideal...)
                do ipres =1, mdims%npres
                  do iphase = 1 , n_in_pres
                    auxI = IPHASE + (ipres-1)*n_in_pres
                    if (assemble_collapsed_to_one_phase) auxI = ipres
-                   tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(auxI,:)
+                   ! Apply underrelaxation by: 
+                   tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) &
+                                                                       + thermal_btrk*(solution%val(auxI,:) - tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) )
                 end do
                end do
 
                 !Control how it is converging and decide
                call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)!Apply if required the min max principle
+
+               ! Calculate true residual of solution after underrelaxation
+               ! obtain the infinite norm of vector (A*T - b), where A is re-assembled with updated density
+               if (have_option("/numerical_methods/underrelaxation_for_thermal_equation/print_true_residual_after_solve")) then
+                   call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
+                   call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp = .true., use_old_pressure = .true. )
+                   !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
+                   call CV_ASSEMB( state, packed_state, &
+                                    n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
+                                    tracer, velocity, density, &
+                                    DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+                                    DEN_ALL, DENOLD_ALL, &
+                                    cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, cv_beta, &
+                                    SUF_SIG_DIAGTEN_BC, &
+                                    DERIV%val(1,:,:), P%val, &
+                                    T_SOURCE, T_ABSORB, VOLFRA_PORE, VOLFRA_PORE_TOTAL, &
+                                    GETCV_DISC, GETCT, &
+                                    IGOT_T2_loc,IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, &
+                                    THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
+                                    MeanPoreCV%val, MeanPoreCV_total%val, &
+                                    mass_Mn_pres, THERMAL, &
+                                    .false.,  mass_Mn_pres, &
+                                    mass_ele_transp, &
+                                    TDIFFUSION = TDIFFUSION,&
+                                    saturation=saturation, Permeability_tensor_field = perm,&
+                                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
+                                    porous_heat_coef = porous_heat_coef,porous_heat_coef_old = porous_heat_coef_old,solving_compositional = lcomp > 0, &
+                                    VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, &
+                                    assemble_collapsed_to_one_phase = assemble_collapsed_to_one_phase)
+                   ! Calculate infinite norm of residual vector
+                   call allocate(residual, Mdims%nphase, tracer%mesh, "residual_tracer")
+                   vtracer = as_vector(tracer, dim=2)
+                   call mult(residual, Mmat%petsc_ACV, vtracer)
+                   print*, maxval(abs(Mmat%CV_RHS%val - residual%val))/maxval(abs(Mmat%CV_RHS%val )), thermal_btrk
+                   if (associated(residual%val)) call deallocate(residual)               
+               end if
+
 
                !Just after the solvers
                call deallocate(Mmat%petsc_ACV)
@@ -9661,6 +9720,134 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         call assemble( CMC_petsc )
         call deallocate( pressure_BCs )
       end subroutine
+
+    
+    ! Strong temperature BC is not functional yet so all codes associated are commented out,
+    ! May be useful for future development.
+    ! This is the way for specifing strong temperature BC at the top of the well, it is useful to get around 
+    ! the slow buildup of temperature at the beginning of simulation.
+    !subroutine impose_strong_bcs_wells_thermal(state, pipes_aux, Mdims, Mmat, ndgln, ACV_petsc, temperature,rhs_t)
+
+        ! form temperature ACV matrix using a colouring approach
+    !    type(multi_dimensions), intent(in) :: Mdims
+    !    type (multi_matrices), intent(in) :: Mmat
+    !    type( state_type ), dimension(:), intent( in ) :: state
+    !    type(multi_ndgln), intent(in) :: ndgln
+    !    type(petsc_csr_matrix), intent(inout)::  ACV_petsc
+    !    real, dimension (:,:), intent(inout) :: rhs_t
+    !    type( tensor_field ), intent(in) :: temperature
+    !    type (multi_pipe_package), intent(in) :: pipes_aux
+    !    INTEGER, DIMENSION ( 1, Mdims%npres, surface_element_count(temperature) ) :: WIC_T_BC_ALL
+    !    INTEGER, PARAMETER :: WIC_T_BC_DIRICHLET = 1
+    !    ! Local variables
+    !    INTEGER :: SELE, IPRES, CV_SILOC, CV_NOD, i, ierr, k
+    !    integer, dimension(Mdims%stotel) :: Impose_strong
+    !    type(tensor_field) :: temperature_BCs
+    !    type(scalar_field), pointer :: pipe_diameter
+
+    !    call get_entire_boundary_condition(temperature,&
+    !        ['weakdirichlet'],&
+    !        temperature_BCs,WIC_T_BC_ALL)
+    !    PIPE_Diameter => EXTRACT_SCALAR_FIELD(state(1), "DiameterPipe")
+    !    Impose_strong = -1; k = 1
+        !Only for wells
+    !    ACV_petsc%is_assembled=.false.
+    !    call assemble( ACV_petsc )
+    !    DO SELE = 1, Mdims%stotel
+    !      DO IPRES = 2, Mdims%npres
+    !        if (WIC_T_BC_ALL(1, IPRES, SELE ) == WIC_T_BC_DIRICHLET) then
+    !            DO CV_SILOC = 1, Mdims%cv_snloc
+    !              CV_NOD = ndgln%suf_p((SELE-1)*Mdims%cv_snloc + CV_SILOC )
+    !              if (.not. pipes_aux%impose_strongBCs(CV_NOD)) cycle
+    !              Impose_strong(k) = ACV_petsc%row_numbering%gnn2unn( cv_nod, ipres )
+    !              k = k + 1
+                 !Temperature BC should only be the temperature specified
+    !              rhs_t(ipres,cv_nod) = temperature_BCs%val(1,IPRES, (SELE-1)*Mdims%cv_snloc + CV_SILOC )
+                  !print*, temperature_BCs%val(1,IPRES, (SELE-1)*Mdims%cv_snloc + CV_SILOC )
+    !              end do
+    !        end if
+    !      END DO
+    !    end do
+        !Now we call MatZeroRows to zero the rows (not the diagonal)
+    !    i = 0
+    !    do k = 1, Mdims%stotel
+    !      if (Impose_strong(k) > 0) i = i + 1
+    !    end do
+    !    call MatZeroRows(ACV_petsc%M, i, Impose_strong(1:i), 1.0,PETSC_NULL_VEC, PETSC_NULL_VEC, ierr)
+        !Re-assemble just in case
+    !    ACV_petsc%is_assembled=.false.
+    !    call assemble( ACV_petsc )
+    !    call deallocate( temperature_BCs )
+    !  end subroutine
+
+
+        !---------------------------------------------------------------------------
+        ! Calculates dynamic under-relaxation factor based on Huyakorn et al. (1986) empirical formulation (Eq. 33-35)
+        ! btrk Output under-relaxation factor
+        ! param sol Current solved field values (T_solve)
+        ! param tracer_val Current field values before underrelaxation update (T_old)
+        ! param its_iter Current non-linear iteration index
+        !---------------------------------------------------------------------------
+        subroutine calculate_Huyakorn_underrelaxation(btrk, sol, tracer_val, its_iter)
+        
+            implicit none
+
+            real, intent(inout) :: btrk
+            real, dimension(:,:), intent(in) :: sol
+            real, dimension(:,:,:), intent(in) :: tracer_val
+            integer, intent(in) :: its_iter
+
+            integer :: idx(1), n_nodes
+            integer, save :: n_nodes_prev = -1
+            real :: delta_T(size(sol, 2))
+            real :: epsilon_curr, applied_prev, rho
+
+            real, save :: epsilon_prev = 0.0
+            real, save :: gamma_prev = 1.0
+            logical, save :: have_history = .false.
+
+            real, parameter :: eps_zero = 1.0e-12
+
+            n_nodes = size(sol, 2)
+
+            ! Proposed change before applying relaxation.
+            delta_T = sol(1, :) - tracer_val(1, 1, :)
+
+            ! Preserve the SIGN of the largest absolute change.
+            idx = maxloc(abs(delta_T))
+            epsilon_curr = delta_T(idx(1))
+
+            if (its_iter <= 1 .or. .not. have_history .or. &
+                n_nodes /= n_nodes_prev) then
+                btrk = 1.0
+
+            else
+
+                ! Previous change actually applied.
+                applied_prev = gamma_prev * epsilon_prev
+
+                if (abs(applied_prev) <= eps_zero) then
+                    ! Numerical safeguard: the ratio is undefined or unreliable.
+                    btrk = 1.0
+                else
+                    rho = epsilon_curr / applied_prev
+                    if (rho >= -1.0) then
+                        btrk = (3.0 + rho) / (3.0 + abs(rho))
+                    else
+                        btrk = abs(-0.5 / rho)
+                    end if
+                end if
+
+            end if
+
+            ! Store history for the next iteration.
+            epsilon_prev = epsilon_curr
+            gamma_prev = btrk
+            n_nodes_prev = n_nodes
+            have_history = .true.
+
+        end subroutine calculate_Huyakorn_underrelaxation
+
 
     !----------------------------------------------------------------------------------------
     !> @author Vinicius L S Silva

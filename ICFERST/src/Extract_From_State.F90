@@ -2050,7 +2050,10 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
     !Variables for automatic non-linear iterations
     real, save :: dt_by_user = -1
     real :: tolerance_between_non_linear, min_ts, max_ts,&
-        Infinite_norm_tol, calculate_mass_tol, inf_norm_pres, Infinite_norm_tol_pres, inf_norm_temp, inf_norm_conc
+        Infinite_norm_tol, calculate_mass_tol, inf_norm_pres, Infinite_norm_tol_pres, inf_norm_temp, inf_norm_conc, &
+        Infinite_norm_tol_temp
+    ! Underrelaxation factor required for spefifying infinite_norm_tol_temp
+    real :: btrk
     real :: max_calculate_mass_delta ! local variable, holds the maximum mass error
     real, dimension(2) :: totally_min_max
     logical :: PID_controller ! Are we using a Proportional integration derivator controller of the time-step size?
@@ -2086,6 +2089,11 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
         Infinite_norm_tol, default = 0.01 )
     !For the time being the pressure is 10% or based on the saturation
     Infinite_norm_tol_pres = max(Infinite_norm_tol * 5., 0.1)
+
+    ! For underrelaxation factor (fixed or dynamic Huyakorn), nonlinear loop convergence criteria is scaled down with the same
+    ! value to prevent fake convergence. Otherwise full solution update.
+    Infinite_norm_tol_temp = Infinite_norm_tol * thermal_btrk
+
     !retrieve number of Fixed Point Iterations
     call get_option( '/solver_options/Non_Linear_Solver', NonLinearIteration, default = 3 )
     !Get data from diamond. Despite this is slow, as it is done in the outest loop, it should not affect the performance.
@@ -2363,13 +2371,15 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
 ts_ref_val = 0d0;
 
             !Automatic non-linear iteration checking
+            ! tolerance for temperature is updated
             if (is_porous_media) then
                 ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Infinite_norm_tol &
                     .and. inf_norm_pres < Infinite_norm_tol_pres .and. inf_norm_conc < Infinite_norm_tol &
                     .and. max_calculate_mass_delta < calculate_mass_tol .and. Tracers_ref_val < Infinite_norm_tol &
-                    .and. inf_norm_temp < Infinite_norm_tol) .or. its >= NonLinearIteration )
+                    .and. inf_norm_temp < infinite_norm_tol_temp) .or. its >= NonLinearIteration )
             else
-                ExitNonLinearLoop = (inf_norm_val < Infinite_norm_tol .and. inf_norm_pres < Infinite_norm_tol_pres) .or. its >= NonLinearIteration
+                ExitNonLinearLoop = (inf_norm_val < Infinite_norm_tol .and. inf_norm_pres < Infinite_norm_tol_pres &
+                    .and. inf_norm_temp < infinite_norm_tol_temp) .or. its >= NonLinearIteration
             end if
             !At least two non-linear iterations
             ExitNonLinearLoop =  ExitNonLinearLoop .and. its >= 2
