@@ -1556,6 +1556,34 @@ start =
 
          ## Advanced options that are kept for debugging purposes
          element numerical_methods {
+            ## Underrelaxation for temperature solution update every nonlinear iteration.
+            ## temperature update will follow T_i+1 = T_i + btrk*(T_solve - T_i)
+            element underrelaxation_for_thermal_equation {
+               (
+               ## use a fixed underrelaxation factor following Cooley RL. (1983).
+               ## Cooley suggests btrk = 0.75 is stable. With this option, the nonlinear
+               ## loop convergence criteria for thermal equation is scaled down by the same btrk to avoid fake convergence.
+               ##
+               ## Note that different btrk might result in slightly different results for the same simulations, so convergence
+               ## test with different brtk is recomended.
+               element fixed_brtk {
+                  real
+               }|
+               ## In this case btrk is controlled by an empirical function given by Huyakorn et al. (1986).
+               ##
+               ## loop convergence criteria for thermal equation is scaled down by the btrk calculated at each nonlinear iteration
+               ## to avoid fake convergence.
+               element Huyakorn_et_al_1986 {
+                  empty
+               }
+               )?,
+               ## Reassemble A from T solution and print A*T-b as the residual of underrelaxed solution
+               ##
+               ## Output format at each nonlinear iterations: (inf norm of residual, btrk parameter used)
+               element print_true_residual_after_solve {
+                  empty
+               }?
+            }?,
             ## Turn off the porosity weighting and scaling that conserves field mass across a
             ## mesh adapt, for all fields.
             ## Intended for debugging only. Porosity weighting and scaling is on by default.

@@ -2052,8 +2052,6 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
     real :: tolerance_between_non_linear, min_ts, max_ts,&
         Infinite_norm_tol, calculate_mass_tol, inf_norm_pres, Infinite_norm_tol_pres, inf_norm_temp, inf_norm_conc, &
         Infinite_norm_tol_temp
-    ! Underrelaxation factor required for spefifying infinite_norm_tol_temp
-    real :: btrk
     real :: max_calculate_mass_delta ! local variable, holds the maximum mass error
     real, dimension(2) :: totally_min_max
     logical :: PID_controller ! Are we using a Proportional integration derivator controller of the time-step size?
