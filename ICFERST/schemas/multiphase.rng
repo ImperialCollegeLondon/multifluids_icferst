@@ -1757,6 +1757,16 @@ Where both laws are present, the rate law applies at nodes where the partition c
                           <data type="string" datatypeLibrary=""/>
                         </element>
                       </optional>
+                      <optional>
+                        <element name="capacity_field">
+                          <a:documentation>OPTIONAL. Consumable reductant: name of an element-wise scalar field (defined in the scalar_field list of metal_reactions) giving the maximum solid metal concentration the rock can hold, in kg metal per kg rock.
+Precipitation stops in a control volume once the solid metal reaches that value.
+Reactions naming the SAME capacity field share it (their solid tracers are summed against it).
+Set 0 where the rock has no reductant. If absent, precipitation is unlimited
+(original behaviour).</a:documentation>
+                          <data type="string" datatypeLibrary=""/>
+                        </element>
+                      </optional>
                     </element>
                   </optional>
                 </element>
@@ -1888,6 +1898,40 @@ The following must be specified:
       <optional>
         <element name="numerical_methods">
           <a:documentation>Advanced options that are kept for debugging purposes</a:documentation>
+          <optional>
+            <element name="underrelaxation_for_thermal_equation">
+              <a:documentation>Underrelaxation for temperature solution update every nonlinear iteration.
+temperature update will follow T_i+1 = T_i + btrk*(T_solve - T_i)</a:documentation>
+              <optional>
+                <choice>
+                  <element name="fixed_brtk">
+                    <a:documentation>use a fixed underrelaxation factor following Cooley RL. (1983).
+Cooley suggests btrk = 0.75 is stable. With this option, the nonlinear
+loop convergence criteria for thermal equation is scaled down by the same btrk to avoid fake convergence.
+
+Note that different btrk might result in slightly different results for the same simulations, so convergence
+test with different brtk is recomended.</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                  <element name="Huyakorn_et_al_1986">
+                    <a:documentation>In this case btrk is controlled by an empirical function given by Huyakorn et al. (1986).
+
+loop convergence criteria for thermal equation is scaled down by the btrk calculated at each nonlinear iteration
+to avoid fake convergence.</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
+              </optional>
+              <optional>
+                <element name="print_true_residual_after_solve">
+                  <a:documentation>Reassemble A from T solution and print A*T-b as the residual of underrelaxed solution
+
+Output format at each nonlinear iterations: (inf norm of residual, btrk parameter used)</a:documentation>
+                  <empty/>
+                </element>
+              </optional>
+            </element>
+          </optional>
           <optional>
             <element name="disable_all_conservative_adaptivity">
               <a:documentation>Turn off the porosity weighting and scaling that conserves field mass across a

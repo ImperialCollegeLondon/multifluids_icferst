@@ -3166,6 +3166,7 @@ contains
         INTEGER, DIMENSION ( :,:,: ), allocatable :: WIC_P_BC_ALL
         type(tensor_field) :: pressure_BCs
         type(tensor_field), pointer :: pressure
+
         !Initialize memory, despite we call it, if it is already allocated no memory is re-allocated
         call allocate_multi_pipe_package(pipes_aux, Mdims, Mspars)
 
