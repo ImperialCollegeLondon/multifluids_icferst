@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Extraction for the test case, for all three mpmls.
+"""Extraction for the test case, for all four mpmls.
 
 For each dump family it computes, per tracked field, the worst per-adapt relative jumps of
 the exact P1 integral (dF) and of the lumped rho*F product (lump), using exact P1 quadrature
-and a fresh vtk reader per file.
+and a fresh vtk reader per file, and the spread of the field over all dumps (span).
 """
 
 import glob
@@ -58,10 +58,12 @@ def _read(path):
         arr = [n for n in names if n.endswith("::" + f) or n == f]
         if not arr:
             continue
-        Fn = vtk_to_numpy(pd.GetArray(arr[0])).astype(float).ravel()[conn]
+        Fv = vtk_to_numpy(pd.GetArray(arr[0])).astype(float).ravel()
+        Fn = Fv[conn]
         out[f] = (
             np.sum(vol / 4.0 * Fn.sum(axis=1)),
             np.sum(vol / 4.0 * (Rn * Fn).sum(axis=1)),
+            Fv,
         )
     return len(pts), out
 
@@ -72,14 +74,19 @@ def family(prefix):
         key=lambda f: int(re.search(r"_(\d+)\.vtu$", f).group(1)),
     )
     worst = {}
-    prev = None
+    prev = first = None
     for fp in vtus:
         n, vals = _read(fp)
+        first = first or vals
+        for f in vals:
+            w = worst.setdefault(f, {"dF": 0.0, "lump": 0.0, "span": 0.0})
+            span = np.ptp(np.append(vals[f][2], first[f][2][:1]))
+            w["span"] = max(w["span"], span)
         if prev is not None and n != prev[0]:
             for f in vals:
-                pF, pL = prev[1][f]
-                iF, iL = vals[f]
-                w = worst.setdefault(f, {"dF": 0.0, "lump": 0.0})
+                pF, pL = prev[1][f][:2]
+                iF, iL = vals[f][:2]
+                w = worst[f]
                 w["dF"] = max(w["dF"], abs((iF - pF) / pF))
                 w["lump"] = max(w["lump"], abs((iL - pL) / pL))
         prev = (n, vals)
@@ -91,6 +98,7 @@ def all_ledgers():
         "rhoC": family("z_primetoy_box_compressible_rhoC"),
         "rhoCT": family("z_primetoy_box_compressible_rhoCT"),
         "rhoC_disabled": family("z_primetoy_box_compressible_rhoC_disabled"),
+        "contrast_uniformC": family("z_primetoy_box_contrast_uniformC"),
     }
 
 

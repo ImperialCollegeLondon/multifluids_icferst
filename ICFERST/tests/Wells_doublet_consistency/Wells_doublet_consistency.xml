@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testproblem>
+  <name>Wells_doublet_consistency</name>
+  <owner userid="mbahlali"/>
+  <tags>flml icferst wells adaptivity</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>python3 check_wells.py &gt; log</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="last_line" language="python">last_line = open("log").readlines()[-1]</variable>
+  </variables>
+  <pass_tests>
+    <test name="uniform fields stay uniform, injected plume bounded and unchanged" language="python">assert "OK" in last_line</test>
+  </pass_tests>
+</testproblem>

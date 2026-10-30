@@ -80,6 +80,16 @@ module cv_advection
         WIC_P_BC_FREE = 2
 
     logical, save :: new_flux_as_old_after_adapt = .false.
+    real, dimension(:,:,:), allocatable, save :: cty_face_side
+    real, dimension(:), allocatable, save :: cty_mass_mn
+    real, dimension(:,:), allocatable, save :: cty_deriv_store
+    real, dimension(:,:), allocatable, save :: cty_residual_store
+    logical, save :: cty_residual_valid = .false.
+    logical, save :: cty_face_side_valid = .false.
+    integer, save :: cty_face_side_nface = 0, cty_face_side_nphase = 0, cty_face_side_totele = -1, cty_face_side_nonods = -1
+    real, save :: cty_face_side_xsum = 0.0, cty_face_side_csum = 0.0
+    logical, save :: cty_den_frozen = .false.
+    real, dimension(:,:), allocatable, save :: cty_den_store
 
 contains
 
@@ -370,6 +380,25 @@ contains
           LOGICAL :: DISTCONTINUOUS_METHOD, QUAD_ELEMENTS, use_reflect
           !Logical to check if we using a conservative method or not, to save cpu time
           logical :: conservative_advection
+          logical :: cfs_store, cfs_reuse
+          logical :: cfs_den
+          logical :: cfs_rc
+          real :: cfs_val
+          real, dimension( :, : ), allocatable :: cfs_den_save, cfs_den_star
+          type( tensor_field ), pointer :: cfs_pold
+          integer :: cfs_j, cfs_count
+          real :: cfs_dp
+          logical :: cfs_mesh_same
+          integer :: cfs_i, cfs_ngp
+          real :: cfs_xsum, cfs_csum
+          logical :: cfs_th
+          real, dimension( Mdims%nphase ) :: cfs_cpc, cfs_cpf, cfs_cpfo
+          real, dimension( :, : ), allocatable :: cfs_cpn, cfs_cpo
+          logical :: cfs_th_const, cfs_const
+          logical :: cfs_den_ok
+          real, dimension( :, : ), allocatable :: cfs_denold_save
+          type( scalar_field ), pointer :: cfs_cpfield
+          integer :: cfs_stat
           ! GRAVTY is used in the free surface method only...
           !        ===> GENEREIC INTEGERS <===
           INTEGER :: COUNT, ELE, ELE2, GI, GCOUNT, SELE, U_KLOC, CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
@@ -694,6 +723,105 @@ contains
               .not. conservative_advection .and. trim(tracer%name) /= "PackedPhaseVolumeFraction"
           clamp_pipe_theta = Mdims%npres > 1
           vad_pipe_gate = clamp_pipe_theta .and. trim(tracer%name) /= "PackedPhaseVolumeFraction"
+          cfs_xsum = 0.0; cfs_csum = 0.0; cfs_mesh_same = .false.
+          if ( is_porous_media .and. Mdims%n_in_pres == 1 ) then
+              cfs_xsum = sum( X_ALL )
+              do cfs_i = 1, size( ndgln%cv )
+                  cfs_csum = cfs_csum + real( ndgln%cv( cfs_i ) ) * real( cfs_i )
+              end do
+              cfs_mesh_same = cty_face_side_valid .and. ( cty_face_side_totele == Mdims%totele ) &
+                  .and. ( cty_face_side_nonods == Mdims%cv_nonods ) .and. ( cty_face_side_xsum == cfs_xsum ) &
+                  .and. ( cty_face_side_csum == cfs_csum )
+          end if
+          cfs_th = .false.; cfs_th_const = .false.; cfs_cpc = 1.0
+          if ( THERMAL .and. is_porous_media .and. Mdims%n_in_pres == 1 .and. ( .not. GETCT ) .and. conservative_advection &
+              .and. freeze_pressure_in_density .and. cty_face_side_valid .and. cty_den_frozen .and. ( .not. has_boussinesq_aprox ) &
+              .and. ( .not. present_and_true( solving_compositional ) ) .and. trim( density%name ) == "PackedDensity" &
+              .and. ( .not. have_option( "/porous_media/porous_properties/scalar_field::porosity_total" ) ) ) then
+              cfs_th = ( size( DEN_ALL, 1 ) == Mdims%nphase ) .and. ( size( DENOLD_ALL, 1 ) == Mdims%nphase ) &
+                  .and. ( size( DENOLD_ALL, 2 ) == size( DEN_ALL, 2 ) ) .and. ( size( old_density%val, 2 ) == Mdims%nphase ) &
+                  .and. ( size( old_density%val, 3 ) == size( DEN_ALL, 2 ) ) .and. ( size( density%val, 2 ) == Mdims%nphase ) &
+                  .and. ( size( density%val, 3 ) == size( DEN_ALL, 2 ) ) .and. ( size( state ) >= Mdims%nphase )
+              cfs_th_const = cfs_th
+              if ( cfs_th ) then
+                  allocate( cfs_cpn( Mdims%nphase, size( DEN_ALL, 2 ) ), cfs_cpo( Mdims%nphase, size( DEN_ALL, 2 ) ) )
+                  do cfs_i = 1, Mdims%nphase
+                      cfs_const = .false.
+                      cfs_cpfield => extract_scalar_field( state( cfs_i ), 'TemperatureHeatCapacity', cfs_stat )
+                      if ( cfs_stat == 0 ) then
+                          if ( size( cfs_cpfield%val ) >= 1 ) cfs_const = ( minval( cfs_cpfield%val ) == maxval( cfs_cpfield%val ) ) &
+                              .and. ( cfs_cpfield%val( 1 ) > 0.0 )
+                      end if
+                      if ( cfs_const ) then
+                          cfs_cpc( cfs_i ) = cfs_cpfield%val( 1 )
+                          cfs_cpn( cfs_i, : ) = cfs_cpc( cfs_i ); cfs_cpo( cfs_i, : ) = cfs_cpc( cfs_i )
+                      else
+                          cfs_th_const = .false.
+                          where ( density%val( 1, cfs_i, : ) > 0.0 )
+                              cfs_cpn( cfs_i, : ) = DEN_ALL( cfs_i, : ) / density%val( 1, cfs_i, : )
+                          elsewhere
+                              cfs_cpn( cfs_i, : ) = -1.0
+                          end where
+                          where ( old_density%val( 1, cfs_i, : ) > 0.0 )
+                              cfs_cpo( cfs_i, : ) = DENOLD_ALL( cfs_i, : ) / old_density%val( 1, cfs_i, : )
+                          elsewhere
+                              cfs_cpo( cfs_i, : ) = -1.0
+                          end where
+                      end if
+                  end do
+                  if ( any( cfs_cpn /= cfs_cpn ) .or. any( cfs_cpo /= cfs_cpo ) .or. minval( cfs_cpn ) <= 0.0 &
+                      .or. minval( cfs_cpo ) <= 0.0 .or. maxval( cfs_cpn ) > huge( 1.0 ) .or. maxval( cfs_cpo ) > huge( 1.0 ) ) then
+                      cfs_th = .false.
+                  end if
+              end if
+              if ( .not. cfs_th ) then
+                  cfs_cpc = 1.0; cfs_th_const = .false.
+                  if ( allocated( cfs_cpn ) ) deallocate( cfs_cpn )
+                  if ( allocated( cfs_cpo ) ) deallocate( cfs_cpo )
+              end if
+          end if
+          cfs_den = .false.
+          if ( is_porous_media .and. Mdims%n_in_pres == 1 .and. ( .not. GETCT ) .and. conservative_advection &
+              .and. freeze_pressure_in_density .and. ( ( .not. THERMAL ) .or. cfs_th ) .and. cty_face_side_valid .and. cty_den_frozen &
+              .and. trim( tracer%name ) /= "PackedPhaseVolumeFraction" .and. ( .not. present_and_true( solving_compositional ) ) ) then
+              if ( cfs_mesh_same .and. allocated( DEN_PFROZEN ) .and. allocated( cty_mass_mn ) .and. allocated( cty_deriv_store ) ) then
+                  cfs_den = ( size( DEN_PFROZEN, 1 ) == size( DEN_ALL, 1 ) ) .and. ( size( DEN_PFROZEN, 2 ) == size( DEN_ALL, 2 ) ) &
+                      .and. ( size( cty_mass_mn ) == size( Mspars%CMC%col ) ) .and. ( size( cty_deriv_store, 1 ) >= final_phase ) &
+                      .and. ( size( cty_deriv_store, 2 ) == Mdims%cv_nonods )
+              end if
+          end if
+          if ( cfs_den ) cfs_den = .not. ( any( DEN_PFROZEN /= DEN_PFROZEN ) .or. maxval( abs( DEN_PFROZEN ) ) > huge( 1.0 ) &
+              .or. minval( DEN_PFROZEN( 1:final_phase, : ) ) <= 0.0 )
+          if ( cfs_den ) then
+              allocate( cfs_den_save( size( DEN_ALL, 1 ), size( DEN_ALL, 2 ) ) )
+              cfs_den_save = DEN_ALL
+              DEN_ALL = DEN_PFROZEN
+              if ( cfs_th ) then
+                  allocate( cfs_denold_save( size( DENOLD_ALL, 1 ), size( DENOLD_ALL, 2 ) ) )
+                  cfs_denold_save = DENOLD_ALL
+                  do cfs_i = 1, Mdims%nphase
+                      DEN_ALL( cfs_i, : ) = DEN_PFROZEN( cfs_i, : ) * cfs_cpn( cfs_i, : )
+                      DENOLD_ALL( cfs_i, : ) = old_density%val( 1, cfs_i, : ) * cfs_cpo( cfs_i, : )
+                  end do
+              end if
+          end if
+          if ( .not. cfs_den ) then
+              cfs_th = .false.; cfs_th_const = .false.; cfs_cpc = 1.0
+          end if
+          cfs_den_ok = cfs_th
+          if ( ( .not. cfs_den_ok ) .and. allocated( cty_den_store ) ) then
+              if ( size( cty_den_store, 1 ) >= final_phase .and. size( DEN_ALL, 1 ) >= final_phase &
+                  .and. size( cty_den_store, 2 ) == size( DEN_ALL, 2 ) ) &
+                  cfs_den_ok = all( DEN_ALL( 1:final_phase, : ) == cty_den_store( 1:final_phase, : ) )
+          end if
+          cfs_rc = .false.
+          if ( is_porous_media .and. Mdims%n_in_pres == 1 .and. final_phase == 1 .and. ( .not. GETCT ) .and. conservative_advection &
+              .and. ( ( .not. THERMAL ) .or. cfs_th ) .and. cty_face_side_valid .and. cty_residual_valid .and. cfs_den_ok &
+              .and. trim( tracer%name ) /= "PackedPhaseVolumeFraction" .and. ( .not. present_and_true( solving_compositional ) ) ) then
+              if ( allocated( cty_residual_store ) ) cfs_rc = cfs_mesh_same &
+                  .and. ( size( cty_residual_store, 1 ) == Mdims%npres ) .and. ( size( cty_residual_store, 2 ) == Mdims%cv_nonods )
+              if ( freeze_pressure_in_density .and. ( .not. cfs_den ) ) cfs_rc = .false.
+          end if
           pipe_face = .false.
           QUAD_OVER_WHOLE_ELE=.FALSE.
           ! Allocate memory for the control volume surface shape functions, etc.
@@ -926,6 +1054,10 @@ contains
             if (freeze_pressure_in_density) then
                 FEMDEN_ALL = DEN_PFROZEN(1:final_phase, :)
             end if
+            if ( cfs_th ) then
+                FEMDEN_ALL = DEN_ALL(1:final_phase, :)
+                FEMDENOLD_ALL = DENOLD_ALL(1:final_phase, :)
+            end if
 
             IF ( present(saturation) ) then
                 if (.not. is_constant(saturation)) then
@@ -1122,6 +1254,21 @@ contains
               END IF
           END IF
           GLOBAL_FACE = 0
+          cfs_store = .false.; cfs_reuse = .false.
+          if ( is_porous_media .and. Mdims%n_in_pres == 1 ) then
+              cfs_ngp = CV_funs%findgpts( Mdims%cv_nloc + 1 ) - CV_funs%findgpts( 1 )
+              if ( GETCT ) then
+                  if ( allocated( cty_face_side ) ) then
+                      if ( size( cty_face_side, 1 ) /= Mdims%nphase .or. size( cty_face_side, 2 ) /= Mdims%totele * cfs_ngp &
+                          .or. size( cty_face_side, 3 ) /= 5 ) deallocate( cty_face_side )
+                  end if
+                  if ( .not. allocated( cty_face_side ) ) allocate( cty_face_side( Mdims%nphase, Mdims%totele * cfs_ngp, 5 ) )
+                  cty_face_side_valid = .false.
+                  cfs_store = .true.
+              else if ( trim( tracer%name ) /= "PackedPhaseVolumeFraction" .and. ( .not. present_and_true( solving_compositional ) ) ) then
+                  cfs_reuse = cfs_mesh_same .and. ( final_phase <= cty_face_side_nphase )
+              end if
+          end if
 
           if ( compute_outfluxes) then
               !Initialise mass conservation check; calculation of porevolume
@@ -1725,6 +1872,35 @@ contains
                                   LIMT = LOC_T_I*(1.0-INCOME) + LOC_T_J*INCOME
                                   LIMTOLD = LOC_TOLD_I*(1.0-INCOMEOLD) + LOC_TOLD_J*INCOMEOLD
                               end if
+                              if ( cfs_store .or. ( cfs_reuse .and. conservative_advection .and. ( ( .not. THERMAL ) .or. cfs_th ) .and. cfs_den_ok ) ) then
+                                  if ( GLOBAL_FACE >= 1 .and. GLOBAL_FACE <= size( cty_face_side, 2 ) .and. size( cty_face_side, 3 ) >= 5 ) then
+                                      if ( cfs_store ) then
+                                          cty_face_side( 1:final_phase, GLOBAL_FACE, 4 ) = LIMD( 1:final_phase )
+                                          cty_face_side( 1:final_phase, GLOBAL_FACE, 5 ) = LIMDOLD( 1:final_phase )
+                                      else if ( all( cty_face_side( 1:final_phase, GLOBAL_FACE, 4:5 ) == cty_face_side( 1:final_phase, GLOBAL_FACE, 4:5 ) ) &
+                                          .and. minval( cty_face_side( 1:final_phase, GLOBAL_FACE, 4:5 ) ) > 0.0 &
+                                          .and. maxval( cty_face_side( 1:final_phase, GLOBAL_FACE, 4:5 ) ) < huge( 1.0 ) ) then
+                                          LIMD( 1:final_phase ) = cty_face_side( 1:final_phase, GLOBAL_FACE, 4 )
+                                          LIMDOLD( 1:final_phase ) = cty_face_side( 1:final_phase, GLOBAL_FACE, 5 )
+                                          if ( cfs_th ) then
+                                              if ( cfs_th_const ) then
+                                                  cfs_cpf( 1:final_phase ) = cfs_cpc( 1:final_phase )
+                                                  cfs_cpfo( 1:final_phase ) = cfs_cpc( 1:final_phase )
+                                              else if ( on_domain_boundary ) then
+                                                  cfs_cpf( 1:final_phase ) = cfs_cpn( 1:final_phase, CV_NODI )
+                                                  cfs_cpfo( 1:final_phase ) = cfs_cpo( 1:final_phase, CV_NODI )
+                                              else
+                                                  cfs_cpf( 1:final_phase ) = cfs_cpn( 1:final_phase, CV_NODI ) * ( 1.0 - INCOME( 1:final_phase ) ) &
+                                                      + cfs_cpn( 1:final_phase, CV_NODJ ) * INCOME( 1:final_phase )
+                                                  cfs_cpfo( 1:final_phase ) = cfs_cpo( 1:final_phase, CV_NODI ) * ( 1.0 - INCOMEOLD( 1:final_phase ) ) &
+                                                      + cfs_cpo( 1:final_phase, CV_NODJ ) * INCOMEOLD( 1:final_phase )
+                                              end if
+                                              LIMD( 1:final_phase ) = LIMD( 1:final_phase ) * cfs_cpf( 1:final_phase )
+                                              LIMDOLD( 1:final_phase ) = LIMDOLD( 1:final_phase ) * cfs_cpfo( 1:final_phase )
+                                          end if
+                                      end if
+                                  end if
+                              end if
                               LIMDT=LIMD*LIMT
                               LIMDTOLD=LIMDOLD*LIMTOLD
                               ! LIMDTT2=LIMD*LIMT*LIMT2
@@ -1747,6 +1923,15 @@ contains
                                       LOC_TOLD_J * LOC_DENOLD_J, &
                                       LOC_TOLD_I * LOC_DENOLD_I  )
                               END IF
+                              if ( cfs_store .or. ( cfs_reuse .and. conservative_advection ) ) then
+                                  if ( GLOBAL_FACE >= 1 .and. GLOBAL_FACE <= size( cty_face_side, 2 ) ) then
+                                      if ( cfs_store ) then
+                                          cty_face_side( 1:final_phase, GLOBAL_FACE, 3 ) = FTHETA( 1:final_phase )
+                                      else
+                                          FTHETA( 1:final_phase ) = cty_face_side( 1:final_phase, GLOBAL_FACE, 3 )
+                                      end if
+                                  end if
+                              end if
                               ! adjust the value of FTHETA for use with velocity only so we can use FTHETA=0.0 for voln frac.
                               ! THETA_VEL_HAT=0.0 does not change NDOTQOLD, THETA_VEL_HAT=1.0 sets NDOTQOLD=NDOTQNEW.
                               ! If THETA_VEL_HAT<0.0 then automatically choose THETA_VEL to be as close to THETA_VEL_HAT (e.g.=0) as possible.
@@ -2015,11 +2200,59 @@ contains
                   END DO Loop_GCOUNT
               END DO Loop_CV_ILOC
           END DO Loop_Elements
+          if ( cfs_store ) then
+              if ( allocated( cty_mass_mn ) ) then
+                  if ( size( cty_mass_mn ) /= size( MASS_MN_PRES ) ) deallocate( cty_mass_mn )
+              end if
+              if ( .not. allocated( cty_mass_mn ) ) allocate( cty_mass_mn( size( MASS_MN_PRES ) ) )
+              cty_mass_mn = MASS_MN_PRES
+              if ( allocated( cty_deriv_store ) ) then
+                  if ( size( cty_deriv_store, 1 ) /= size( DERIV, 1 ) .or. size( cty_deriv_store, 2 ) /= size( DERIV, 2 ) ) &
+                      deallocate( cty_deriv_store )
+              end if
+              if ( .not. allocated( cty_deriv_store ) ) allocate( cty_deriv_store( size( DERIV, 1 ), size( DERIV, 2 ) ) )
+              cty_deriv_store = DERIV
+              cty_face_side_valid = .true.
+              cty_face_side_nface = GLOBAL_FACE; cty_face_side_nphase = final_phase
+              cty_face_side_totele = Mdims%totele; cty_face_side_nonods = Mdims%cv_nonods
+              cty_face_side_xsum = cfs_xsum; cty_face_side_csum = cfs_csum
+              if ( allocated( cty_den_store ) ) then
+                  if ( size( cty_den_store, 1 ) /= size( DEN_ALL, 1 ) .or. size( cty_den_store, 2 ) /= size( DEN_ALL, 2 ) ) &
+                      deallocate( cty_den_store )
+              end if
+              if ( .not. allocated( cty_den_store ) ) allocate( cty_den_store( size( DEN_ALL, 1 ), size( DEN_ALL, 2 ) ) )
+              cty_den_store = DEN_ALL
+              cty_den_frozen = .false.
+              if ( freeze_pressure_in_density .and. allocated( DEN_PFROZEN ) ) then
+                  if ( size( DEN_PFROZEN, 1 ) == size( DEN_ALL, 1 ) .and. size( DEN_PFROZEN, 2 ) == size( DEN_ALL, 2 ) ) &
+                      cty_den_frozen = ( maxval( abs( DEN_ALL - DEN_PFROZEN ) ) == 0.0 )
+              end if
+          end if
+          if ( cfs_reuse .and. GLOBAL_FACE /= cty_face_side_nface ) cty_face_side_valid = .false.
           IF(GET_GTHETA) THEN
               DO CV_NODI = 1, Mdims%cv_nonods
                   THETA_GDIFF(:, CV_NODI) = THETA_GDIFF(:, CV_NODI) / MASS_CV(CV_NODI)
               END DO
           ENDIF
+          if ( cfs_den .and. GETCV_DISC ) then
+              cfs_pold => extract_tensor_field( packed_state, "PackedOldFEPressure" )
+              if ( size( cfs_pold%val, 3 ) == Mdims%cv_nonods .and. size( pressure%val, 3 ) == Mdims%cv_nonods ) then
+                  allocate( cfs_den_star( final_phase, Mdims%cv_nonods ) )
+                  do cfs_i = 1, Mdims%cv_nonods
+                      cfs_dp = 0.0
+                      do cfs_count = Mspars%CMC%fin( cfs_i ), Mspars%CMC%fin( cfs_i + 1 ) - 1
+                          cfs_j = Mspars%CMC%col( cfs_count )
+                          cfs_dp = cfs_dp + cty_mass_mn( cfs_count ) * ( pressure%val( 1, 1, cfs_j ) - cfs_pold%val( 1, 1, cfs_j ) )
+                      end do
+                      cfs_den_star( 1:final_phase, cfs_i ) = DEN_PFROZEN( 1:final_phase, cfs_i ) &
+                          + cty_deriv_store( 1:final_phase, cfs_i ) * cfs_dp / MASS_CV( cfs_i )
+                      if ( cfs_th ) cfs_den_star( 1:final_phase, cfs_i ) = cfs_den_star( 1:final_phase, cfs_i ) &
+                          * cfs_cpn( 1:final_phase, cfs_i )
+                  end do
+                  if ( any( cfs_den_star /= cfs_den_star ) .or. maxval( abs( cfs_den_star ) ) > huge( 1.0 ) &
+                      .or. minval( cfs_den_star ) <= 0.0 ) deallocate( cfs_den_star )
+              end if
+          end if
           !Add compressibility to the transport equation/add time derivative term
           Conditional_GETCV_DISC2: IF( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion equations
               Loop_CVNODI2: DO CV_NODI = 1, Mdims%cv_nonods ! Put onto the diagonal of the matrix
@@ -2027,6 +2260,7 @@ contains
                 ! Generate local variables (to avoid slicing) ***************
                 LOC_T_I = T_ALL(1:final_phase, cv_nodi); LOC_TOLD_I = TOLD_ALL(1:final_phase, cv_nodi)
                 LOC_DEN_I =DEN_ALL(1:final_phase, cv_nodi); LOC_DENOLD_I = DENOLD_ALL(1:final_phase, cv_nodi)
+                if ( allocated( cfs_den_star ) ) LOC_DEN_I = cfs_den_star( 1:final_phase, cv_nodi )
                 if (use_volume_frac_T2) then
                   LOC_T2_I = T2_ALL(1:final_phase, cv_nodi); LOC_T2OLD_I = T2OLD_ALL(1:final_phase, cv_nodi)
                 end if
@@ -2187,6 +2421,7 @@ contains
 
              !deallocate(R_PRES,R_PHASE,MEAN_PORE_CV_PHASE)
           !Assemble the part of the wells matrix and create corresponding RHS, absoprtions, etc.
+          pipes_thermal_consistent = cfs_th
           if (Mdims%npres >1) call ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, tracer, den_all, denold_all, &
                                 final_phase, &! final_phase => reservoir domain
                                 Mdims, ndgln, DERIV, CV_P, SOURCT_ALL, ABSORBT_ALL, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, &
@@ -2194,7 +2429,25 @@ contains
                                 pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES,mean_pore_cv, MEAN_PORE_CV_TOTAL, eles_with_pipe, thermal,&
                                 CV_BETA, MASS_CV, INV_B, MASS_ELE, bcs_outfluxes, bcs_outfluxes_mass, bcs_outfluxes_vol, outfluxes,&
                                 porous_heat_coef, loc_assemble_collapsed_to_one_phase, TDIFFUSION=TDIFFUSION )
+          pipes_thermal_consistent = .false.
 
+          if ( cfs_rc .and. GETCV_DISC .and. ( ( .not. loc_assemble_collapsed_to_one_phase ) .or. cfs_th ) ) then
+              do cfs_i = 1, Mdims%cv_nonods
+                  cfs_val = DEN_ALL( 1, cfs_i ) * cty_residual_store( 1, cfs_i )
+                  if ( abs( cty_residual_store( 1, cfs_i ) ) * DT <= MASS_CV( cfs_i ) * MEAN_PORE_CV( 1, cfs_i ) &
+                      .and. abs( cfs_val ) < huge( 1.0 ) ) call addto( Mmat%petsc_ACV, 1, 1, cfs_i, cfs_i, cfs_val )
+              end do
+              if ( Mdims%npres > 1 .and. associated( pipes_aux%MASS_PIPE ) ) then
+                  if ( size( pipes_aux%MASS_PIPE ) == Mdims%cv_nonods .and. size( DEN_ALL, 1 ) >= 1 + Mdims%n_in_pres ) then
+                      do cfs_i = 1, Mdims%cv_nonods
+                          if ( pipes_aux%MASS_PIPE( cfs_i ) <= 1.0e-16 ) cycle
+                          cfs_val = DEN_ALL( 1 + Mdims%n_in_pres, cfs_i ) * cty_residual_store( 2, cfs_i )
+                          if ( abs( cty_residual_store( 2, cfs_i ) ) * DT <= pipes_aux%MASS_PIPE( cfs_i ) * MEAN_PORE_CV( Mdims%npres, cfs_i ) &
+                              .and. abs( cfs_val ) < huge( 1.0 ) ) call addto( Mmat%petsc_ACV, 2, 2, cfs_i, cfs_i, cfs_val )
+                      end do
+                  end if
+              end if
+          end if
           if ( compute_outfluxes) then
               !Calculate final outfluxes and mass balance in the domain
               call mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, DEN_ALL, 2)
@@ -2232,6 +2485,17 @@ contains
           !These three variables are allocated simultaneously so only one need to be checked
           if (allocated(suf_t_bc)) deallocate( suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2)
           if (VAD_activated) deallocate(CAP_DIFFUSION)
+          if ( allocated( cfs_den_save ) ) then
+              DEN_ALL = cfs_den_save
+              deallocate( cfs_den_save )
+          end if
+          if ( allocated( cfs_den_star ) ) deallocate( cfs_den_star )
+          if ( allocated( cfs_denold_save ) ) then
+              DENOLD_ALL = cfs_denold_save
+              deallocate( cfs_denold_save )
+          end if
+          if ( allocated( cfs_cpn ) ) deallocate( cfs_cpn )
+          if ( allocated( cfs_cpo ) ) deallocate( cfs_cpo )
           ewrite(3,*) 'Leaving CV_ASSEMB'
           if (allocated(bcs_outfluxes)) deallocate(bcs_outfluxes)
           if (allocated(bcs_outfluxes_mass)) deallocate(bcs_outfluxes_mass)
@@ -3121,8 +3385,11 @@ end if
             REAL, intent( in ) :: MASS_CV_I, MASS_CV_J
             REAL, DIMENSION( : ), intent( in ) :: TUPWIND_IN, TUPWIND_OUT!(nphase)
             logical, intent(in) :: not_OLD_VEL
+            logical :: cfs_here
 
             UGI_COEF_ELE_ALL=0.0 ; UGI_COEF_ELE2_ALL=0.0
+            cfs_here = not_OLD_VEL .and. ( cfs_store .or. cfs_reuse )
+            if ( cfs_here ) cfs_here = ( GLOBAL_FACE >= 1 ) .and. ( GLOBAL_FACE <= size( cty_face_side, 2 ) )
             Conditional_SELE: IF( on_domain_boundary ) THEN ! On the boundary of the domain.
                 !Initialize variables
                 if (not_OLD_VEL) then
@@ -3156,6 +3423,14 @@ end if
                         END DO
                         ! Only modify boundary velocity for incoming velocity...
                         iv_incomming_flow = DOT_PRODUCT(UDGI_ALL(:, iv_iphase), CVNORMX_ALL(:, GI)) < 0.0
+                        if ( cfs_here ) then
+                            if ( cfs_store ) then
+                                cty_face_side( iv_iphase, GLOBAL_FACE, 1 ) = 0.0
+                                if ( iv_incomming_flow ) cty_face_side( iv_iphase, GLOBAL_FACE, 1 ) = 1.0
+                            else
+                                iv_incomming_flow = cty_face_side( iv_iphase, GLOBAL_FACE, 1 ) > 0.5
+                            end if
+                        end if
                         if (not_OLD_VEL) then
                             DO iv_u_kloc = 1, Mdims%u_nloc
                               ! IF (.false.) THEN !<= this one for strong boundary conditions
@@ -3250,6 +3525,13 @@ end if
                     NDOTQ_TILDE = 0.5*( NDOTQ*I_adv_coef + NDOTQ2*J_adv_coef ) /abs_tilde
                     !Calculate the contribution of each side
                     INCOME = MIN(1.0, MAX(0.0, (NDOTQ_TILDE - NDOTQ)/VTOLFUN( NDOTQ2 - NDOTQ ) ))
+                end if
+                if ( cfs_here ) then
+                    if ( cfs_store ) then
+                        cty_face_side( 1:final_phase, GLOBAL_FACE, 1 ) = INCOME( 1:final_phase )
+                    else
+                        INCOME( 1:final_phase ) = cty_face_side( 1:final_phase, GLOBAL_FACE, 1 )
+                    end if
                 end if
                 !Finally we calculate the velocity at the interface (still excluding permeability)
                 DO iv_iphase = 1,final_phase
@@ -3353,6 +3635,15 @@ end if
                     iv_aux_tensor2(iv_iphase) = (1.-iv_aux_tensor(iv_iphase)) + iv_aux_tensor(iv_iphase) * iv_sigma_aver(iv_iphase) * I_adv_coef(iv_iphase)*MASS_CV_I
                     !iv_aux_tensor2 has to be calculated before since iv_aux_tensor is rewritten!
                     iv_aux_tensor(iv_iphase) = iv_aux_tensor(iv_iphase) * iv_sigma_aver(iv_iphase) * J_adv_coef(iv_iphase)*MASS_CV_J
+                  end if
+                  if ( cfs_here ) then
+                    if ( cfs_store ) then
+                      cty_face_side( iv_iphase, GLOBAL_FACE, 1 ) = iv_aux_tensor( iv_iphase )
+                      cty_face_side( iv_iphase, GLOBAL_FACE, 2 ) = iv_aux_tensor2( iv_iphase )
+                    else
+                      iv_aux_tensor( iv_iphase ) = cty_face_side( iv_iphase, GLOBAL_FACE, 1 )
+                      iv_aux_tensor2( iv_iphase ) = cty_face_side( iv_iphase, GLOBAL_FACE, 2 )
+                    end if
                   end if
                   !Calculation of the velocity at the GI point
                   UDGI_ALL(:, iv_iphase) = iv_aux_tensor(iv_iphase) * UDGI_ALL(:, iv_iphase) + iv_aux_tensor2(iv_iphase) * UDGI2_ALL(:, iv_iphase)

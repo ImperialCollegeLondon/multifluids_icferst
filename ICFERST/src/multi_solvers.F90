@@ -111,6 +111,7 @@ contains
         character( len = OPTION_PATH_LEN ) :: den_path_w
         integer :: jpres, w_stat, p_den_w, h_cap_w, b1_w, b2_w
         real :: rock_term_w, clipped_mass_w, headroom_w, frac_w
+        real :: exc_hi_w, exc_lo_w, room_hi_w, room_lo_w
         integer :: ndim1, ndim2,  i, j, knod, inod, jnod, count, ii, jj, loc_its, loc_its2, its, gl_its, cv_iloc
         logical :: changed, changed_something
         real :: max_change, error_changed, max_max_error, scalar_field_dev, mass_off, alt_max, alt_min
@@ -290,6 +291,41 @@ contains
            field_min = min_max_limits(1)
            field_max = min_max_limits(2)
         end if
+        do j = 1, ndim2
+            do i = 1, ndim1
+                exc_hi_w = 0.0 ; exc_lo_w = 0.0 ; room_hi_w = 0.0 ; room_lo_w = 0.0
+                do inod = 1, Mdims%cv_nonods
+                    if ( .not. node_owned( field, inod ) ) cycle
+                    if ( field%val( i, j, inod ) > field_max( i, j, inod ) ) then
+                        exc_hi_w = exc_hi_w + ( field%val( i, j, inod ) - field_max( i, j, inod ) ) * mass_cv( j, inod )
+                    else if ( field%val( i, j, inod ) < field_min( i, j, inod ) ) then
+                        exc_lo_w = exc_lo_w + ( field_min( i, j, inod ) - field%val( i, j, inod ) ) * mass_cv( j, inod )
+                    else
+                        room_hi_w = room_hi_w + ( field_max( i, j, inod ) - field%val( i, j, inod ) ) * mass_cv( j, inod )
+                        room_lo_w = room_lo_w + ( field%val( i, j, inod ) - field_min( i, j, inod ) ) * mass_cv( j, inod )
+                    end if
+                end do
+                call allsum( exc_hi_w ) ; call allsum( exc_lo_w )
+                call allsum( room_hi_w ) ; call allsum( room_lo_w )
+                !The two sides cancel against each other first; what remains has to fit inside the bounds
+                if ( exc_hi_w - exc_lo_w > room_hi_w .or. exc_lo_w - exc_hi_w > room_lo_w ) then
+                    clipped_mass_w = 0.0
+                    do inod = 1, Mdims%cv_nonods
+                        if ( field%val( i, j, inod ) > field_max( i, j, inod ) ) then
+                            if ( node_owned( field, inod ) ) clipped_mass_w = clipped_mass_w + &
+                                ( field%val( i, j, inod ) - field_max( i, j, inod ) ) * mass_cv( j, inod )
+                            field%val( i, j, inod ) = field_max( i, j, inod )
+                        else if ( field%val( i, j, inod ) < field_min( i, j, inod ) ) then
+                            if ( node_owned( field, inod ) ) clipped_mass_w = clipped_mass_w + &
+                                ( field%val( i, j, inod ) - field_min( i, j, inod ) ) * mass_cv( j, inod )
+                            field%val( i, j, inod ) = field_min( i, j, inod )
+                        end if
+                    end do
+                    call allsum( clipped_mass_w )
+                    ewrite(1,*) 'BoundedSolutionCorrections: ', trim(Field_name), ' clipped in place, weighted mass dropped:', clipped_mass_w
+                end if
+            end do
+        end do
         do gl_its = 1, ngl_its
             ! This iteration is very good at avoiding spreading the modifications too far - however it can stagnate.
             max_change = 0.0

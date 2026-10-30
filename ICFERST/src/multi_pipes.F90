@@ -42,9 +42,13 @@ module multi_pipes
     implicit none
     private
 
+    real, dimension(:,:), allocatable, save :: pipe_face_income
+    integer, save :: pipe_face_count = -1, pipe_face_nonods = -1, pipe_face_nele = -1
+    logical, save :: pipes_thermal_consistent = .false.
+
     public  :: ASSEMBLE_PIPE_TRANSPORT_AND_CTY, MOD_1D_FORCE_BAL_C,&
               retrieve_pipes_coords, pipe_coords, initialize_pipes_package_and_gamma,&
-              WELLS_SATURATION_ASSEMB
+              WELLS_SATURATION_ASSEMB, pipes_thermal_consistent
 
     !Parameters for boundary conditions copied from cv_adv-diff.F90
     INTEGER, PARAMETER :: WIC_T_BC_DIRICHLET = 1, WIC_T_BC_ROBIN = 2, &
@@ -296,6 +300,9 @@ contains
       type(vector_field), pointer :: X
       !Logical to check if we using a conservative method or not, to save cpu time
       logical :: conservative_advection
+      logical :: pf_store, pf_reuse
+      real, dimension( final_phase*2 ) :: pf_income_d
+      integer :: pf_k, pf_nmax, pf_e
       !Accessors for the transported field values and the density values used by this assembly.
       !They point at the caller supplied arrays when present and at the internal extractions otherwise.
       real, dimension( :, : ), pointer :: tvals, dvals
@@ -549,6 +556,22 @@ contains
       end do
 
 
+      pf_k = 0
+      pf_store = GETCT .and. ( .not. THERMAL )
+      pf_reuse = ( .not. GETCT ) .and. GETCV_DISC .and. ( ( .not. THERMAL ) .or. pipes_thermal_consistent ) &
+          .and. conservative_advection .and. present( tracer_vals ) &
+          .and. allocated( pipe_face_income ) .and. pipe_face_count >= 0 .and. pipe_face_nonods == Mdims%cv_nonods &
+          .and. pipe_face_nele == size( eles_with_pipe )
+      if ( pf_reuse ) pf_reuse = size( pipe_face_income, 1 ) == size( INCOME )
+      if ( pf_store ) then
+          pf_nmax = 0
+          do pf_e = 1, size( eles_with_pipe )
+              pf_nmax = pf_nmax + eles_with_pipe( pf_e )%npipes * ( 2 * max( cv_bngi, 1 ) + 1 )
+          end do
+          if ( allocated( pipe_face_income ) ) deallocate( pipe_face_income )
+          allocate( pipe_face_income( size( INCOME ), max( pf_nmax, 1 ) ) )
+          pipe_face_income = 0.0
+      end if
       DO k = 1, size(eles_with_pipe)
           ELE = eles_with_pipe(k)%ele!Element with pipe
           X_ALL_CORN(:,1:NCORNER) = x%val(:, ndgln%x( ( ELE - 1 ) * Mdims%cv_nloc + CV_LOC_CORNER(1:NCORNER)) )
@@ -806,6 +829,13 @@ contains
                           INCOME_J = 1.0
                       END WHERE
                       INCOME = 1.0 - INCOME_J
+                      pf_income_d = INCOME
+                      pf_k = pf_k + 1
+                      if ( pf_store ) then
+                          if ( pf_k <= size( pipe_face_income, 2 ) ) pipe_face_income( :, pf_k ) = INCOME
+                      else if ( pf_reuse ) then
+                          if ( pf_k <= pipe_face_count ) pf_income_d = pipe_face_income( :, pf_k )
+                      end if
                       ! high order values...
                       FEMTGI=0.0 ; FEMDGI=0.0
                       DO CV_LKLOC = 1, CV_LNLOC
@@ -830,7 +860,7 @@ contains
                       end do
                       IF ( UPWIND_PIPES ) THEN ! Used for testing...
                           LIMT = T_CV_NODI*(1.0-INCOME) + T_CV_NODJ*INCOME
-                          LIMD = D_CV_NODI*(1.0-INCOME) + D_CV_NODJ*INCOME
+                          LIMD = D_CV_NODI*(1.0-pf_income_d) + D_CV_NODJ*pf_income_d
                       ELSE
                           ! Call the limiter for T...
                           CALL ONVDLIM_ANO_MANY( final_phase*2, &!Only do it for the phases within the pipe
@@ -842,7 +872,7 @@ contains
                               memory_limiters(4*Mdims%nphase + 1:Mdims%nphase*5), memory_limiters(5*Mdims%nphase + 1:Mdims%nphase*6) )
                           ! Call the limiter for D...
                           CALL ONVDLIM_ANO_MANY( final_phase*2, &
-                              LIMD, FEMDGI, INCOME, &
+                              LIMD, FEMDGI, pf_income_d, &
                               D_CV_NODI, D_CV_NODJ, XI_LIMIT, &
                               DUPWIND_IN, DUPWIND_OUT, &
                               memory_limiters(1:Mdims%nphase), memory_limiters(Mdims%nphase + 1:Mdims%nphase*2),&
@@ -971,6 +1001,13 @@ contains
                     end if
                   END DO
                   INCOME = 0.5 * ( 1. + SIGN( 1.0, -NDOTQ ) )
+                  pf_income_d = INCOME
+                  pf_k = pf_k + 1
+                  if ( pf_store ) then
+                      if ( pf_k <= size( pipe_face_income, 2 ) ) pipe_face_income( :, pf_k ) = INCOME
+                  else if ( pf_reuse ) then
+                      if ( pf_k <= pipe_face_count ) pf_income_d = pipe_face_income( :, pf_k )
+                  end if
                   LIMT=0.0
                   LIMD=0.0
                   FVT =0.0
@@ -990,10 +1027,15 @@ contains
                     IF ( WIC_D_BC_ALL_NODS( compact_phase, JCV_NOD ) == WIC_D_BC_DIRICHLET ) THEN
                         bc_den = SUF_D_BC_ALL_NODS(compact_phase,JCV_NOD)
                         if ( THERMAL ) then
-                            if ( abs( only_den_all%val( 1, global_phase, JCV_NOD ) ) > RM8 ) bc_den = bc_den * &
-                                dvals( global_phase, JCV_NOD ) / only_den_all%val( 1, global_phase, JCV_NOD )
+                            if ( pipes_thermal_consistent .and. allocated( DEN_PFROZEN ) ) then
+                                if ( abs( DEN_PFROZEN( global_phase, JCV_NOD ) ) > RM8 ) bc_den = bc_den * &
+                                    dvals( global_phase, JCV_NOD ) / DEN_PFROZEN( global_phase, JCV_NOD )
+                            else
+                                if ( abs( only_den_all%val( 1, global_phase, JCV_NOD ) ) > RM8 ) bc_den = bc_den * &
+                                    dvals( global_phase, JCV_NOD ) / only_den_all%val( 1, global_phase, JCV_NOD )
+                            end if
                         end if
-                        LIMD(compact_phase)=dvals( global_phase,JCV_NOD)*(1.0-INCOME(compact_phase)) + bc_den*INCOME(compact_phase)
+                        LIMD(compact_phase)=dvals( global_phase,JCV_NOD)*(1.0-pf_income_d(compact_phase)) + bc_den*pf_income_d(compact_phase)
                     ELSE
                         LIMD(compact_phase)=dvals( global_phase,JCV_NOD)
                     END IF
@@ -1075,6 +1117,14 @@ contains
               ENDIF ! ENDOF IF(JCV_NOD.NE.0) THEN
           END DO ! DO IPIPE2 = 1, NPIPES_IN_ELE
       END DO ! DO ELE = 1, Mdims%totele
+      if ( pf_store ) then
+          pipe_face_count = pf_k
+          if ( pf_k > size( pipe_face_income, 2 ) ) pipe_face_count = -1
+          pipe_face_nonods = Mdims%cv_nonods
+          pipe_face_nele = size( eles_with_pipe )
+      else if ( pf_reuse .and. pf_k /= pipe_face_count ) then
+          pipe_face_count = -1
+      end if
       DO IPHASE = 1, final_phase
           INV_SIGMA(IPHASE,:) = INV_SIGMA(IPHASE,:) / MAX( MASS_PIPE, 1.E-15 )
       END DO
@@ -1293,6 +1343,9 @@ contains
       REAL, DIMENSION( final_phase * 2 ) ::  RSUM_VEC, LOC_CV_RHS_I, LOC_CV_RHS_J, DIAG_SCALE_PRES_phase, &
                                     MEAN_PORE_CV_PHASE, ct_rhs_phase,r_pres, LOC_MAT_II
       real, dimension( final_phase * 2, final_phase * 2, Mdims%cv_nonods ) :: GAMMA_PRES_ABS2
+      logical :: pipe_faces_frozen
+      logical :: exch_side_stored, exch_donor
+      real :: exch_den
       REAL , DIMENSION( final_phase * 2, Mdims%cv_nonods) :: opt_vel_upwind_coefs_new_cv
       real, dimension(final_phase * 2):: R_PHASE, Loc_DEN_I, LOC_PRES_I, LOC_SAT_I
       REAL , DIMENSION( final_phase * 2, Mdims%cv_nonods ) :: SIGMA_INV_APPROX!WE NEED FOR THIS SUBROUTINE, I THINK, TO BE DEFINED FOR RESERVOIR AND WELLS DOMAINS...
@@ -1369,6 +1422,13 @@ contains
       end if
 
       MASS_PIPE_FOR_COUP = 0.
+      pipe_faces_frozen = .false.
+      if ( GETCT .and. ( .not. THERMAL ) .and. freeze_pressure_in_density ) then
+          if ( allocated( DEN_PFROZEN ) ) then
+              if ( size( DEN_PFROZEN, 1 ) == size( den_all, 1 ) .and. size( DEN_PFROZEN, 2 ) == size( den_all, 2 ) ) &
+                  pipe_faces_frozen = maxval( abs( den_all - DEN_PFROZEN ) ) == 0.0
+          end if
+      end if
       !For tracer calls the one dimensional pipe assembly must advect the transported field itself and weight the fluxes with the density convention of the calling equation, which cv-adv-dif supplies through den_all
       !The saturation continuity call and the thermal call keep the historical internal extractions untouched
       if ( ( .not. THERMAL ) .and. trim( tracer%name ) /= "PackedPhaseVolumeFraction" ) then
@@ -1376,6 +1436,16 @@ contains
               getcv_disc, getct, getNewtonType, getResidual, Mmat, Mspars, DT, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_PIPE2CVFEM, pipes_aux%MASS_CVFEM2PIPE_TRUE, pipes_aux%MASS_PIPE, MASS_PIPE_FOR_COUP, &
               SIGMA_INV_APPROX, upwnd, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, bcs_outfluxes_mass, bcs_outfluxes_vol, outfluxes, assemble_collapsed_to_one_phase, TDIFFUSION=TDIFFUSION, &
               tracer_vals=T_ALL, density_vals=den_all)
+      else if ( THERMAL .and. pipes_thermal_consistent ) then
+          CALL MOD_1D_CT_AND_ADV( state, packed_state, final_phase, wells_first_phase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
+              getcv_disc, getct, getNewtonType, getResidual, Mmat, Mspars, DT, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_PIPE2CVFEM, pipes_aux%MASS_CVFEM2PIPE_TRUE, pipes_aux%MASS_PIPE, MASS_PIPE_FOR_COUP, &
+              SIGMA_INV_APPROX, upwnd, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, bcs_outfluxes_mass, bcs_outfluxes_vol, outfluxes, assemble_collapsed_to_one_phase, TDIFFUSION=TDIFFUSION, &
+              tracer_vals=T_ALL, density_vals=den_all)
+      else if ( pipe_faces_frozen ) then
+          CALL MOD_1D_CT_AND_ADV( state, packed_state, final_phase, wells_first_phase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
+              getcv_disc, getct, getNewtonType, getResidual, Mmat, Mspars, DT, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_PIPE2CVFEM, pipes_aux%MASS_CVFEM2PIPE_TRUE, pipes_aux%MASS_PIPE, MASS_PIPE_FOR_COUP, &
+              SIGMA_INV_APPROX, upwnd, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, bcs_outfluxes_mass, bcs_outfluxes_vol, outfluxes, assemble_collapsed_to_one_phase, TDIFFUSION=TDIFFUSION, &
+              density_vals=den_all)
       else
           CALL MOD_1D_CT_AND_ADV( state, packed_state, final_phase, wells_first_phase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
               getcv_disc, getct, getNewtonType, getResidual, Mmat, Mspars, DT, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_PIPE2CVFEM, pipes_aux%MASS_CVFEM2PIPE_TRUE, pipes_aux%MASS_PIPE, MASS_PIPE_FOR_COUP, &
@@ -1454,7 +1524,11 @@ contains
                               / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                           up_side = JPHASE
                       END IF
-                      IF ( GETCT ) pipes_aux%coup_upstream( IPHASE, JPHASE, CV_NODI ) = up_side
+                      IF ( GETCT ) THEN
+                          pipes_aux%coup_upstream( IPHASE, JPHASE, CV_NODI ) = up_side
+                          if ( abs( Loc_DEN_I( IPHASE ) ) > RM8 ) GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = &
+                              GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) * ( Loc_DEN_I( up_side ) / Loc_DEN_I( IPHASE ) )
+                      END IF
                   END IF ! IF ( IPRES /= JPRES ) THEN
               END DO
           END DO
@@ -1473,6 +1547,7 @@ contains
 
 
       if(GETCV_DISC) then
+          exch_side_stored = ( ( .not. THERMAL ) .or. pipes_thermal_consistent ) .and. trim( tracer%name ) /= "PackedPhaseVolumeFraction"
           PIPE_ABS = 0.0
           DO CV_NODI = 1, Mdims%cv_nonods
               !Only go through the nodes that have a well
@@ -1558,14 +1633,19 @@ contains
                                 end if
                                 DeltaP = LOC_PRES_I(iphase_ipres) - LOC_PRES_I(jphase + (jpres - 1)*final_phase)
                                 ! We do NOT divide by r**2 here because we have not multiplied by r**2 in the pipes_aux%MASS_CVFEM2PIPE matrix (in MOD_1D_CT_AND_ADV)
-                                IF ( LOC_PRES_I(iphase_ipres) >= LOC_PRES_I(jphase_jpres) ) THEN
+                                exch_donor = LOC_PRES_I(iphase_ipres) >= LOC_PRES_I(jphase_jpres)
+                                exch_den = Loc_DEN_I( jphase_jpres )
+                                if ( exch_donor ) exch_den = Loc_DEN_I( iphase_ipres )
+                                if ( exch_side_stored .and. pipes_aux%coup_upstream( iphase_ipres, jphase_jpres, CV_NODI ) >= 1 ) &
+                                    exch_den = Loc_DEN_I( up_side )
+                                IF ( exch_donor ) THEN
                                     PIPE_ABS( iphase_ipres, iphase_ipres, CV_NODI ) = PIPE_ABS( iphase_ipres, iphase_ipres, CV_NODI ) + &
-                                        DeltaP * pipes_aux%GAMMA_PRES_ABS( iphase + (ipres - 1)*Mdims%n_in_pres, jphase + (jpres - 1)*Mdims%n_in_pres, CV_NODI ) * Loc_DEN_I( iphase_ipres ) * &
+                                        DeltaP * pipes_aux%GAMMA_PRES_ABS( iphase + (ipres - 1)*Mdims%n_in_pres, jphase + (jpres - 1)*Mdims%n_in_pres, CV_NODI ) * exch_den * &
                                         cc * 2.0 * SIGMA_INV_APPROX( up_side, CV_NODI ) &
                                         / (log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin)
                                 ELSE
                                     PIPE_ABS( iphase_ipres, jphase_jpres, CV_NODI ) = PIPE_ABS( iphase_ipres, jphase_jpres, CV_NODI ) +&
-                                        DeltaP * pipes_aux%GAMMA_PRES_ABS( iphase + (ipres - 1)*Mdims%n_in_pres, jphase + (jpres - 1)*Mdims%n_in_pres, CV_NODI ) * Loc_DEN_I( jphase_jpres ) * &
+                                        DeltaP * pipes_aux%GAMMA_PRES_ABS( iphase + (ipres - 1)*Mdims%n_in_pres, jphase + (jpres - 1)*Mdims%n_in_pres, CV_NODI ) * exch_den * &
                                         cc * 2.0 * SIGMA_INV_APPROX( up_side, CV_NODI ) &
                                         / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                                 END IF

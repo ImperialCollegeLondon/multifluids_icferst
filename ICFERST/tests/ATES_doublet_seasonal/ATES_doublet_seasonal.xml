@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testproblem>
+  <name>ATES_doublet_seasonal</name>
+  <owner userid="mbahlali"/>
+  <tags>flml icferst wells thermal adaptivity</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>python3 check_ates.py &gt; log</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="last_line" language="python">last_line = open("log").readlines()[-1]</variable>
+  </variables>
+  <pass_tests>
+    <test name="bounded temperatures, balanced wells, production temperatures unchanged" language="python">assert "OK" in last_line</test>
+  </pass_tests>
+</testproblem>

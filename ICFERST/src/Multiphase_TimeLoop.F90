@@ -262,15 +262,18 @@ contains
         double precision, ALLOCATABLE, dimension(:,:) :: concetration_phreeqc
         real :: total_mass_metal_before_adapt, total_mass_metal_after_adapt, total_mass_metal_after_correction, total_mass_metal_after_bound
         logical :: corr_mass_sat_on, corr_mass_target_fresh
-        !Per-phase pore volume (mass where massfix_use_rho) recorded before the adapt, the target Restore_Phase_Mass_SumOne puts back after it
         real, allocatable, dimension(:) :: sat_pore_vol_before_adapt
-        !Per-phase density policy: .true. where the saturation scaling carries the nodal density (compressible, not Boussinesq). Filled by massfix_density_policy.
         logical, allocatable, dimension(:) :: massfix_use_rho
-        !Snapshot of the well-block (jpres > 1) saturations around the post-adapt BSC call
+        logical :: massfix_tracer_weight_carried = .false.
+        real :: massfix_wcarry_min = 0.0, massfix_wcarry_max = 0.0
+        real, dimension(:,:), allocatable :: massfix_wold, massfix_xold
+        integer, dimension(:), allocatable :: massfix_cvold
+        integer :: massfix_totele_old = 0, massfix_cvnloc_old = 0, massfix_ndim_old = 0
+        real, dimension(:,:), allocatable :: massfix_wcarry
+        logical, dimension(:), allocatable :: massfix_wcarry_ok
         real, allocatable, dimension(:,:) :: massfix_wellsat_snap
         type( tensor_field ), pointer :: massfix_sat_f
         integer :: massfix_jwell0
-        !Saturation snapshot just before Set_Saturation_to_sum_one, so the restore can confine its correction to the nodes that routine changed
         real, allocatable, dimension(:,:) :: sat_pre_sumone
         type( tensor_field ), pointer :: tempfield_sat
         logical :: viscosity_EOS
@@ -1929,8 +1932,8 @@ contains
                     call build_conserved_weight( 1, weight_tr )
                     built_weight_tr = .true.
                 end if
-                call apply_weight_to_packed( "PackedConcentration", weight_tr, direction )
-                call apply_weight_to_packed( "PackedOldConcentration", weight_tr, direction )
+                !After the adapt the unscale divides by the OLD-mesh weight interpolated onto the new mesh (see scale_tracer_across_adapt)
+                call scale_tracer_across_adapt( "PackedConcentration", weight_tr, direction )
             end if
             !Other tracer fields (PassiveTracer*, Tracer*, Species*)
             do ik_w = 0, option_count("/material_phase[0]/scalar_field") - 1
@@ -1941,10 +1944,15 @@ contains
                         call build_conserved_weight( 1, weight_tr )
                         built_weight_tr = .true.
                     end if
-                    call apply_weight_to_packed( "Packed"//trim(fname_w), weight_tr, direction )
-                    call apply_weight_to_packed( "PackedOld"//trim(fname_w), weight_tr, direction )
+                    call scale_tracer_across_adapt( "Packed"//trim(fname_w), weight_tr, direction )
                 end if
             end do
+            !Keep the old-mesh tracer weight alive across the adapt (direction +1); release it once the tracers are unscaled (-1)
+            if ( direction > 0 ) then
+                if ( built_weight_tr ) call massfix_store_old_weight( weight_tr )
+            else
+                call massfix_release_carried_weight()
+            end if
 
             !Solid metal tracers: not tracer-family names (they live in the rock), so they are not caught above
             !Their conserved weight is (1-phi)*rho_s (weight_kind 4), built once and only when such a field exists
@@ -2077,7 +2085,7 @@ contains
                 if ( c_scaled_p ) then
                     con_p%val( 1, :, : ) = c_snap_p
                     call build_conserved_weight( 1, weight_p )
-                    call apply_weight_to_packed( "PackedConcentration", weight_p, -1 )
+                    call unscale_tracer_by_carried_weight( "PackedConcentration", weight_p, also_old = .false. )
                     deallocate( weight_p )
                 end if
                 !Two sweeps minimum, then exit once the density fixed point is machine converged
@@ -2149,6 +2157,258 @@ contains
             !weights are right. Just sync the halo copies
             if ( IsParallel() ) call halo_update( fld_w )
         end subroutine apply_weight_to_packed
+
+        !>@brief Nodal-route tracer scaling across the adapt. Before the adapt (direction = +1) the field and its
+        !> Old copy are multiplied by the weight, as before. After it (direction = -1) the field is divided by the
+        !> OLD-mesh weight interpolated onto the new mesh, C_new = Interp(w C) / Interp(w), instead of by a weight
+        !> rebuilt from the new-mesh porosity.
+        subroutine scale_tracer_across_adapt( packed_name, weight, direction )
+            character(len=*), intent(in) :: packed_name
+            real, dimension(:,:), intent(in) :: weight
+            integer, intent(in) :: direction
+            if ( direction > 0 ) then
+                call apply_weight_to_packed( packed_name, weight, +1 )
+                if ( len_trim( packed_name ) > 6 ) &
+                    call apply_weight_to_packed( "PackedOld" // packed_name( 7:len_trim( packed_name ) ), weight, +1 )
+            else
+                call unscale_tracer_by_carried_weight( packed_name, weight, also_old = .true. )
+            end if
+        end subroutine scale_tracer_across_adapt
+
+        !>@brief Collects the cv-node coordinates with the same element-wise cv/x node pairing as build_conserved_weight.
+        subroutine massfix_cv_coordinates( xcv )
+            real, dimension(:,:), intent(out) :: xcv   ! (ndim, cv_nonods)
+            !local
+            type( vector_field ), pointer :: x_w
+            integer, dimension( : ), pointer :: x_ndgln_w, cv_ndgln_w
+            integer :: ele_w, iloc_w, inod_w, xnod_w
+            x_w => extract_vector_field( packed_state, "PressureCoordinate" )
+            x_ndgln_w => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
+            cv_ndgln_w => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
+            xcv = 0.0
+            do ele_w = 1, Mdims%totele
+                do iloc_w = 1, Mdims%cv_nloc
+                    inod_w = cv_ndgln_w( ( ele_w - 1 ) * Mdims%cv_nloc + iloc_w )
+                    xnod_w = x_ndgln_w( ( ele_w - 1 ) * Mdims%x_nloc + iloc_w )
+                    xcv( :, inod_w ) = x_w%val( 1:size( xcv, 1 ), xnod_w )
+                end do
+            end do
+        end subroutine massfix_cv_coordinates
+
+        !>@brief Keeps the old-mesh tracer weight across the adapt as plain arrays: the nodal weight, the cv-node
+        !> coordinates and the cv connectivity of the old mesh. Nothing here references Fluidity fields or meshes,
+        !> so nothing depends on what adapt_state does to them. Interpolated onto the new mesh by
+        !> massfix_interpolate_carried_weight.
+        subroutine massfix_store_old_weight( weight )
+            real, dimension(:,:), intent(in) :: weight
+            !local
+            integer, dimension( : ), pointer :: cv_ndgln_w
+            call massfix_release_carried_weight()
+            if ( Mdims%cv_nloc /= Mdims%ndim + 1 .or. Mdims%x_nloc /= Mdims%cv_nloc ) then
+                ewrite(1,*) 'Adapt tracer weight is not carried across the adapt: the cv mesh is not P1 simplex (cv_nloc, x_nloc, ndim =', &
+                    Mdims%cv_nloc, Mdims%x_nloc, Mdims%ndim, ')'
+                return
+            end if
+            if ( size( weight, 2 ) /= Mdims%cv_nonods ) return
+            cv_ndgln_w => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
+            massfix_totele_old = Mdims%totele
+            massfix_cvnloc_old = Mdims%cv_nloc
+            massfix_ndim_old = Mdims%ndim
+            allocate( massfix_wold( size( weight, 1 ), Mdims%cv_nonods ) )
+            massfix_wold = weight
+            allocate( massfix_xold( Mdims%ndim, Mdims%cv_nonods ) )
+            call massfix_cv_coordinates( massfix_xold )
+            allocate( massfix_cvold( Mdims%totele * Mdims%cv_nloc ) )
+            massfix_cvold = cv_ndgln_w( 1 : Mdims%totele * Mdims%cv_nloc )
+            massfix_wcarry_min = minval( weight ) ; call allmin( massfix_wcarry_min )
+            massfix_wcarry_max = maxval( weight ) ; call allmax( massfix_wcarry_max )
+            massfix_tracer_weight_carried = .true.
+        end subroutine massfix_store_old_weight
+
+        !>@brief Interpolates the stored old-mesh weight at the new cv nodes: each new node is located in the old
+        !> mesh by its barycentric coordinates (brute force over the old elements, bounding boxes first) and the
+        !> old nodal weight is evaluated linearly there, exactly what consistent interpolation does to the field.
+        !> A node not found in the old mesh (outside it, or in another partition) is flagged and falls back to the
+        !> new-mesh weight. Done once per adapt, on first use.
+        subroutine massfix_interpolate_carried_weight()
+            !local
+            real, dimension(:,:), allocatable :: xnew_w, bbmin_w, bbmax_w
+            real, dimension(:), allocatable :: lam_w
+            real, dimension(:,:), allocatable :: xv_w
+            integer :: inod_w, ele_w, iloc_w, j_w, nph_w, nd_w, nl_w, best_ele_w
+            real :: tol_w, ext_w, lmin_w, best_lmin_w
+            logical :: found_w
+            if ( .not. massfix_tracer_weight_carried ) return
+            if ( allocated( massfix_wcarry ) ) return
+            nd_w = massfix_ndim_old ; nl_w = massfix_cvnloc_old ; nph_w = size( massfix_wold, 1 )
+            allocate( massfix_wcarry( nph_w, Mdims%cv_nonods ), massfix_wcarry_ok( Mdims%cv_nonods ) )
+            massfix_wcarry = 0.0 ; massfix_wcarry_ok = .false.
+            if ( Mdims%ndim /= nd_w .or. Mdims%cv_nloc /= nl_w ) return
+            allocate( xnew_w( nd_w, Mdims%cv_nonods ) )
+            call massfix_cv_coordinates( xnew_w )
+            !Bounding boxes of the old elements, with a tolerance relative to the domain extent
+            ext_w = 0.0
+            do j_w = 1, nd_w
+                ext_w = max( ext_w, maxval( massfix_xold( j_w, : ) ) - minval( massfix_xold( j_w, : ) ) )
+            end do
+            tol_w = 1.0e-6 * max( ext_w, 1.0e-30 )
+            allocate( bbmin_w( nd_w, massfix_totele_old ), bbmax_w( nd_w, massfix_totele_old ) )
+            allocate( xv_w( nd_w, nl_w ), lam_w( nl_w ) )
+            do ele_w = 1, massfix_totele_old
+                do iloc_w = 1, nl_w
+                    xv_w( :, iloc_w ) = massfix_xold( :, massfix_cvold( ( ele_w - 1 ) * nl_w + iloc_w ) )
+                end do
+                bbmin_w( :, ele_w ) = minval( xv_w, dim = 2 ) - tol_w
+                bbmax_w( :, ele_w ) = maxval( xv_w, dim = 2 ) + tol_w
+            end do
+            do inod_w = 1, Mdims%cv_nonods
+                found_w = .false. ; best_lmin_w = -huge( 1.0 ) ; best_ele_w = 0
+                do ele_w = 1, massfix_totele_old
+                    if ( any( xnew_w( :, inod_w ) < bbmin_w( :, ele_w ) ) .or. any( xnew_w( :, inod_w ) > bbmax_w( :, ele_w ) ) ) cycle
+                    do iloc_w = 1, nl_w
+                        xv_w( :, iloc_w ) = massfix_xold( :, massfix_cvold( ( ele_w - 1 ) * nl_w + iloc_w ) )
+                    end do
+                    call massfix_simplex_bary( nd_w, xv_w, xnew_w( :, inod_w ), lam_w, lmin_w )
+                    if ( lmin_w > best_lmin_w ) then
+                        best_lmin_w = lmin_w ; best_ele_w = ele_w
+                    end if
+                    !Inside (to the tolerance) : take it
+                    if ( lmin_w >= -1.0e-8 ) then
+                        found_w = .true.
+                        exit
+                    end if
+                end do
+                !Slightly outside every candidate (curved or moved boundary): take the closest element if it is close enough
+                if ( .not. found_w .and. best_ele_w > 0 ) then
+                    if ( best_lmin_w >= -1.0e-3 ) then
+                        ele_w = best_ele_w
+                        do iloc_w = 1, nl_w
+                            xv_w( :, iloc_w ) = massfix_xold( :, massfix_cvold( ( ele_w - 1 ) * nl_w + iloc_w ) )
+                        end do
+                        call massfix_simplex_bary( nd_w, xv_w, xnew_w( :, inod_w ), lam_w, lmin_w )
+                        found_w = .true.
+                    end if
+                end if
+                if ( found_w ) then
+                    !Linear evaluation of the old nodal weight, clipped barycentric weights so the value stays a convex combination
+                    lam_w = max( lam_w, 0.0 ) ; lam_w = lam_w / max( sum( lam_w ), 1.0e-30 )
+                    do j_w = 1, nph_w
+                        massfix_wcarry( j_w, inod_w ) = 0.0
+                        do iloc_w = 1, nl_w
+                            massfix_wcarry( j_w, inod_w ) = massfix_wcarry( j_w, inod_w ) + &
+                                lam_w( iloc_w ) * massfix_wold( j_w, massfix_cvold( ( ele_w - 1 ) * nl_w + iloc_w ) )
+                        end do
+                    end do
+                    massfix_wcarry_ok( inod_w ) = .true.
+                end if
+            end do
+            deallocate( xnew_w, bbmin_w, bbmax_w, xv_w, lam_w )
+        end subroutine massfix_interpolate_carried_weight
+
+        !>@brief Barycentric coordinates of x in the simplex with vertices xv(ndim, ndim+1); lmin = their minimum
+        !> (>= 0 inside). Degenerate elements give lmin = -huge.
+        subroutine massfix_simplex_bary( nd, xv, x, lam, lmin )
+            integer, intent(in) :: nd
+            real, dimension(:,:), intent(in) :: xv
+            real, dimension(:), intent(in) :: x
+            real, dimension(:), intent(out) :: lam
+            real, intent(out) :: lmin
+            !local
+            real, dimension(3,3) :: t_w
+            real, dimension(3) :: r_w
+            real :: det_w
+            t_w = 0.0 ; r_w = 0.0 ; lam = 0.0
+            t_w( 1:nd, 1:nd ) = xv( 1:nd, 1:nd ) - spread( xv( 1:nd, nd + 1 ), 2, nd )
+            r_w( 1:nd ) = x( 1:nd ) - xv( 1:nd, nd + 1 )
+            if ( nd == 2 ) then
+                det_w = t_w(1,1) * t_w(2,2) - t_w(1,2) * t_w(2,1)
+                if ( abs( det_w ) <= tiny( 1.0 ) ) then
+                    lmin = -huge( 1.0 ) ; return
+                end if
+                lam(1) = (  t_w(2,2) * r_w(1) - t_w(1,2) * r_w(2) ) / det_w
+                lam(2) = ( -t_w(2,1) * r_w(1) + t_w(1,1) * r_w(2) ) / det_w
+            else
+                det_w = t_w(1,1) * ( t_w(2,2) * t_w(3,3) - t_w(2,3) * t_w(3,2) ) &
+                      - t_w(1,2) * ( t_w(2,1) * t_w(3,3) - t_w(2,3) * t_w(3,1) ) &
+                      + t_w(1,3) * ( t_w(2,1) * t_w(3,2) - t_w(2,2) * t_w(3,1) )
+                if ( abs( det_w ) <= tiny( 1.0 ) ) then
+                    lmin = -huge( 1.0 ) ; return
+                end if
+                lam(1) = ( r_w(1) * ( t_w(2,2) * t_w(3,3) - t_w(2,3) * t_w(3,2) ) &
+                         - t_w(1,2) * ( r_w(2) * t_w(3,3) - t_w(2,3) * r_w(3) ) &
+                         + t_w(1,3) * ( r_w(2) * t_w(3,2) - t_w(2,2) * r_w(3) ) ) / det_w
+                lam(2) = ( t_w(1,1) * ( r_w(2) * t_w(3,3) - t_w(2,3) * r_w(3) ) &
+                         - r_w(1) * ( t_w(2,1) * t_w(3,3) - t_w(2,3) * t_w(3,1) ) &
+                         + t_w(1,3) * ( t_w(2,1) * r_w(3) - r_w(2) * t_w(3,1) ) ) / det_w
+                lam(3) = ( t_w(1,1) * ( t_w(2,2) * r_w(3) - r_w(2) * t_w(3,2) ) &
+                         - t_w(1,2) * ( t_w(2,1) * r_w(3) - r_w(2) * t_w(3,1) ) &
+                         + r_w(1) * ( t_w(2,1) * t_w(3,2) - t_w(2,2) * t_w(3,1) ) ) / det_w
+            end if
+            lam( nd + 1 ) = 1.0 - sum( lam( 1:nd ) )
+            lmin = minval( lam( 1:nd + 1 ) )
+        end subroutine massfix_simplex_bary
+
+        !>@brief Releases the old-mesh copies and the interpolated weight.
+        subroutine massfix_release_carried_weight()
+            if ( allocated( massfix_wold ) ) deallocate( massfix_wold )
+            if ( allocated( massfix_xold ) ) deallocate( massfix_xold )
+            if ( allocated( massfix_cvold ) ) deallocate( massfix_cvold )
+            if ( allocated( massfix_wcarry ) ) deallocate( massfix_wcarry )
+            if ( allocated( massfix_wcarry_ok ) ) deallocate( massfix_wcarry_ok )
+            massfix_totele_old = 0 ; massfix_cvnloc_old = 0 ; massfix_ndim_old = 0
+            massfix_tracer_weight_carried = .false.
+        end subroutine massfix_release_carried_weight
+
+        !>@brief Post-adapt unscale of a packed tracer field by the old-mesh weight interpolated onto the new mesh.
+        subroutine unscale_tracer_by_carried_weight( packed_name, weight_new, also_old )
+            character(len=*), intent(in) :: packed_name
+            real, dimension(:,:), intent(in) :: weight_new
+            logical, intent(in) :: also_old
+            !local
+            type( tensor_field ), pointer :: fld_w, fld_old
+            integer :: w_stat, j_w, inod_w, jc_w
+            real :: wc_w, wlo_w, whi_w
+            logical :: have_old_w, carried_w
+
+            fld_w => extract_tensor_field( packed_state, trim( packed_name ), w_stat )
+            if ( w_stat /= 0 ) return
+            have_old_w = .false.
+            if ( also_old .and. len_trim( packed_name ) > 6 ) then
+                fld_old => extract_tensor_field( packed_state, "PackedOld" // packed_name( 7:len_trim( packed_name ) ), w_stat )
+                have_old_w = ( w_stat == 0 )
+            end if
+            carried_w = massfix_tracer_weight_carried
+            if ( carried_w ) then
+                call massfix_interpolate_carried_weight()
+                carried_w = allocated( massfix_wcarry )
+                if ( carried_w ) carried_w = ( size( massfix_wcarry, 2 ) == size( fld_w%val, 3 ) )
+                if ( .not. carried_w ) then
+                    ewrite(1,*) 'WARNING: the adapt weight of ', trim( packed_name ), &
+                        ' could not be interpolated onto the new mesh: unscaling by the new-mesh nodal weight instead'
+                end if
+            end if
+            wlo_w = 0.5 * massfix_wcarry_min
+            whi_w = 2.0 * massfix_wcarry_max
+            do inod_w = 1, size( fld_w%val, 3 )
+                do j_w = 1, size( fld_w%val, 2 )
+                    wc_w = -1.0
+                    if ( carried_w ) then
+                        jc_w = min( j_w, size( massfix_wcarry, 1 ) )
+                        if ( massfix_wcarry_ok( inod_w ) ) wc_w = massfix_wcarry( jc_w, inod_w )
+                    end if
+                    if ( wc_w < wlo_w .or. wc_w > whi_w .or. wc_w <= 1.0e-30 ) then
+                        !Outside the range the old-mesh weight can produce, or no carried weight: new-mesh weight
+                        wc_w = weight_new( min( j_w, size( weight_new, 1 ) ), inod_w )
+                    end if
+                    fld_w%val( :, j_w, inod_w ) = fld_w%val( :, j_w, inod_w ) / wc_w
+                    if ( have_old_w ) fld_old%val( :, j_w, inod_w ) = fld_old%val( :, j_w, inod_w ) / wc_w
+                end do
+            end do
+            if ( IsParallel() ) then
+                call halo_update( fld_w )
+                if ( have_old_w ) call halo_update( fld_old )
+            end if
+        end subroutine unscale_tracer_by_carried_weight
 
         !>This subroutine performs all the necessary steps to adapt the mesh and create new memory
         subroutine adapt_mesh_mp()

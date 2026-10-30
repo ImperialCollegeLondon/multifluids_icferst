@@ -2496,6 +2496,9 @@ max_allowed_its = 1  ! just one seems to be the best (at least without backtrack
         type( scalar_field ), pointer :: sf, soldf, gamma, cvp
         type( vector_field ) :: packed_vel, rhs
         type( vector_field ) :: deltap, rhs_p
+        type( vector_field ) :: cty_r
+        type( tensor_field ), pointer :: cty_pold
+        integer :: cty_n, cty_c, cty_j, cty_ip, cty_jp
         type(tensor_field) :: cdp_tensor
         type( csr_sparsity ), pointer :: sparsity
         logical :: cty_proj_after_adapt, high_order_Ph, FEM_continuity_equation, fem_density_buoyancy
@@ -2908,6 +2911,63 @@ end if
         !Ensure that the velocity fulfils the continuity equation before moving on
         if (.not. solve_stokes .or. solve_mom_iteratively ) then
             call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
+        end if
+        cty_residual_valid = .false.
+        if ( is_porous_media .and. Mdims%n_in_pres == 1 ) then
+            call allocate( cty_r, Mdims%npres, pressure%mesh, "ContinuityResidual" )
+            cty_r%val = 0.
+            call compute_DIV_U( Mdims, Mmat, Mspars, velocity%val, INV_B, cty_r )
+            cty_r%val = -cty_r%val + Mmat%CT_RHS%val
+            if ( vsrc_stat == 0 ) then
+                do cty_n = 1, Mdims%cv_nonods
+                    do cty_c = Mspars%CMC%fin( cty_n ), Mspars%CMC%fin( cty_n + 1 ) - 1
+                        cty_r%val( 1, cty_n ) = cty_r%val( 1, cty_n ) &
+                            + pressure_source_field%val( Mspars%CMC%col( cty_c ) ) * MASS_MN_PRES( cty_c )
+                    end do
+                end do
+            end if
+            cty_pold => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldFEPressure" )
+            do cty_n = 1, Mdims%cv_nonods
+                do cty_c = Mspars%CMC%fin( cty_n ), Mspars%CMC%fin( cty_n + 1 ) - 1
+                    cty_j = Mspars%CMC%col( cty_c )
+                    cty_r%val( 1, cty_n ) = cty_r%val( 1, cty_n ) - DIAG_SCALE_PRES( 1, cty_n ) * MASS_MN_PRES( cty_c ) &
+                        * ( P_ALL%VAL( 1, 1, cty_j ) - cty_pold%VAL( 1, 1, cty_j ) )
+                    do cty_ip = 1, Mdims%npres
+                        if ( got_free_surf ) cty_r%val( cty_ip, cty_n ) = cty_r%val( cty_ip, cty_n ) &
+                            - MASS_SUF( cty_c ) * ( P_ALL%VAL( 1, cty_ip, cty_j ) - cty_pold%VAL( 1, cty_ip, cty_j ) )
+                        if ( Mdims%npres > 1 ) then
+                            do cty_jp = 1, Mdims%npres
+                                if ( cty_jp /= cty_ip ) cty_r%val( cty_ip, cty_n ) = cty_r%val( cty_ip, cty_n ) &
+                                    - DIAG_SCALE_PRES_COUP( cty_ip, cty_jp, cty_n ) * pipes_aux%MASS_CVFEM2PIPE( cty_c ) &
+                                    * ( P_ALL%VAL( 1, cty_jp, cty_j ) - P_ALL%VAL( 1, cty_ip, cty_j ) )
+                            end do
+                        end if
+                    end do
+                end do
+            end do
+            !Rows that are not continuity equations: reference pressure node, pipe rows without a pipe, strong well BCs
+            if ( ndpset /= 0 ) cty_r%val( 1, ndpset ) = 0.0
+            if ( Mdims%npres > 1 ) then
+                do cty_n = 1, Mdims%cv_nonods
+                    if ( pipes_aux%MASS_PIPE( cty_n ) <= 1.0e-16 ) cty_r%val( 2:Mdims%npres, cty_n ) = 0.0
+                    if ( is_P0DGP1 .and. associated( pipes_aux%impose_strongBCs ) ) then
+                        if ( pipes_aux%impose_strongBCs( cty_n ) ) cty_r%val( 2:Mdims%npres, cty_n ) = 0.0
+                    end if
+                end do
+            end if
+            if ( isParallel() ) then
+                do cty_n = 1, Mdims%cv_nonods
+                    if ( .not. node_owned( P_ALL, cty_n ) ) cty_r%val( :, cty_n ) = 0.0
+                end do
+            end if
+            if ( allocated( cty_residual_store ) ) then
+                if ( size( cty_residual_store, 1 ) /= Mdims%npres .or. size( cty_residual_store, 2 ) /= Mdims%cv_nonods ) &
+                    deallocate( cty_residual_store )
+            end if
+            if ( .not. allocated( cty_residual_store ) ) allocate( cty_residual_store( Mdims%npres, Mdims%cv_nonods ) )
+            cty_residual_store = cty_r%val
+            cty_residual_valid = .not. ( any( cty_r%val /= cty_r%val ) .or. maxval( abs( cty_r%val ) ) > huge( 1.0 ) )
+            call deallocate( cty_r )
         end if
         call deallocate(deltaP)
         if (isParallel()) call halo_update(velocity)
