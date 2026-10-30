@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Well doublet, compressible brine. uniform_*: injecting the aquifer T and C must leave
 # them uniform. doublet_*: injecting hot salty brine must stay bounded, not reach the
-# producer, and match reference_<case>.txt
+# producer, and match reference_<case>.txt (written on the first run, commit it).
 # doublet_beta0_incomp_adapt also carries a PassiveTracer, checked like C.
 import csv
 import glob
@@ -46,7 +46,11 @@ def read(f):
         for i in range(pd.GetNumberOfArrays())
     }
     x = vtk_to_numpy(g.GetPoints().GetData())
-    conn = vtk_to_numpy(g.GetCells().GetConnectivityArray()).reshape(-1, 4)
+    cells = g.GetCells()
+    if hasattr(cells, "GetConnectivityArray"):
+        conn = vtk_to_numpy(cells.GetConnectivityArray()).reshape(-1, 4)
+    else:
+        conn = vtk_to_numpy(cells.GetData()).reshape(-1, 5)[:, 1:]
     p = g.GetCellData().GetArray("phase1::Porosity")
     phi = vtk_to_numpy(p).ravel() if p else np.ones(len(conn))
     pipe = (np.abs(np.abs(x[:, 0]) - 100.0) < 1e-3) & (np.abs(x[:, 1]) < 1e-3)

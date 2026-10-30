@@ -3,7 +3,7 @@
 # injects again (fixed mesh: five 6-day seasons; adaptive: three 3-day seasons, events_*.csv).
 # Checks: temperatures within 9-17 C, both wells move the same volume, and the mean
 # production temperatures (warm well in season 3, cold well in season 5) match
-# reference_<case>.txt
+# reference_<case>.txt (written on the first run, commit it).
 import csv
 import glob
 import os
@@ -50,7 +50,7 @@ def temperatures(f):
 def production_mean(rows, col, season, P):
     t = np.array([r["Time[s]"] for r in rows])
     v = np.array([r[col] for r in rows])
-    dt = np.diff(t, prepend=0.0)
+    dt = np.diff(np.concatenate(([0.0], t)))
     sel = (t > (season - 1) * P) & (t <= season * P + 1.0)
     return float(np.sum(v[sel] * dt[sel]) / np.sum(dt[sel]))
 
