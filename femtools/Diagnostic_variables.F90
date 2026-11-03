@@ -2782,6 +2782,12 @@ contains
     allocate(vvalue(dim))
     state_loop: do phase = 1, size(state)
 
+      ! Each phase only takes the room of its own fields, as in the header written by initialise_detectors
+      number_of_scalar_det_fields = 0
+      if (allocated(detector_list%sfield_list)) number_of_scalar_det_fields = size(detector_list%sfield_list(phase)%ptr)
+      number_of_vector_det_fields = 0
+      if (allocated(detector_list%vfield_list)) number_of_vector_det_fields = size(detector_list%vfield_list(phase)%ptr)
+
       if (allocated(detector_list%sfield_list)) then
         if (size(detector_list%sfield_list(phase)%ptr) > 0) then
         scalar_loop: do i = 1, size(detector_list%sfield_list(phase)%ptr)
@@ -2811,7 +2817,7 @@ contains
         end do scalar_loop
         end if
       end if
-      location_to_write = location_to_write + detector_list%total_num_det * detector_list%num_sfields * realsize
+      location_to_write = location_to_write + detector_list%total_num_det * number_of_scalar_det_fields * realsize
 
       if (allocated(detector_list%vfield_list)) then
         if (size(detector_list%vfield_list(phase)%ptr) > 0) then
@@ -2848,7 +2854,7 @@ contains
         end do vector_loop
         end if
       end if
-      location_to_write = location_to_write + detector_list%total_num_det * detector_list%num_vfields * dim * realsize
+      location_to_write = location_to_write + detector_list%total_num_det * number_of_vector_det_fields * dim * realsize
 
     end do state_loop
     deallocate(vvalue)

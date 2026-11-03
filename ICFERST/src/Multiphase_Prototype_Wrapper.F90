@@ -563,8 +563,9 @@ contains
                 end do
                 deallocate(well_ids)
 
-                !It is important that the DiameterPipe is not recalculated if wells are defined using files
-                if (have_option('/porous_media/wells_and_pipes/well_from_file[0]') .and. &
+                !retrieve_pipes_coords sets the DiameterPipe at the well nodes, so it must not be prescribed again every time step
+                if ((have_option('/porous_media/wells_and_pipes/well_from_file[0]') .or. &
+                    have_option('/porous_media/wells_and_pipes/well_from_coordinates[0]')) .and. &
                     .not.have_option('/porous_media/wells_and_pipes/scalar_field::DiameterPipe/prescribed/do_not_recalculate'))&
                     call copy_option("/simulation_name", '/porous_media/wells_and_pipes/scalar_field::DiameterPipe/prescribed/do_not_recalculate')
 

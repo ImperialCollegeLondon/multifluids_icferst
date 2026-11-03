@@ -589,7 +589,7 @@ contains
         !Initialise FPI_eq_taken
         FPI_eq_taken = 0
         if(have_option("/io/stat/output_at_start")) then
-            call write_diagnostics(state, current_time, dt,&
+            call write_diagnostics_wells( current_time, dt,&
                 timestep, not_to_move_det_yet=.true., non_linear_iterations = FPI_eq_taken)
         end if
         ! When outlet_id is allocated, calculate_flux is true and we want to calculate outfluxes
@@ -1088,7 +1088,7 @@ contains
             !!######################DIAGNOSTIC FIELD CALCULATION TREAT THIS LIKE A BLOCK######################
 
             !Now we ensure that the time-step is the correct one
-            if (write_all_stats) call write_diagnostics( state, current_time, dt, itime , non_linear_iterations = FPI_eq_taken) ! Write stat file
+            if (write_all_stats) call write_diagnostics_wells( current_time, dt, itime , non_linear_iterations = FPI_eq_taken) ! Write stat file
 
             if (is_porous_media .and. getprocno() == 1) then
                 if (have_option('/io/Courant_number')) then!printout in the terminal
@@ -1511,7 +1511,7 @@ contains
                     if (.not. write_all_stats) then
                         if (have_option("/porous_media/SelfPotential")) &
                             call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
-                        call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
+                        call write_diagnostics_wells( current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
                     end if
                     not_to_move_det_yet = .false. ;
                     call write_state_units( dump_no, Mdims, state ) ! Now writing into the vtu files
@@ -1528,7 +1528,7 @@ contains
                     if (.not. write_all_stats) then
                         if (have_option("/porous_media/SelfPotential")) &
                             call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
-                        call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
+                        call write_diagnostics_wells( current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
                     end if
                     not_to_move_det_yet = .false. ;
                     !Time to compute the self-potential if required
@@ -1537,6 +1537,124 @@ contains
                 end if Conditional_Dump_RealTime
             end if
         end subroutine create_dump_vtu_and_checkpoints
+
+        !>@brief Writes the stat and detector files with the well fields made readable around the wells.
+        subroutine write_diagnostics_wells( time_wd, dt_wd, tstep_wd, not_to_move_det_yet, non_linear_iterations )
+            real, intent(in) :: time_wd, dt_wd
+            integer, intent(in) :: tstep_wd
+            logical, optional, intent(in) :: not_to_move_det_yet
+            real, optional, intent(in) :: non_linear_iterations
+            !local
+            type( scalar_field ), pointer :: diam_wd, sfield_wd
+            type( vector_field ), pointer :: positions_wd
+            type( vector_field ) :: xp_wd
+            type( mesh_type ), pointer :: pmesh_wd
+            type( scalar_field_pointer ), dimension(:), allocatable :: fields_wd
+            integer, dimension(:), pointer :: enodes_wd
+            integer, dimension(:), allocatable :: node_a_wd, node_b_wd, ring_wd
+            real, dimension(:), allocatable :: weight_b_wd, dist_wd, seg_wd, rel_wd
+            real, dimension(:,:), allocatable :: saved_wd
+            integer :: stat_wd, nnod_wd, ele_wd, i_wd, j_wd, k_wd, inod_wd, ia_wd, ib_wd
+            integer :: istate_wd, iphase_wd, ifld_wd, nfld_wd, nring_wd, pass_wd
+            real :: t_wd, len2_wd, d_wd
+            logical :: fill_wd
+
+            nfld_wd = 0 ; nring_wd = 0
+            fill_wd = Mdims%npres > 1
+            if ( fill_wd ) then
+                diam_wd => extract_scalar_field( state( 1 ), "DiameterPipe", stat_wd )
+                fill_wd = stat_wd == 0
+            end if
+            if ( fill_wd ) fill_wd = size( diam_wd%val ) == node_count( diam_wd%mesh ) .and. node_count( diam_wd%mesh ) > 1
+            if ( fill_wd ) then
+                pmesh_wd => diam_wd%mesh
+                nnod_wd = node_count( pmesh_wd )
+                positions_wd => extract_vector_field( state( 1 ), "Coordinate" )
+                call allocate( xp_wd, positions_wd%dim, pmesh_wd, "WellOutputCoordinate" )
+                call remap_field( positions_wd, xp_wd )
+                allocate( node_a_wd( nnod_wd ), node_b_wd( nnod_wd ), weight_b_wd( nnod_wd ), dist_wd( nnod_wd ) )
+                allocate( seg_wd( positions_wd%dim ), rel_wd( positions_wd%dim ) )
+                node_a_wd = 0 ; node_b_wd = 0 ; weight_b_wd = 0.0 ; dist_wd = huge( 1.0 )
+                !For each node next to a well, find the closest point on the well segments of the elements it belongs to
+                do ele_wd = 1, element_count( pmesh_wd )
+                    enodes_wd => ele_nodes( pmesh_wd, ele_wd )
+                    if ( .not. any( diam_wd%val( enodes_wd ) > RM8 ) ) cycle
+                    do i_wd = 1, size( enodes_wd )
+                        inod_wd = enodes_wd( i_wd )
+                        if ( diam_wd%val( inod_wd ) > RM8 ) cycle
+                        do j_wd = 1, size( enodes_wd )
+                            ia_wd = enodes_wd( j_wd )
+                            if ( diam_wd%val( ia_wd ) <= RM8 ) cycle
+                            !k_wd = j_wd covers an element that touches the well at a single node
+                            do k_wd = j_wd, size( enodes_wd )
+                                ib_wd = enodes_wd( k_wd )
+                                if ( diam_wd%val( ib_wd ) <= RM8 ) cycle
+                                seg_wd = xp_wd%val( :, ib_wd ) - xp_wd%val( :, ia_wd )
+                                rel_wd = xp_wd%val( :, inod_wd ) - xp_wd%val( :, ia_wd )
+                                len2_wd = sum( seg_wd**2 )
+                                t_wd = 0.0
+                                if ( len2_wd > 0.0 ) t_wd = min( max( sum( rel_wd * seg_wd ) / len2_wd, 0.0 ), 1.0 )
+                                d_wd = sum( ( rel_wd - t_wd * seg_wd )**2 )
+                                if ( d_wd < dist_wd( inod_wd ) ) then
+                                    dist_wd( inod_wd ) = d_wd
+                                    node_a_wd( inod_wd ) = ia_wd
+                                    node_b_wd( inod_wd ) = ib_wd
+                                    weight_b_wd( inod_wd ) = t_wd
+                                end if
+                            end do
+                        end do
+                    end do
+                end do
+                call deallocate( xp_wd )
+                deallocate( dist_wd, seg_wd, rel_wd )
+                nring_wd = count( node_a_wd > 0 )
+                allocate( ring_wd( nring_wd ) )
+                ring_wd = pack( [ ( inod_wd, inod_wd = 1, nnod_wd ) ], node_a_wd > 0 )
+                !Well phase fields on the pressure mesh, first counted then stored
+                do pass_wd = 1, 2
+                    if ( pass_wd == 2 ) allocate( fields_wd( nfld_wd ) )
+                    nfld_wd = 0 ; iphase_wd = 0
+                    do istate_wd = 1, size( state )
+                        if ( have_option( trim( state( istate_wd )%option_path ) // '/is_multiphase_component' ) ) cycle
+                        iphase_wd = iphase_wd + 1
+                        if ( iphase_wd <= Mdims%n_in_pres ) cycle
+                        do ifld_wd = 1, scalar_field_count( state( istate_wd ) )
+                            sfield_wd => extract_scalar_field( state( istate_wd ), ifld_wd )
+                            if ( aliased( sfield_wd ) ) cycle
+                            if ( size( sfield_wd%val ) /= nnod_wd ) cycle
+                            if ( element_count( sfield_wd%mesh ) /= element_count( pmesh_wd ) ) cycle
+                            if ( ele_loc( sfield_wd%mesh, 1 ) /= ele_loc( pmesh_wd, 1 ) ) cycle
+                            nfld_wd = nfld_wd + 1
+                            if ( pass_wd == 2 ) fields_wd( nfld_wd )%ptr => sfield_wd
+                        end do
+                    end do
+                end do
+                !All the values are saved before any is changed, so fields sharing memory are restored correctly
+                allocate( saved_wd( nring_wd, nfld_wd ) )
+                do ifld_wd = 1, nfld_wd
+                    saved_wd( :, ifld_wd ) = fields_wd( ifld_wd )%ptr%val( ring_wd )
+                end do
+                !Only well node values are read here, so the order of the nodes does not matter
+                do ifld_wd = 1, nfld_wd
+                    do j_wd = 1, nring_wd
+                        inod_wd = ring_wd( j_wd )
+                        fields_wd( ifld_wd )%ptr%val( inod_wd ) = &
+                            ( 1.0 - weight_b_wd( inod_wd ) ) * fields_wd( ifld_wd )%ptr%val( node_a_wd( inod_wd ) ) &
+                            + weight_b_wd( inod_wd ) * fields_wd( ifld_wd )%ptr%val( node_b_wd( inod_wd ) )
+                    end do
+                end do
+            end if
+
+            call write_diagnostics( state, time_wd, dt_wd, tstep_wd, not_to_move_det_yet = not_to_move_det_yet, &
+                non_linear_iterations = non_linear_iterations )
+
+            if ( fill_wd ) then
+                do ifld_wd = nfld_wd, 1, -1
+                    fields_wd( ifld_wd )%ptr%val( ring_wd ) = saved_wd( :, ifld_wd )
+                end do
+                deallocate( fields_wd, saved_wd, ring_wd, node_a_wd, node_b_wd, weight_b_wd )
+            end if
+        end subroutine write_diagnostics_wells
 
         !>@brief Build the weight w applied to a field before the mesh-to-mesh projection so
         !> that the projection conserves mass: projecting w*C and unscaling by the new-mesh w
@@ -2503,7 +2621,7 @@ contains
                         else
                             call qmesh( state, metric_tensor )
                         end if
-                        if( have_option( '/io/stat/output_before_adapts' ) ) call write_diagnostics( state, current_time, dt, &
+                        if( have_option( '/io/stat/output_before_adapts' ) ) call write_diagnostics_wells( current_time, dt, &
                             itime, not_to_move_det_yet = .true. , non_linear_iterations = FPI_eq_taken)
                         call run_diagnostics( state )
                         !Record the per-phase pore volume (mass for compressible phases) on the OLD mesh, while the saturation is still unscaled: the target the restore puts back.
@@ -2525,14 +2643,14 @@ contains
                         call update_state_post_adapt( state, metric_tensor, dt, sub_state, nonlinear_iterations, &
                             nonlinear_iterations_adapt )
                         call Land_flip_merge_after_adapt( state, Mdims )
-                        if( have_option( '/io/stat/output_after_adapts' ) ) call write_diagnostics( state, current_time, dt, &
+                        if( have_option( '/io/stat/output_after_adapts' ) ) call write_diagnostics_wells( current_time, dt, &
                             itime, not_to_move_det_yet = .true. )
                         call run_diagnostics( state )
                     end if Conditional_Adapt_by_TimeStep
                 elseif( have_option( '/mesh_adaptivity/prescribed_adaptivity' ) ) then !!$ Conditional_Adaptivity:
                     Conditional_Adapt_by_Time: if( do_adapt_state_prescribed( current_time ) ) then
                         call pre_adapt_tasks( sub_state )
-                        if( have_option( '/io/stat/output_before_adapts' ) ) call write_diagnostics( state, current_time, dt, &
+                        if( have_option( '/io/stat/output_before_adapts' ) ) call write_diagnostics_wells( current_time, dt, &
                             timestep, not_to_move_det_yet = .true. )
                         call run_diagnostics( state )
                         !Record the per-phase pore volume (mass for compressible phases) on the OLD mesh, while the saturation is still unscaled: the target the restore puts back.
@@ -2553,7 +2671,7 @@ contains
                         call update_state_post_adapt( state, metric_tensor, dt, sub_state, nonlinear_iterations, &
                             nonlinear_iterations_adapt)
                         call Land_flip_merge_after_adapt( state, Mdims )
-                        if(have_option( '/io/stat/output_after_adapts' ) ) call write_diagnostics( state, current_time, dt, &
+                        if(have_option( '/io/stat/output_after_adapts' ) ) call write_diagnostics_wells( current_time, dt, &
                             timestep, not_to_move_det_yet = .true. )
                         call run_diagnostics( state )
                     end if Conditional_Adapt_by_Time
