@@ -793,10 +793,15 @@ AC_SUBST([FEMDEM])
 AC_SUBST([FLFEMDEM_PATH])
 AC_SUBST([LIB_FEMDEM])
 
-dnl -------- Default REAL=8 (optional) --------
+dnl -------- Default REAL=8  --------
 AS_IF([test "x$enable_dp" != "xno"], [
   if test "x$enable_dp" = "xyes"; then
-    AX_CHECK_COMPILE_FLAG([-fdefault-real-8],[FCFLAGS="$FCFLAGS -fdefault-real-8 -fdefault-double-8"; AC_DEFINE([DOUBLEP],[1],[Default REAL=8])],[])
+    AC_LANG_PUSH([Fortran])
+    AX_CHECK_COMPILE_FLAG([-fdefault-real-8],
+      [FCFLAGS="$FCFLAGS -fdefault-real-8 -fdefault-double-8"; AC_DEFINE([DOUBLEP],[1],[Default REAL=8])],
+      [AC_MSG_ERROR([default REAL=8 was requested, but the Fortran compiler did not accept -fdefault-real-8; use --enable-dp=FLAG to specify the appropriate compiler flag])],
+      [-Werror])
+    AC_LANG_POP([Fortran])
   else
     FCFLAGS="$FCFLAGS $enable_dp"
     AC_DEFINE([DOUBLEP],[1],[Default REAL=8])
