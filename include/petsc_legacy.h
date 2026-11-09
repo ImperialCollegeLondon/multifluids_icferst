@@ -52,7 +52,9 @@
 #define PETSC_NULL_VECSCATTER PETSC_NULL_OBJECT
 #define PETSC_NULL_VIEWER PETSC_NULL_OBJECT
 #endif
-#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<8)
+! Before 3.8, objects were integer handles; in 3.8-3.22, extract the handle
+! from the derived type via %v. From 3.23, typed interfaces accept the object directly.
+#if (PETSC_VERSION_MAJOR==3 && PETSC_VERSION_MINOR<8) || PETSC_VERSION_GE(3,23,0)
 #define PetscObjectReferenceWrapper(x, ierr) PetscObjectReference(x, ierr)
 #else
 #define PetscObjectReferenceWrapper(x, ierr) PetscObjectReference(x%v, ierr)

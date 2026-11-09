@@ -2109,9 +2109,13 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
 #if PETSC_VERSION_MINOR>=14
       call KSPSetUp(ksp,ierr)
       if (pctype==PCBJACOBI) then
+#if PETSC_VERSION_GE(3,23,0)
+        call PCBJacobiGetSubKSP(pc,n_local,first_local,subksp_array,ierr)
+#else
         call PCBJacobiGetSubKSP(pc,n_local,first_local, PETSC_NULL_KSP,ierr)
         allocate(subksp_array(n_local))
         call PCBJacobiGetSubKSP(pc,n_local , first_local,subksp_array,ierr)
+#endif
       else
         call PCASMGetSubKSP(pc,n_local,first_local,subksp_array,ierr)
       end if
@@ -2129,6 +2133,13 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
          is_subpc=.true.)
       end do
       ewrite(2,*) "Finished setting up subpc."
+#if PETSC_VERSION_GE(3,23,0)
+      if (pctype==PCBJACOBI) then
+        call PCBJacobiRestoreSubKSP(pc,n_local,first_local,subksp_array,ierr)
+      else
+        call PCASMRestoreSubKSP(pc,n_local,first_local,subksp_array,ierr)
+      end if
+#endif
 #else
       if (pctype==PCBJACOBI) then
         call PCBJacobiGetSubKSP(pc, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, subksp, ierr)
@@ -2159,8 +2170,12 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
        call PCSetType(pc, PCBJACOBI, ierr)
        ! need to call this before the subpc can be retrieved:
        call PCSetup(pc, ierr)
-#if PETSC_VERSION_MINOR>=14
-! Extract the array of KSP contexts for the local blocks
+#if PETSC_VERSION_GE(3,23,0)
+        call KSPSetUp(ksp,ierr)
+        call PCBJacobiGetSubKSP(pc,n_local,first_local,subksp_array,ierr)
+        call KSPGetPC(subksp_array(1), subpc, ierr)
+        call PCBJacobiRestoreSubKSP(pc,n_local,first_local,subksp_array,ierr)
+#elif PETSC_VERSION_MINOR>=14
         call KSPSetUp(ksp,ierr)
         call PCBJacobiGetSubKSP(pc,n_local,first_local, PETSC_NULL_KSP,ierr)
         allocate(subksp_array(n_local))

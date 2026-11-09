@@ -337,15 +337,20 @@
        call usage()
     end if
 
-    call PetscOptionsHasName(PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, '-vl_as', vl_as, ierr)
+    call PetscOptionsHasName(PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, '-vl_as', flag, ierr)
+    vl_as = flag
 
-    call PetscOptionsHasName(PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, '-vl_as_wsor', vl_as_wsor, ierr)
+    call PetscOptionsHasName(PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, '-vl_as_wsor', flag, ierr)
+    vl_as_wsor = flag
 
-    call PetscOptionsHasName(PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, '-vl', vl, ierr)
+    call PetscOptionsHasName(PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, '-vl', flag, ierr)
+    vl = flag
 
-    call PetscOptionsHasName(PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, '-no_vl', no_vl, ierr)
+    call PetscOptionsHasName(PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, '-no_vl', flag, ierr)
+    no_vl = flag
 
-    call PetscOptionsHasName(PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, '-sor', sor, ierr)
+    call PetscOptionsHasName(PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, '-sor', flag, ierr)
+    sor = flag
 
   end subroutine pressure_solve_options
 

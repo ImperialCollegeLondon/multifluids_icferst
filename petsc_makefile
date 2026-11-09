@@ -12,3 +12,5 @@
 # in ${PETSC_DIR}/lib/petsc/conf/
 include ${PETSC_DIR}/lib/petsc/conf/variables
 include ${PETSC_DIR}/lib/petsc/conf/rules
+# getlinklibs/getincludedirs moved to rules_util.mk in newer PETSc releases
+include ${PETSC_DIR}/lib/petsc/conf/rules_util.mk
