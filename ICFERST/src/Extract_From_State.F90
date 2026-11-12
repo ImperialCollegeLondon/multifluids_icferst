@@ -65,7 +65,21 @@ module Copy_Outof_State
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
         have_option_for_any_phase, Get_Ele_Type_new,write_state_units,&
         get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, getTotalsAndDumpOutflux, calculate_internal_volume, prepare_absorptions, &
-        EnterForceBalanceEquation, update_outfluxes, Impose_connected_BCs, getOutputConverter,convertToOutUnits
+        EnterForceBalanceEquation, update_outfluxes, Impose_connected_BCs, getOutputConverter,convertToOutUnits, &
+        print_FPI_row
+
+    !Last row of the convergence table shown in the terminal
+    !Adaptive_NonLinear builds it at every non-linear iteration and the time loop prints it once per time level with print_FPI_row
+    character(len=PYTHON_FUNC_LEN), save :: FPI_row_head = ''
+    character(len=OPTION_PATH_LEN), save :: FPI_row_tail = ''
+    character(len=6), save :: FPI_row_state = ''
+    logical, save :: FPI_row_ready = .false.
+    logical, save :: FPI_row_has_state = .false.
+    character(len=*), parameter :: &
+        RED    = achar(27) // '[31m', &
+        GREEN  = achar(27) // '[32m', &
+        YELLOW = achar(27) // '[33m', &
+        RESET  = achar(27) // '[0m'
 
 
     !>@brief: Obtain the surface global to local conversor
@@ -2037,7 +2051,6 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
     integer, save :: Ntracers
     real :: dt, auxR, dump_period
     integer :: Aim_num_FPI, auxI, auxJ, incr_threshold, stat1, stat2, nfields, k
-    integer, save :: show_FPI_conv! Whether printing out to the user convergence or not
     real, save :: OldDt
     real, parameter :: check_sat_threshold = 1d-6
     real, dimension(:,:,:), pointer :: pressure
@@ -2108,7 +2121,6 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its, itime,&
         decreaseFactor, default = 2.0 )
     call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_threshold', &
         incr_threshold, default = int(0.25 * NonLinearIteration) )
-    show_FPI_conv = .not. (have_option( '/io/Show_Convergence') .or. have_option( '/io/Show_Convergence_Detailed'))
     call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller/Aim_num_FPI', &
         Aim_num_FPI, default = int(0.20 * NonLinearIteration) )
     Aim_num_FPI = min(Aim_num_FPI, NonLinearIteration)!People may ask for higher Aim_num_FPI...
@@ -2387,6 +2399,7 @@ ts_ref_val = 0d0;
               call printHeader()
             else
                 write(temp_string, '(a, 1PE10.3,a,i0)' ) "| L_inf:", inf_norm_val
+                FPI_row_has_state = .false.
             end if
 
             !Asssemble finally the output message
@@ -2400,18 +2413,13 @@ ts_ref_val = 0d0;
               adapting_within_happening_now = Accum_Courant +  Current_Courant >= Courant_tol .or. first_time_step
             end if
 
-            !Do not show convergence if we are adapting the mesh within the FPI and this is the first guess
-            if (.not. adapting_within_happening_now) then
-              !Tell the user the number of FPI and final convergence to help improving the parameters
-              if (ExitNonLinearLoop .and. getprocno() == 1) then
-                  ewrite(show_FPI_conv,*) trim(output_message)
-              end if
-           end if
+            FPI_row_head = output_message
+            FPI_row_ready = .true.
 
 
            if (have_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Test_mass_consv/stop_at_min_ts")) then
              if (its >= NonLinearIteration .and. max_calculate_mass_delta > calculate_mass_tol .and. abs(dt - min_ts)/min_ts < RM8) THEN
-               ewrite(0,*) trim(output_message)
+               ewrite(0,*) trim(output_message)//trim(FPI_row_state)//"|"//trim(FPI_row_tail)
                FLAbort("WARNING: SIMULATION TERMINATED AS MASS IS NOT BEING CONSERVED AND THE MINIMUM TIME-STEP HAS BEEN REACHED. RE-RUN WITH DIFFERENT SETTINGS.")
              end if
            end if
@@ -2504,10 +2512,9 @@ ts_ref_val = 0d0;
                         Repeat_time_step = .false.
                         ExitNonLinearLoop = .true.
                         deallocate(reference_field)
-                        !Tell the user the number of FPI and final convergence to help improving the parameters
-                        ! if (getprocno() == 1) then
-                        !     ewrite(show_FPI_conv,'(a, 1PE10.3, a)')  "Minimum time-step(", min_ts/conversor, trim(DtTimeUnits),") reached, advancing time."
-                        ! end if
+                        !A solver asked for a repeat but dt is already the minimum, so the time level is accepted as it is
+                        !MxNits is kept when the maximum number of FPI was reached
+                        if (its < NonLinearIteration) FPI_row_state = ' MinDt'
                         !If PID_controller then update the status
                         if (PID_controller) auxR = PID_time_controller(reset=.true.)
                         ! Update comparison variables
@@ -2528,9 +2535,9 @@ ts_ref_val = 0d0;
                     end if
                     call set_option( '/timestepping/timestep', dt )
                     stored_dt = dt
-                    ! if (getprocno() == 1) then
-                    !     ewrite(show_FPI_conv,'(a, 1PE10.3, a)') "<<<Convergence not achieved, repeating time-level>>> Time step decreased to:", dt/conversor, trim(DtTimeUnits)
-                    ! end if
+                    !The time level is repeated with a smaller time-step size
+                    !MxNits is kept when the repeat comes from the maximum number of FPI, otherwise a solver asked for it
+                    if (its < NonLinearIteration) FPI_row_state = 'Repeat'
                     Repeat_time_step = .true.
                     ExitNonLinearLoop = .true.
                     ! Update comparison variables
@@ -2643,19 +2650,13 @@ contains
     !>@brief: This function prints the header for the terminal
     subroutine printHeader()
 
-      character(len=*), parameter :: &
-        RED    = achar(27) // '[31m', &
-        GREEN  = achar(27) // '[32m', &
-        YELLOW = achar(27) // '[33m', &
-        BLUE   = achar(27) // '[34m', &
-        RESET  = achar(27) // '[0m'
-
-
       select case (variable_selection)
       case (2)
           write(temp_string, '(a, 1PE10.3,a,i0)' ) "| L_inf:", inf_norm_val
+          FPI_row_has_state = .false.
       case default
         output_message = ''; temp_string = ''
+        FPI_row_has_state = .true.
         if (itime == 1 .or. mod(itime,15) == 0) then
           ! When we print the header we also choose the time output units
           if (dt < SECS_IN_DAY) then
@@ -2718,21 +2719,21 @@ contains
         if (printConc)  temp_string = trim(temp_string)//" "// printPretty(inf_norm_conc)           // "| "
         if (printTrcrs) temp_string = trim(temp_string)//" "// printPretty(Tracers_ref_val)         // "| "
         if (its >= NonLinearIteration )    then  !.and. .not. ExitNonLinearLoop
-          temp_string = trim(temp_string)   // RED  //"MxNits"// RESET //"|"
-        else  !RED // "This is red text" // RESET
+          FPI_row_state = 'MxNits'
+        else
           if (nSolverWarnings>nSolverWarningsOld) then
-            temp_string = trim(temp_string) //YELLOW//"LinSol"// RESET //"|"
+            FPI_row_state = 'LinSol'
           else if (nDMOWarnings>nDMOWarningsOld) then
-            temp_string = trim(temp_string) //YELLOW//"   DMO"// RESET //"|"
+            FPI_row_state = '   DMO'
           else
-            temp_string = trim(temp_string) // GREEN//"    OK"// RESET //"|"
+            FPI_row_state = '    OK'
           end if
         end if
+        !Columns after the State column
         write(snits,'(I6)') nDMOWarnings+nSolverWarnings !re=use string variable snits
-        temp_string = trim(temp_string) // snits; temp_string = trim(temp_string) // "| "
         sim_progress = 100.0d0 * acctim / finish_time
         write(temp_string3,'(F12.2)') sim_progress
-        temp_string = trim(temp_string)//trim(temp_string3)//"| "
+        FPI_row_tail = trim(snits) // "|" // trim(temp_string3) // "| "
         if (getprocno() == 1) then
           if (itime == 1 .or. mod(itime,15) == 0) then
             output_message = trim(output_message) // " "//trim(temp_string)
@@ -2745,6 +2746,38 @@ contains
     end subroutine printHeader
 
 end subroutine Adaptive_NonLinear
+
+!>@brief: Prints the last row of the convergence table built by Adaptive_NonLinear.
+!> Called by the time loop once the non-linear loop of a time level is over, so every time level gets its row.
+!> With /io/Show_Convergence the row goes to stderr at verbosity 0, otherwise to stdout at verbosity 1.
+subroutine print_FPI_row()
+    implicit none
+    !Local variables
+    integer :: show_level
+    character(len=len(RED)+6+len(RESET)) :: coloured_state
+
+    if (.not. FPI_row_ready) return
+    FPI_row_ready = .false.
+    if (getprocno() /= 1) return
+
+    show_level = 1
+    if (have_option( '/io/Show_Convergence') .or. have_option( '/io/Show_Convergence_Detailed')) show_level = 0
+
+    if (FPI_row_has_state) then
+        select case (trim(adjustl(FPI_row_state)))
+        case ('OK')
+            coloured_state = GREEN // FPI_row_state // RESET
+        case ('MxNits', 'Repeat')
+            coloured_state = RED // FPI_row_state // RESET
+        case default
+            coloured_state = YELLOW // FPI_row_state // RESET
+        end select
+        ewrite(show_level,*) trim(FPI_row_head) // coloured_state // "|" // trim(FPI_row_tail)
+    else
+        ewrite(show_level,*) trim(FPI_row_head)
+    end if
+
+end subroutine print_FPI_row
 
 !> Calculate the inf norm of the normalised field, so the field goes from 0 to 1
 !> It requires as inputs the tracer to be used and the reference tracer to normallise, the dumping to be set to 1.0

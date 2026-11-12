@@ -976,6 +976,8 @@ contains
                 first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
 
+            call print_FPI_row()
+
             if (nonLinearAdaptTs) then
                 !As the value of dt and acctim may have changed we retrieve their values
                 !to make sure that everything is coherent
